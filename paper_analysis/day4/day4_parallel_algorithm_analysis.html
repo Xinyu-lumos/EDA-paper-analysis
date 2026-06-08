@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 4 补充：FPGA 无打包布局的并行算法深度分析</title>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$']],
+    displayMath: [['$$', '$$']],
+    processEscapes: true
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'default'});</script>
+<style>
+body {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 40px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.7;
+  color: #333;
+  background: #fafafa;
+}
+h1 { color: #1a1a2e; border-bottom: 2px solid #16213e; padding-bottom: 8px; }
+h2 { color: #16213e; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; margin-top: 2em; }
+h3 { color: #0f3460; }
+blockquote {
+  border-left: 4px solid #e94560;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background: #fff;
+  border-radius: 0 4px 4px 0;
+}
+code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; color: inherit; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+th { background: #16213e; color: white; }
+tr:nth-child(even) { background: #f5f5f5; }
+a { color: #e94560; text-decoration: none; }
+a:hover { text-decoration: underline; }
+img { max-width: 100%; }
+.mermaid { background: white; padding: 10px; border-radius: 8px; margin: 1em 0; }
+hr { border: none; border-top: 1px solid #e0e0e0; margin: 2em 0; }
+</style>
+</head>
+<body>
+<h1 id="day-4-fpga">Day 4 补充：FPGA 无打包布局的并行算法深度分析</h1>
+<blockquote>
+<p><strong>基于论文</strong>: A New Paradigm for FPGA Placement without Explicit Packing (TCAD 2019)</p>
+<p><strong>重点章节</strong>: §IV-C Fully Parallelizable Direct Legalization</p>
+<p><strong>核心问题</strong>: 传统 FPGA 合法化/打包算法本质上是顺序贪心的，如何将其改造为大规模并行算法，且保证与串行版本结果完全一致（串行等价性）？</p>
+</blockquote>
+<hr />
+<h2 id="_1">目录</h2>
+<ol>
+<li><a href="#1-并行化的核心难题">并行化的核心难题</a></li>
+<li><a href="#2-大学录取类比并行性的直觉来源">大学录取类比：并行性的直觉来源</a></li>
+<li><a href="#3-节点中心算法每个-slice-独立决策">节点中心算法：每个 Slice 独立决策</a></li>
+<li><a href="#4-完整并行-dl-算法三阶段并行结构">完整并行 DL 算法：三阶段并行结构</a></li>
+<li><a href="#5-串行等价性并行不损失质量">串行等价性：并行不损失质量</a></li>
+<li><a href="#6-评分函数布局与打包的统一度量">评分函数：布局与打包的统一度量</a></li>
+<li><a href="#7-后-dl-异常处理撕毁与重分配">后 DL 异常处理：撕毁与重分配</a></li>
+<li><a href="#8-并行加速实验数据">并行加速实验数据</a></li>
+<li><a href="#9-与传统方法的对比分析">与传统方法的对比分析</a></li>
+<li><a href="#10-并行算法设计方法论总结">并行算法设计方法论总结</a></li>
+</ol>
+<hr />
+<h2 id="1">1. 并行化的核心难题</h2>
+<h3 id="11-fpga">1.1 传统 FPGA 合法化为什么难以并行？</h3>
+<p>FPGA 合法化需要同时解决两个耦合问题：<br />
+- <strong>布局问题</strong>：将单元放到物理位置，最小化线长<br />
+- <strong>打包问题</strong>：将单元组合到 CLB Slice 中，满足架构约束（控制集、LUT/FF 数量限制）</p>
+<p>传统方法的执行流程是顺序的：</p>
+<pre><code>传统流程：打包 → 合法化 → 详细布局
+  打包：贪心聚类（依赖前序决策）
+  合法化：逐行/逐列扫描（依赖邻居状态）
+  详细布局：逐单元优化（依赖全局状态）
+</code></pre>
+<blockquote>
+<p><strong>核心矛盾</strong>：打包和布局天然耦合——单元应该打包在一起往往是因为它们在物理上靠近，而它们应该放在哪里又取决于它们和谁打包在一起。传统方法将两者分开处理（先打包再布局），不仅损失解质量，而且每一步内部的贪心依赖使得并行化极其困难。</p>
+</blockquote>
+<h3 id="12">1.2 并行化的两大挑战</h3>
+<table>
+<thead>
+<tr>
+<th>挑战</th>
+<th>描述</th>
+<th>传统后果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>数据依赖</strong></td>
+<td>后续决策依赖前序结果（如"单元 A 放在 Slice X 后，单元 B 不能再去 Slice X"）</td>
+<td>必须顺序执行</td>
+</tr>
+<tr>
+<td><strong>质量退化</strong></td>
+<td>并行执行可能导致冲突（如两个 Slice 同时竞争同一个单元）</td>
+<td>并行版本解质量差于串行版本</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>关键目标</strong>：设计一个既可大规模并行，又保证与串行版本完全等价的算法。</p>
+</blockquote>
+<hr />
+<h2 id="2">2. 大学录取类比：并行性的直觉来源</h2>
+<h3 id="21-gale-shapley">2.1 Gale-Shapley 大学录取问题</h3>
+<p>论文的核心灵感来自经典的 <strong>Gale-Shapley 大学录取问题（College Admission Problem）</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>论文概念</th>
+<th>大学录取类比</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Slice（CLB 切片）</td>
+<td>大学（College）</td>
+<td>有名额限制的接收方</td>
+</tr>
+<tr>
+<td>Cell（单元）</td>
+<td>学生（Student）</td>
+<td>需要被接收的请求方</td>
+</tr>
+<tr>
+<td>共享网表的单元</td>
+<td>朋友（Friends）</td>
+<td>有社交关系的群体</td>
+</tr>
+<tr>
+<td>控制集约束</td>
+<td>专业限制</td>
+<td>某些学生不能进同一大学</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22">2.2 为什么大学录取天然可并行？</h3>
+<p>大学录取的关键性质：<strong>所有大学可以同时独立做出录取决策</strong>。</p>
+<pre><code>串行版本：大学 A 做决策 → 大学 B 做决策 → ... → 大学 N 做决策
+并行版本：大学 A, B, ..., N 同时做决策 → 学生处理收到的多个 offer → 下一轮
+</code></pre>
+<div class="mermaid">
+graph TD
+    A["<b>并行阶段①</b><br/>所有 Slice 同时<br/>生成候选簇"] --> B["<b>并行阶段②</b><br/>所有 Cell 同时<br/>选择最优 offer"]
+    B --> C{"<b>还有新 offer？</b>"}
+    C -->|"是"| A
+    C -->|"否"| D["<b>算法终止</b><br/>合法布局完成"]
+</div>
+
+<h3 id="23">2.3 与经典大学录取的两个关键差异</h3>
+<p>论文指出，FPGA 合法化比标准大学录取问题更复杂：</p>
+<ol>
+<li><strong>学生评价大学不仅看大学本身，还看朋友的决策</strong>：一个单元是否选择某个 Slice，取决于它的"朋友"（同网表的单元）是否也在同一个 Slice 中——这引入了单元间的间接依赖</li>
+<li><strong>某些学生不能进入同一大学</strong>：FPGA 架构约束（控制集限制、LUT/FF 数量限制）使得某些单元不能在同一个 Slice 中共存</li>
+</ol>
+<blockquote>
+<p>尽管有这些额外复杂度，算法仍然保持了大学录取问题的核心并行结构——每个 Slice 独立决策，每个 Cell 独立选择。</p>
+</blockquote>
+<hr />
+<h2 id="3-slice">3. 节点中心算法：每个 Slice 独立决策</h2>
+<h3 id="31">3.1 数据结构</h3>
+<p>每个计算节点（Slice）维护以下数据结构：</p>
+<table>
+<thead>
+<tr>
+<th>变量</th>
+<th>类型</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>det</code></td>
+<td>集合</td>
+<td>已确定属于该 Slice 的单元集合</td>
+</tr>
+<tr>
+<td><code>pq</code></td>
+<td>优先队列</td>
+<td>当前最优的 K 个候选簇（K=10）</td>
+</tr>
+<tr>
+<td><code>nbr</code></td>
+<td>集合</td>
+<td>邻域内可考虑的候选单元集合</td>
+</tr>
+<tr>
+<td><code>scl</code></td>
+<td>列表</td>
+<td>种子簇——用于生成新候选</td>
+</tr>
+<tr>
+<td><code>i</code></td>
+<td>整数</td>
+<td>自 <code>pq.top()</code> 上次变化以来的迭代次数</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32">3.2 节点中心算法流程</h3>
+<p>每个 Slice 在每次 DL 迭代中执行以下流程：</p>
+<div class="mermaid">
+graph TD
+    A["<b>检查 pq.top()</b><br/>是否可提交？"] -->|"是：i ≥ I 且<br/>所有 Cell 接受"| B["<b>提交候选</b><br/>det ← pq.top()<br/>重置 pq, scl"]
+    A -->|"否"| C["<b>清理无效项</b><br/>移除无效候选/Cell"]
+    C --> D{"<b>邻域太小？</b><br/>|nbr| < N_min"}
+    D -->|"是"| E["<b>扩展搜索范围</b><br/>d ← d + Δd<br/>添加更多邻居"]
+    D -->|"否"| F["<b>生成新候选</b><br/>将 nbr 中 Cell<br/>加入 scl 中种子簇"]
+    E --> F
+    F --> G["<b>更新稳定性计数</b><br/>pq.top() 变化？i=0 : i++"]
+    G --> H["<b>广播 offer</b><br/>将 pq.top() 发送给<br/>其中所有 Cell"]
+</div>
+
+<h3 id="33">3.3 关键参数与数值</h3>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>K</td>
+<td>10</td>
+<td>优先队列中保留的最优候选数</td>
+</tr>
+<tr>
+<td>I</td>
+<td>3</td>
+<td>提交前需稳定的迭代次数（防止提交过早的候选）</td>
+</tr>
+<tr>
+<td>$N_{NBRmin}$</td>
+<td>10</td>
+<td>邻域最小 Cell 数</td>
+</tr>
+<tr>
+<td>d（初始）</td>
+<td>1</td>
+<td>初始最大位移约束</td>
+</tr>
+<tr>
+<td>Δd</td>
+<td>1</td>
+<td>每次扩展的位移增量</td>
+</tr>
+<tr>
+<td>D</td>
+<td>12</td>
+<td>最终最大位移约束</td>
+</tr>
+</tbody>
+</table>
+<h3 id="34">3.4 逐步追踪示例</h3>
+<p>假设 Slice S1 当前状态：<code>det = {c1, c2}</code>，<code>nbr = {c3, c4, c5, c6}</code>，<code>pq.top() = {c1, c2, c3}</code>：</p>
+<p><strong>步骤 1：检查 pq.top() 是否可提交</strong><br />
+- <code>pq.top() = {c1, c2, c3}</code>，需要 Cell c3 接受此 offer<br />
+- 假设 c3 还在接受其他 Slice 的 offer，i = 1 &lt; I = 3，不可提交</p>
+<p><strong>步骤 2：清理无效项</strong><br />
+- c5 已被另一个 Slice 确定 → 从 <code>nbr</code> 中移除<br />
+- <code>nbr</code> 更新为 {c3, c4, c6}</p>
+<p><strong>步骤 3：检查邻域大小</strong><br />
+- |nbr| = 3 &lt; $N_{NBRmin}$ = 10 → 扩展搜索范围<br />
+- d 从 1 增加到 2，添加距离 1 &lt; dist ≤ 2 的 Cell<br />
+- <code>nbr</code> 扩展为 {c3, c4, c6, c7, c8, c9, c10, c11, c12}</p>
+<p><strong>步骤 4：生成新候选</strong><br />
+- 将 <code>nbr</code> 中每个 Cell 加入 <code>scl</code> 中每个种子簇<br />
+- 新候选示例：{c1, c2, c7}, {c1, c2, c8}, {c1, c2, c3, c7}, ...<br />
+- 将有效新候选加入 <code>pq</code>，保留 top-K</p>
+<p><strong>步骤 5：更新稳定性计数</strong><br />
+- 如果 <code>pq.top()</code> 变了 → i = 0（发现更好的候选）<br />
+- 如果 <code>pq.top()</code> 没变 → i++（当前最佳稳定中）</p>
+<p><strong>步骤 6：广播 offer</strong><br />
+- 将 <code>pq.top()</code> 中的 Cell 列表和评分发送给每个 Cell<br />
+- Cell 们将在并行阶段②中做出选择</p>
+<hr />
+<h2 id="4-dl">4. 完整并行 DL 算法：三阶段并行结构</h2>
+<h3 id="41-algorithm-1">4.1 Algorithm 1 完整伪代码</h3>
+<pre><code>输入：粗糙合法布局，Cell 集合 C，Slice 集合 S，初始位移约束 d
+输出：合法布局
+
+═══════════════════════════════════════════
+阶段①：并行初始化
+═══════════════════════════════════════════
+parallel for each s ∈ S do
+  s.i   ← 0
+  s.det ← ∅
+  s.pq  ← ∅
+  s.nbr ← {c ∈ C | dist(c, s) ≤ d}
+  s.scl ← {空簇}
+end parallel for
+
+═══════════════════════════════════════════
+主循环：迭代直到无新 offer
+═══════════════════════════════════════════
+while ∃ valid pq.top() for s ∈ S do
+
+  ──── 阶段②：Slice 并行决策 ────
+  parallel for each s ∈ S do
+    执行节点中心算法（图 7）
+  end parallel for
+
+  ──── 阶段③：Cell 并行选择 ────
+  parallel for each c ∈ C do
+    从 {s ∈ S | c ∈ s.pq.top()} 中
+    选择 SCORE(s) 最高的 Slice s'
+    并告知 s' 接受其 offer
+  end parallel for
+
+end while
+</code></pre>
+<h3 id="42">4.2 三阶段并行结构详解</h3>
+<div class="mermaid">
+graph LR
+    subgraph Phase1["阶段① 初始化"]
+        S1["Slice 1<br/>init"]
+        S2["Slice 2<br/>init"]
+        SN["Slice N<br/>init"]
+    end
+    subgraph Phase2["阶段② Slice 决策"]
+        P1["Slice 1<br/>生成 offer"]
+        P2["Slice 2<br/>生成 offer"]
+        PN["Slice N<br/>生成 offer"]
+    end
+    subgraph Phase3["阶段③ Cell 选择"]
+        C1["Cell 1<br/>选最优 offer"]
+        C2["Cell 2<br/>选最优 offer"]
+        CM["Cell M<br/>选最优 offer"]
+    end
+    Phase1 --> Phase2 --> Phase3
+    Phase3 -->|"下一轮迭代"| Phase2
+</div>
+
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>并行对象</th>
+<th>操作</th>
+<th>同步点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 初始化</td>
+<td>所有 Slice</td>
+<td>设置初始状态</td>
+<td>全部完成后进入主循环</td>
+</tr>
+<tr>
+<td>② Slice 决策</td>
+<td>所有 Slice</td>
+<td>独立执行节点中心算法，生成 offer</td>
+<td>全部完成后进入阶段③</td>
+</tr>
+<tr>
+<td>③ Cell 选择</td>
+<td>所有 Cell</td>
+<td>处理收到的多个 offer，选择最优</td>
+<td>全部完成后回到阶段②</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>同步模型</strong>：算法采用 <strong>BSP（Bulk Synchronous Parallel）</strong> 模型——每个阶段内部完全并行，阶段之间通过全局同步点分隔。这种模型非常适合多线程 CPU（OpenMP）和 GPU（CUDA）实现。</p>
+</blockquote>
+<h3 id="43">4.3 为什么这个结构可以并行？</h3>
+<p><strong>阶段②可以并行的原因</strong>：<br />
+- 每个 Slice 只读取自己的 <code>det</code>, <code>pq</code>, <code>nbr</code>, <code>scl</code> 状态<br />
+- 每个 Slice 只写入自己的 <code>pq</code>（优先队列）和广播消息<br />
+- 不同 Slice 的写入不冲突——它们操作不同的数据结构</p>
+<p><strong>阶段③可以并行的原因</strong>：<br />
+- 每个 Cell 只需要读取来自各 Slice 的 offer（只读）<br />
+- 每个 Cell 独立做出选择，写入自己的决定<br />
+- 不同 Cell 的写入不冲突</p>
+<p><strong>阶段之间的数据流</strong>：<br />
+- 阶段② → 阶段③：Slice 广播 offer（多对多通信）<br />
+- 阶段③ → 阶段②：Cell 通知接受/拒绝（多对多通信）</p>
+<blockquote>
+<p><strong>无竞争条件</strong>：阶段②中 Slice 不读取其他 Slice 的状态，阶段③中 Cell 不修改其他 Cell 的决定。唯一的数据交换通过"offer/accept"消息完成，在同步点处统一处理。</p>
+</blockquote>
+<hr />
+<h2 id="5">5. 串行等价性：并行不损失质量</h2>
+<h3 id="51">5.1 定义</h3>
+<blockquote>
+<p><strong>串行等价性（Serial Equivalency）</strong>：一个并行算法满足串行等价性，当且仅当它总是产生与串行版本<strong>完全相同</strong>的解——无论使用多少线程。</p>
+</blockquote>
+<h3 id="52">5.2 为什么串行等价性重要？</h3>
+<table>
+<thead>
+<tr>
+<th>性质</th>
+<th>有串行等价性</th>
+<th>无串行等价性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>结果可重复</td>
+<td>✅ 每次运行结果相同</td>
+<td>❌ 结果随线程数变化</td>
+</tr>
+<tr>
+<td>调试友好</td>
+<td>✅ 可用单线程版本验证</td>
+<td>❌ 并行/串行结果不同</td>
+</tr>
+<tr>
+<td>线程数灵活</td>
+<td>✅ 有多少用多少</td>
+<td>⚠️ 可能多线程更差</td>
+</tr>
+<tr>
+<td>理论保证</td>
+<td>✅ 等价于良定义的串行算法</td>
+<td>❌ 无理论保证</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53">5.3 串行等价性的保证机制</h3>
+<p><strong>Lemma 1</strong>：假设 $s_1$ 和 $s_2$ 是两个不同的计算节点。如果对同一 DL 迭代中的任意 $s_1$ 和 $s_2$，$\text{SCORE}(s_1) \neq \text{SCORE}(s_2)$ 成立，则算法收敛性得到保证。</p>
+<p><strong>实现方式</strong>：当多个 Slice 对同一个 Cell 提供相同的分数改善时，使用 Slice 的<strong>唯一标识符</strong>打破平局。这保证了：<br />
+1. 每个 Cell 在每次迭代中做出<strong>唯一确定</strong>的选择<br />
+2. 串行版本和并行版本中，Cell 面临的 offer 集合相同<br />
+3. Cell 的选择逻辑相同（选分数最高的，平局按 ID）<br />
+4. 因此最终结果完全一致</p>
+<blockquote>
+<p><strong>与 ABCDPlace 的对比</strong>：ABCDPlace（Day 5）的并行全局交换算法需要顺序应用交换结果（ApplyCand 步骤）来处理冲突，因此<strong>不保证</strong>串行等价性。本文的 DL 算法通过"offer-accept"协议和确定性平局打破，<strong>保证</strong>了串行等价性。</p>
+</blockquote>
+<h3 id="54">5.4 收敛性分析</h3>
+<p>算法的收敛性由以下机制保证：</p>
+<ol>
+<li><strong>分数单调递增</strong>：每次成功提交（commit）都严格改善目标函数值</li>
+<li><strong>有限解空间</strong>：Cell-Slice 的组合是有限的</li>
+<li><strong>无振荡</strong>：确定性平局打破避免了"A→B→A→B"的振荡</li>
+</ol>
+<p>因此算法在有限步内收敛。</p>
+<hr />
+<h2 id="6">6. 评分函数：布局与打包的统一度量</h2>
+<h3 id="61">6.1 评分函数定义</h3>
+<p>给定一个 Slice $s$ 和一个候选簇 $c$，评分函数定义为：</p>
+<p>$$\text{SCORE}(c, s) = \sum_{e \in \text{Net}(c)} \frac{\text{InternalPins}(e, c)}{\text{TotalPins}(e) - 1} - \lambda \cdot \text{HPWL}(c, s)$$</p>
+<p>其中：<br />
+- $\text{Net}(c)$：至少包含 $c$ 中一个 Cell 的网集合<br />
+- $\text{TotalPins}(e)$：网 $e$ 的总引脚数<br />
+- $\text{InternalPins}(e, c)$：网 $e$ 在簇 $c$ 内的引脚数<br />
+- $\text{HPWL}(c, s)$：将 $c$ 中 Cell 从 FIP 位置移到 Slice $s$ 造成的 HPWL 增量<br />
+- $\lambda = 0.02$：权重参数</p>
+<h3 id="62">6.2 两项的物理意义</h3>
+<p><strong>第一项（打包质量项）</strong>：</p>
+<p>$$\sum_{e \in \text{Net}(c)} \frac{\text{InternalPins}(e, c)}{\text{TotalPins}(e) - 1}$$</p>
+<blockquote>
+<p><strong>解读</strong>：这项衡量簇的"内部化"程度——将外部网变为内部网的能力。当更多引脚被吸收到簇内部时，该簇需要的对外路由资源减少，布线更友好。分母 $\text{TotalPins}(e) - 1$ 使得吸收大网（引脚数多的网）的收益相对较低——因为大网即使部分内部化，仍需对外连接。</p>
+</blockquote>
+<p><strong>第二项（布局位移项）</strong>：</p>
+<p>$$-\lambda \cdot \text{HPWL}(c, s)$$</p>
+<blockquote>
+<p><strong>解读</strong>：这项惩罚位移造成的线长增加。负号意味着 HPWL 增加越多的候选得分越低。$\lambda$ 控制"打包质量"与"线长"之间的权衡。</p>
+</blockquote>
+<h3 id="63">6.3 数值计算示例</h3>
+<p>假设簇 $c = {c_1, c_2, c_3}$，候选 Slice $s$：</p>
+<table>
+<thead>
+<tr>
+<th>网 $e$</th>
+<th>TotalPins</th>
+<th>InternalPins</th>
+<th>贡献</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$e_1$ (连接 $c_1, c_2, x_1$)</td>
+<td>3</td>
+<td>2</td>
+<td>$2/(3-1) = 1.0$</td>
+</tr>
+<tr>
+<td>$e_2$ (连接 $c_2, c_3$)</td>
+<td>2</td>
+<td>2</td>
+<td>$2/(2-1) = 2.0$</td>
+</tr>
+<tr>
+<td>$e_3$ (连接 $c_1, x_2, x_3$)</td>
+<td>3</td>
+<td>1</td>
+<td>$1/(3-1) = 0.5$</td>
+</tr>
+</tbody>
+</table>
+<p>打包质量项 = $1.0 + 2.0 + 0.5 = 3.5$</p>
+<p>假设移动到 Slice $s$ 的 HPWL 增量为 50：</p>
+<p>$$\text{SCORE} = 3.5 - 0.02 \times 50 = 3.5 - 1.0 = 2.5$$</p>
+<blockquote>
+<p>直觉上：$e_2$ 完全内部化（贡献最高 2.0），$e_1$ 大部分内部化（贡献 1.0），$e_3$ 仅部分内部化（贡献 0.5）。该簇的打包质量较好，且位移代价适中。</p>
+</blockquote>
+<h3 id="64">6.4 分数改善量</h3>
+<p>Cell 选择 Slice 时使用的不是绝对分数，而是<strong>分数改善量</strong>：</p>
+<p>$$\text{SCORE}(s) = \text{SCORE}(\text{pq.top()} \text{ of } s, s) - \text{SCORE}(\text{det} \text{ of } s, s)$$</p>
+<blockquote>
+<p>即：如果接受 Slice $s$ 的 offer，$s$ 的分数会比当前状态改善多少。Cell 自然倾向于选择改善最大的 Slice。</p>
+</blockquote>
+<hr />
+<h2 id="7-dl">7. 后 DL 异常处理：撕毁与重分配</h2>
+<h3 id="71">7.1 问题</h3>
+<p>DL 主循环结束后，通常有 &lt; 1% 的 Cell 仍无法在位移约束 D 内找到合法位置。</p>
+<h3 id="72">7.2 撕毁评分函数</h3>
+<p>对于非法 Cell $v$ 和 Slice $s$（其已确定簇为 $c$），撕毁 $c$ 以容纳 $v$ 的评分：</p>
+<p>$$\text{SCORE}_{ripup}(v, s, c) = -\lambda_1 \cdot \text{HPWL}(v, s) - \lambda_2 \cdot \text{SCORE}(c, s) - \lambda_3 \cdot \text{Area}(c)$$</p>
+<p>参数：$\lambda_1 = 0.02$，$\lambda_2 = 1.0$，$\lambda_3 = 4.0$</p>
+<blockquote>
+<p><strong>三项的含义</strong>：<br />
+- $-\lambda_1 \cdot \text{HPWL}$：优先选择移动 $v$ 线长代价小的 Slice<br />
+- $-\lambda_2 \cdot \text{SCORE}$：优先撕毁当前分数低的簇（即质量较差的簇）<br />
+- $-\lambda_3 \cdot \text{Area}$：优先撕毁面积小的簇——面积大的簇要么包含很多 Cell（重新合法化困难），要么包含难以打包的 Cell</p>
+</blockquote>
+<h3 id="73-algorithm-2">7.3 撕毁-重分配流程（Algorithm 2）</h3>
+<pre><code>for each 非法 Cell c:
+  D(c) ← D  (初始位移约束)
+  while Legalize(c, D(c)) 失败:
+    D(c) ← D(c) + 1  (逐步放宽约束)
+
+function Legalize(c, D):
+  ls(c) ← {s ∈ S | dist(c, s) ≤ D}  (候选 Slice)
+  按 SCOREripup 降序排列 ls(c)
+  for each s in ls(c):
+    if RipUpAndLegalize(s, c, D) 成功:
+      return 成功
+  return 失败
+
+function RipUpAndLegalize(s, c, D):
+  lv ← {v ∈ C | v ∈ s.det}  (记录将被撕毁的 Cell)
+  s.det ← {c}  (将非法 Cell c 放入 s)
+  for each v in lv:  (逐个重新合法化被撕毁的 Cell)
+    ls(v) ← {s' ∈ S | dist(v, s') ≤ D 且 s'.det ∪ {v} 合法}
+    if ls(v) 为空:
+      恢复 s.det 原状，return 失败
+    else:
+      选择使分数改善最大的 s'
+      s'.det ← s'.det ∪ {v}
+  return 成功
+</code></pre>
+<blockquote>
+<p><strong>注意</strong>：后 DL 异常处理是<strong>顺序执行</strong>的——因为撕毁一个簇后重新分配其 Cell 需要逐步检查，每一步都依赖前一步的结果。但由于涉及的 Cell 数极少（&lt; 1%），顺序执行的开销很小。</p>
+</blockquote>
+<hr />
+<h2 id="8">8. 并行加速实验数据</h2>
+<h3 id="81">8.1 实验配置</h3>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>配置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CPU</strong></td>
+<td>Intel Core i9-7900X (10 核, 3.30GHz)</td>
+</tr>
+<tr>
+<td><strong>线程库</strong></td>
+<td>OpenMP 4.0</td>
+</tr>
+<tr>
+<td><strong>DL 线程数</strong></td>
+<td>16（超线程）</td>
+</tr>
+<tr>
+<td><strong>其他部分</strong></td>
+<td>单线程</td>
+</tr>
+<tr>
+<td><strong>目标 FPGA</strong></td>
+<td>Xilinx UltraScale (67K Slices)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82-dl">8.2 DL 算法的线程扩展性</h3>
+<table>
+<thead>
+<tr>
+<th>线程数</th>
+<th>加速比</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>1.00×</td>
+<td>基线</td>
+</tr>
+<tr>
+<td>2</td>
+<td>1.65×</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>3.15×</td>
+<td></td>
+</tr>
+<tr>
+<td>8</td>
+<td>6.19×</td>
+<td></td>
+</tr>
+<tr>
+<td>16 (超线程)</td>
+<td>8.68×</td>
+<td>受限于 10 物理核</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>近线性扩展性</strong>：2-8 线程时，加速比接近理想的线性加速（2→1.65, 4→3.15, 8→6.19）。8→16 线程时饱和，因为 i9-7900X 只有 10 个物理核心，超线程共享执行资源无法真正并行。</p>
+</blockquote>
+<h3 id="83">8.3 设计规模扩展性</h3>
+<p>固定线程数下，DL 运行时间与设计规模呈<strong>线性关系</strong>——Cell 数翻倍，运行时间翻倍。这是因为每个 Slice 的计算量与该 Slice 周围的 Cell 数成正比，而总计算量与总 Cell 数成正比。</p>
+<h3 id="84">8.4 运行时占比</h3>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>占总运行时比例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>二次布局（QP + 粗合法化）</td>
+<td>64.5%</td>
+</tr>
+<tr>
+<td>详细布局</td>
+<td>18.5%</td>
+</tr>
+<tr>
+<td><strong>DL（16 线程）</strong></td>
+<td><strong>12.5%</strong></td>
+</tr>
+<tr>
+<td>DAA（动态面积调整）</td>
+<td>2.2%</td>
+</tr>
+<tr>
+<td>后 DL 异常处理</td>
+<td>0.7%</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>如果 DL 也用单线程运行，其占比将从 12.5% 上升到约 $12.5\% \times 8.68 \approx 109\%$——即 DL 本身将成为运行时瓶颈。16 线程并行使 DL 从"瓶颈"变为"次要开销"。</p>
+</blockquote>
+<hr />
+<h2 id="9">9. 与传统方法的对比分析</h2>
+<h3 id="91-utplacef">9.1 与 UTPlaceF 的对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>UTPlaceF（传统）</th>
+<th>本文方法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>打包方式</strong></td>
+<td>显式打包（先聚类后布局）</td>
+<td>隐式打包（DL 同时考虑）</td>
+</tr>
+<tr>
+<td><strong>合法化</strong></td>
+<td>顺序 Tetris/贪心</td>
+<td>并行 DL</td>
+</tr>
+<tr>
+<td><strong>并行性</strong></td>
+<td>打包和合法化本质顺序，难以并行</td>
+<td>DL 全阶段可并行</td>
+</tr>
+<tr>
+<td><strong>串行等价</strong></td>
+<td>N/A（不可并行）</td>
+<td>✅ 保证</td>
+</tr>
+<tr>
+<td><strong>解空间</strong></td>
+<td>打包和布局分别搜索</td>
+<td>同时探索打包+布局解空间</td>
+</tr>
+</tbody>
+</table>
+<h3 id="92-abcdplaceday-5">9.2 与 ABCDPlace（Day 5）的对比</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>ABCDPlace (ASIC 详细布局)</th>
+<th>本文 DL (FPGA 合法化)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>问题</strong></td>
+<td>合法解上增量优化线长</td>
+<td>从非法解直接产生合法解</td>
+</tr>
+<tr>
+<td><strong>并行策略</strong></td>
+<td>批量执行（batch）</td>
+<td>offer-accept 协议</td>
+</tr>
+<tr>
+<td><strong>冲突处理</strong></td>
+<td>顺序 ApplyCand，放弃冲突</td>
+<td>确定性平局打破</td>
+</tr>
+<tr>
+<td><strong>串行等价</strong></td>
+<td>❌ 不保证</td>
+<td>✅ 保证</td>
+</tr>
+<tr>
+<td><strong>粒度</strong></td>
+<td>粗粒度 batch（256 个单元/批）</td>
+<td>细粒度（每个 Slice/Cell 一个线程）</td>
+</tr>
+<tr>
+<td><strong>理论基础</strong></td>
+<td>工程实践驱动</td>
+<td>Gale-Shapley 理论驱动</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>核心差异</strong>：ABCDPlace 采用"乐观并行+冲突回退"策略——先并行执行，遇到冲突就放弃。本文采用"协议并行+确定性选择"策略——通过 offer-accept 协议避免冲突，通过确定性平局打破保证串行等价。后者更优雅但应用场景更受限（需要问题本身具有"大学录取"结构）。</p>
+</blockquote>
+<hr />
+<h2 id="10">10. 并行算法设计方法论总结</h2>
+<h3 id="101">10.1 从本文提炼的并行算法设计模式</h3>
+<div class="mermaid">
+graph TD
+    A["<b>顺序算法</b><br/>本质贪心/依赖"] --> B{"<b>能否找到<br/>并行类比？</b>"}
+    B -->|"能"| C["<b>设计 offer-accept 协议</b><br/>每方独立决策<br/>通过消息通信"]
+    B -->|"不能"| D["<b>设计批量执行</b><br/>放宽依赖约束<br/>冲突时回退"]
+    C --> E["<b>保证串行等价？</b>"]
+    E -->|"能"| F["<b>✅ 理想模式</b><br/>可重复、可验证<br/>线程数无关"]
+    E -->|"不能"| G["<b>加入确定性机制</b><br/>平局打破/优先级"]
+    D --> H["<b>❌ 近似模式</b><br/>可能损失质量<br/>需实验验证"]
+</div>
+
+<h3 id="102-offer-accept">10.2 Offer-Accept 协议的设计要点</h3>
+<ol>
+<li><strong>分离决策与通信</strong>：每个节点独立决策（生成 offer），通过消息传递协调</li>
+<li><strong>确定性选择</strong>：当存在多个等价 offer 时，使用确定性规则打破平局</li>
+<li><strong>BSP 同步</strong>：阶段之间全局同步，阶段内部完全并行</li>
+<li><strong>单调改善</strong>：每轮迭代目标函数单调改善，保证收敛</li>
+<li><strong>有限状态</strong>：解空间有限，算法在有限步内终止</li>
+</ol>
+<h3 id="103">10.3 适用条件</h3>
+<p>Offer-Accept 协议适用于以下场景：<br />
+- 问题可建模为<strong>双边匹配</strong>（two-sided matching）<br />
+- 两方可以<strong>独立评估</strong>对方（评分函数可分解）<br />
+- 存在<strong>自然的多对多通信</strong>模式（每个 Slice 可能涉及多个 Cell，反之亦然）<br />
+- 可以容忍<strong>迭代收敛</strong>（非一步到位）</p>
+<blockquote>
+<p><strong>不适用的场景</strong>：强耦合的优化问题（如连续优化中的梯度下降）、全局最优依赖（如整数规划的分支定界）、需要严格同步的流水线操作。</p>
+</blockquote>
+<hr />
+<h2 id="_2">参考文献</h2>
+<ol>
+<li>
+<p>W. Li, Y. Lin, and D. Z. Pan, "UTPlaceF: A Routability-Driven FPGA Placer with Deterministic Routing Resource Assignment," in <em>Proc. ISPD</em>, 2016.</p>
+</li>
+<li>
+<p>D. Gale and L. S. Shapley, "College Admissions and the Stability of Marriage," <em>The American Mathematical Monthly</em>, vol. 69, no. 1, pp. 9–15, 1962.</p>
+</li>
+<li>
+<p>Y. Lin et al., "ABCDPlace: Accelerated Batch-based Concurrent Detailed Placement on Multi-threaded CPUs and GPUs," <em>IEEE TCAD</em>, 2020.</p>
+</li>
+<li>
+<p>W. Li, M. Li, J. Wang, and D. Z. Pan, "UTPlaceF 3.0: A Parallelization Framework for Modern FPGA Global Placement," in <em>Proc. ICCAD</em>, 2017.</p>
+</li>
+<li>
+<p>OpenMP Architecture Review Board, "OpenMP Application Programming Interface," Version 4.0, 2013.</p>
+</li>
+</ol>
+<hr />
+<p><em>本文档作为 Day 4 FPGA 无打包布局论文的并行算法深度补充分析，由 Claude Code 于 2026-06-08 生成。核心贡献在于揭示了如何将本质贪心的 FPGA 合法化/打包问题改造为基于 Gale-Shapley 大学录取模型的 offer-accept 并行协议，并保证串行等价性——这为 EDA 中其他顺序算法的并行化提供了可借鉴的设计范式。</em></p>
+</body>
+</html>
