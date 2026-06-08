@@ -1,10 +1,10 @@
-# Day 4: FPGA 布局新范式 —— 无需显式打包的统一布局方法
+# Day 4: FPGA 布局新范式 —— 无需显式打包的 Place-Legalize 流程
 
 > **论文标题**: A New Paradigm for FPGA Placement without Explicit Packing
 >
-> **作者**: Wuxi Li, David Z. Pan
+> **作者**: Wuxi Li (Student Member, IEEE), David Z. Pan (Fellow, IEEE)
 >
-> **机构**: ECE Department, University of Texas at Austin
+> **机构**: Department of Electrical and Computer Engineering, The University of Texas at Austin
 >
 > **期刊**: IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD)
 >
@@ -12,288 +12,306 @@
 >
 > **DOI**: [10.1109/TCAD.2018.2877017](https://doi.org/10.1109/TCAD.2018.2877017)
 >
-> **引用数**: 27（Semantic Scholar）
+> **关键词**: Placement, Legalization, Packing, FPGA, Parallel Algorithm
 >
-> **与前三天论文的关系**: 第一作者 Wuxi Li 同时也是 DREAMPlace（Day 1）的第三作者，David Z. Pan 是 DREAMPlace 的通讯作者。本文同属 UT Austin 的布局研究线，将解析布局方法从 ASIC 拓展到 FPGA。
+> **资助**: Xilinx Inc.
 >
 > **分析日期**: 2026-06-08
+>
+> **与前三天论文的关系**: 第一作者 Wuxi Li 是 DREAMPlace（Day 1）的第三作者，也是 UTPlaceF（ISPD 2016/2017 冠军）的一作。本文基于 UTPlaceF 框架，但采用了**二次布局**（而非 ePlace 静电模型），并引入了完全创新的直接合法化算法。
 
 ---
 
 ## 目录
 
-1. [FPGA 与 ASIC 布局的关键差异](#1-fpga-与-asic-布局的关键差异)
-2. [传统 FPGA 流程中 Packing 与 Placement 的矛盾](#2-传统-fpga-流程中-packing-与-placement-的矛盾)
-3. [核心思想：消除显式 Packing 阶段](#3-核心思想消除显式-packing-阶段)
-4. [数学建模：双层密度约束的统一框架](#4-数学建模双层密度约束的统一框架)
-5. [算法设计与实现](#5-算法设计与实现)
+1. [FPGA 布局与打包的根本矛盾](#1-fpga-布局与打包的根本矛盾)
+2. [核心贡献：Place-Legalize 新范式](#2-核心贡献place-legalize-新范式)
+3. [FPGA 架构与问题定义](#3-fpga-架构与问题定义)
+4. [创新点一：动态 LUT/FF 面积调整（DAA）](#4-创新点一动态-lutff-面积调整daa)
+5. [创新点二：完全可并行的直接合法化（DL）](#5-创新点二完全可并行的直接合法化dl)
 6. [算法流程](#6-算法流程)
 7. [实验结果与分析](#7-实验结果与分析)
-8. [与 DREAMPlace 和 ASIC 布局的关系](#8-与-dreamplace-和-asic-布局的关系)
-9. [创新点深度分析](#9-创新点深度分析)
-10. [参考文献](#10-参考文献)
+8. [创新点深度分析](#8-创新点深度分析)
+9. [参考文献](#9-参考文献)
 
 ---
 
-## 1. FPGA 与 ASIC 布局的关键差异
+## 1. FPGA 布局与打包的根本矛盾
 
-### 1.1 FPGA 的基本结构
+### 1.1 传统 FPGA 设计流程的四种范式
 
-FPGA（Field-Programmable Gate Array）的芯片结构与 ASIC 有本质不同：
-
-```
-ASIC 结构                           FPGA 结构
-┌─────────────────────┐           ┌─────────────────────────┐
-│                     │           │  ┌───┬───┬───┬───┬───┐ │
-│  自由放置标准单元     │           │  │CLB│CLB│CLB│CLB│CLB│ │
-│  (任意位置)          │           │  ├───┼───┼───┼───┼───┤ │
-│                     │           │  │CLB│CLB│CLB│CLB│CLB│ │
-│  单元: 单一功能       │           │  ├───┼───┼───┼───┼───┤ │
-│  (NAND, NOR, FF...)  │           │  │CLB│CLB│CLB│CLB│CLB│ │
-│                     │           │  └───┴───┴───┴───┴───┘ │
-│  连续布线资源         │           │                         │
-│                     │           │  离散的 CLB 位置          │
-└─────────────────────┘           │  固定的布线通道            │
-                                  └─────────────────────────┘
-```
-
-### 1.2 CLB 与 BLE 的层次结构
-
-FPGA 的基本逻辑单元具有两级层次：
-
-```
-CLB (Configurable Logic Block)
-├── SLICE 0
-│   ├── BLE 0: LUT + FF
-│   └── BLE 1: LUT + FF
-├── SLICE 1
-│   ├── BLE 2: LUT + FF
-│   └── BLE 3: LUT + FF
-└── ... (更多 SLICE)
-```
-
-- **BLE（Basic Logic Element）**：最基础的逻辑单元，包含一个 LUT（查找表）和一个 FF（触发器）
-- **CLB（Configurable Logic Block）**：物理上离散的 tile，包含多个 BLE（通常 4–10 个）
-- 每个 CLB 内部有固定的互联资源
-
-### 1.3 为什么 FPGA 布局与 ASIC 布局在本质上不同？
-
-| 维度 | ASIC 布局 | FPGA 布局 |
-|------|----------|----------|
-| **单元粒度** | 单功能标准单元（NAND, INV...） | BLE（LUT+FF 组合） |
-| **位置约束** | 连续空间（rows of sites） | 离散的 CLB tile 位置 |
-| **打包步骤** | 无需（单元即已定义） | **必须将 LUT/FF 打包进 CLB** |
-| **布线资源** | 自由（多层金属层） | 预定义的互连通道 |
-| **优化目标** | HPWL, 时序, 密度 | HPWL, 时序, CLB 数量, 可布线性 |
-
----
-
-## 2. 传统 FPGA 流程中 Packing 与 Placement 的矛盾
-
-### 2.1 传统 FPGA 设计流程
-
-```
-Synthesis → Technology Mapping → [Packing] → [Placement] → Routing
-                                   ↑             ↑
-                                  分离的、顺序化的两个阶段
-```
-
-**Packing 阶段**：
-- 将技术映射后的 LUT 和 FF 分组，打包进 CLB
-- 目标：最小化 CLB 数量 + 最小化 CLB 之间的连接
-- 常用算法：T-VPack, AAPack（模拟退火）, RPack
-
-**Placement 阶段**：
-- 将 Packing 产生的 CLB 放置到 FPGA 的物理 tile 位置
-- 目标：最小化线长 + 满足时序约束
-- 常用算法：VPR（模拟退火），解析布局器（如 UTPlaceF）
-
-### 2.2 顺序化的根本问题
-
-```mermaid
-graph LR
-    A["<b>Packing</b><br/>LUT/FF → CLB<br/>最小化 CLB 数<br/>最小化 CLB 间连线"]
-    B["<b>Placement</b><br/>CLB → 物理位置<br/>最小化布线线长<br/>满足时序"]
-    C["<b>信息不对称</b><br/>Packing 不知道<br/>CLB 将被放在哪里"]
-    A --> B
-    C -.-> A
-    C -.-> B
-```
-
-**问题 1：Packing 不知道物理距离**
-
-Packing 阶段将什么都不知道的两个 LUT 打包进同一个 CLB，仅仅因为它们的连接关系"看起来"紧密。但实际上，这个 CLB 可能被放置在芯片的任意角落。如果 Packing 能看到 Placement 的物理位置信息，就可以做出更好的决策。
-
-**问题 2：Placement 被 Packing 决策束缚**
-
-Placement 只能移动整个 CLB，不能拆分 CLB 内部的 BLE 重新分配。如果一个 BLE 被错误地打包进某个 CLB，Placement 无法纠正这个错误。
-
-**问题 3：目标函数的冲突**
-
-| 阶段 | 优化目标 | 对最终质量的影响 |
-|------|---------|----------------|
-| Packing | 最少 CLB → 尽量填满每个 CLB | 可能导致 CLB 内部过于拥挤，限制了 Placement 的自由度 |
-| Placement | 最短线长 → 尽量分散 CLB | 如果 CLB 之间连线太多，Placement 无法优化 |
-
-> **核心矛盾**：Packing 追求"小"（CLB 少、内部连线多），Placement 追求"短"（CLB 间连线短、分散布局）。两者在顺序流程中无法协同优化。
-
----
-
-## 3. 核心思想：消除显式 Packing 阶段
-
-### 3.1 新范式的定义
-
-本文提出的核心主张是：
-
-> **将 Packing 和 Placement 从两个独立的顺序优化步骤，融合为一个统一的解析优化框架。在布局过程中，BLE 直接放置在 FPGA 网格上，Packing 的聚类效果通过密度约束和连接关系自然地实现。**
-
-换句话说：
-
-- 传统路线：LUT/FF → **显式打包** → CLB → **放置** CLB 到 tile
-- 新范式路线：LUT/FF → **直接放置** 到 CLB slot → Packing **自然涌现** 作为 Placement 的副产品
-
-### 3.2 为什么"消除 Packing"是可能的？
-
-关键洞察在于：Packing 和 Placement 在数学结构上都涉及**将对象分组到固定容量的容器中**：
-
-- Packing：将 BLE 分组到 CLB（每个 CLB 容量 = N 个 BLE）
-- Placement：将 CLB 放置到 tile（每个 tile 容量 = 1 个 CLB）
-
-两者都是**容量约束下的分配问题**。通过引入双层密度约束（CLB 内部密度 + CLB 间密度），可以在同一个解析优化框架中同时解决这两个问题。
-
-### 3.3 与传统流程的对比
+本文将已有工作归纳为四种流程范式：
 
 ```mermaid
 graph TD
-    subgraph Traditional["传统流程"]
-        T1["LUT/FF 网表"] --> T2["Packing<br/>T-VPack/AAPack"]
-        T2 --> T3["CLB 网表"]
-        T3 --> T4["Placement<br/>VPR/UTPlaceF"]
-        T4 --> T5["布局结果"]
-    end
-    subgraph Proposed["新范式（本文）"]
-        P1["LUT/FF 网表"] --> P2["统一布局引擎<br/>双层密度约束<br/>软 CLB 容量约束"]
-        P2 --> P3["布局结果<br/>(Packing 自然形成)"]
-    end
+    A["<b>Pack-Place-Legalize</b><br/>传统流程<br/>T-VPack → VPR"] --> B["<b>Place-Pack-Place-Legalize</b><br/>物理感知流程<br/>FIP → Packing → 放置"]
+    B --> C["<b>Place-SemiPack-Legalize</b><br/>半融合流程<br/>FIP → BLE打包 → 合法化"]
+    C --> D["<b>Place-Legalize (本文)</b><br/>无显式打包<br/>FIP → 直接合法化"]
+```
+
+| 流程 | 代表 | Packing 阶段 | 核心问题 |
+|------|------|-------------|---------|
+| Pack-Place-Legalize | T-VPack, VPR | 完全独立，不考虑物理位置 | Packing 决策盲目 |
+| Place-Pack-Place-Legalize | UTPlaceF, LSC | 先做 FIP，再基于物理信息 Packing | FIP 与最终解偏差大 |
+| Place-SemiPack-Legalize | RippleFPGA | 仅做 BLE 级打包，CLB 打包留给合法化 | 仍存在信息断层 |
+| **Place-Legalize (本文)** | — | **完全消除** | 需要解决新的挑战 |
+
+### 1.2 顺序化流程的核心问题
+
+传统 Place-Pack-Place-Legalize 流程存在两个关键问题：
+
+**问题 1：FIP 与最终合法解的巨大偏差**
+
+Packing 阶段将 BLE 打包进 CLB 时，CLB 的位置是通过对内部 BLE 位置取平均估计的——这个估计可能远离 CLB 的最终合法位置。特别是对于**控制集（control set）密集的设计**，FIP 中精心优化的线长、时序和可布线性指标在合法化后可能被严重破坏。
+
+**问题 2：面积溢出不等于资源溢出**
+
+FIP 只检查 LUT+FF 的总面积是否溢出，但不区分 LUT 和 FF 的资源类型。可能出现总面积不溢出、但 FF 密度溢出的情况（如下图）。传统布局器无法捕捉这种**资源类型不平衡**。
+
+```
+资源需求                                    资源需求
+LUT  FF  LUT+FF  面积容量  CLB容量         LUT  FF  LUT+FF  面积容量  CLB容量
+ │   │    │       ─ ─ ─     ─ ─            │   │    │       ─ ─ ─     ─ ─
+ │   █    │       ─ ─ ─     ─ ─            │   │    │       ─ ─ ─     ─ ─
+ │   █    │       ─ ─ ─     ─ ─            │   │    │       ─ ─ ─     ─ ─
+ │   ██   │       ─ ─ ─     ─ ─            │   │    │       ─ ─ ─     ─ ─
+
+ (a) 面积不溢出，但FF溢出！              (b) 合法：LUT和FF均不溢出
 ```
 
 ---
 
-## 4. 数学建模：双层密度约束的统一框架
+## 2. 核心贡献：Place-Legalize 新范式
 
-### 4.1 问题形式化
+### 2.1 核心主张
 
-将 FPGA 布局建模为双层优化问题：
+> **消除显式 Packing 阶段，直接从扁平初始布局（FIP）通过合法化获得最终合法解，在合法化过程中同时探索 Placement 和 Packing 的解空间。**
 
-\[
-\min_{\mathbf{x}, \mathbf{y}} \quad f(\mathbf{x}, \mathbf{y}) = W(\mathbf{x}, \mathbf{y}) + \lambda_1 \cdot D_{\text{inter}}(\mathbf{x}, \mathbf{y}) + \lambda_2 \cdot D_{\text{intra}}(\mathbf{x}, \mathbf{y})
-\]
+### 2.2 三大贡献
 
-其中：
-- \( W(\mathbf{x}, \mathbf{y}) \) 为线长目标（与 ASIC 布局相同，WA 平滑 HPWL）
-- \( D_{\text{inter}}(\mathbf{x}, \mathbf{y}) \) 为 **CLB 间密度约束**（不同 CLB 不能重叠在同一 tile）
-- \( D_{\text{intra}}(\mathbf{x}, \mathbf{y}) \) 为 **CLB 内密度约束**（每个 CLB 内部的 BLE 数量不能超过容量）
-- \( \lambda_1, \lambda_2 \) 为对应的权重因子
-
-### 4.2 CLB 间密度约束（Inter-CLB Density）
-
-这与 ASIC 布局的密度约束类似——不同 CLB 不能占用同一个物理 tile。使用静电密度模型（继承自 ePlace）：
-
-\[
-D_{\text{inter}} = \sum_{\text{tile } t} \Phi_t \cdot \rho_t^{\text{CLB}}
-\]
-
-其中 \( \rho_t^{\text{CLB}} \) 是 tile \( t \) 处的 CLB 密度，\( \Phi_t \) 是电势。
-
-> 这一项保证了布局结果的**物理可行性**——每个 FPGA tile 最多容纳一个 CLB。
-
-### 4.3 CLB 内密度约束（Intra-CLB Density）—— 本文的核心贡献
-
-这是本文**最核心的创新**：引入软容量约束来替代显式 Packing。
-
-**基本思想**：定义一个 "CLB 形成势场"，吸引属于同一个逻辑集群的 BLE 彼此靠近，同时确保每个 CLB 内的 BLE 数量不超过物理容量。
-
-**数学形式**：
-
-1. **亲和力（Affinity）定义**：两个 BLE \( i \) 和 \( j \) 之间的亲和力基于它们的连接强度：
-
-\[
-A_{ij} = \frac{\text{shared\_nets}(i, j)}{\max(|e_i|, |e_j|)}
-\]
-
-高亲和力 = BLE 共享大量网络 = 应该打包进同一个 CLB。
-
-2. **CLB 内聚势能**：
-
-\[
-D_{\text{intra}} = \sum_{c \in \text{CLBs}} \left( \max\left(0, \sum_{i \in c} \text{occupancy}_i - \text{capacity}\right) \right)^2
-\]
-
-当 CLB \( c \) 内部的 BLE 占用超过容量时，产生惩罚。
-
-3. **软容量约束**：与传统 Packing 的硬约束（每个 CLB 恰好 N 个 BLE，不能多也不能少）不同，本文使用软约束——允许暂时超过容量，但通过惩罚项推动优化器满足容量。
-
-> **为什么用软约束而非硬约束？** 硬约束会使优化问题变为混合整数规划（NP-hard），在解析优化框架中无法高效求解。软约束将问题保持为连续可微形式，使得 Nesterov 等一阶优化器可以直接使用。随着 \( \lambda_2 \) 逐步增大，软约束逐渐逼近硬约束。
-
-### 4.4 BLE 到 CLB 的聚类力
-
-除了容量限制，还需要将亲和力高的 BLE "吸引"到一起形成 CLB。这通过修改线长目标函数实现：
-
-**带聚类偏置的线长**：
-
-对于属于同一个候选 CLB 的 BLE 集合 \( c \)，引入内部紧密性奖励：
-
-\[
-W_{\text{intra}}(c) = -\alpha \cdot \sum_{i,j \in c, i \neq j} A_{ij} \cdot \text{dist}(i, j)
-\]
-
-其中 \( \text{dist}(i, j) \) 是 BLE \( i \) 和 \( j \) 之间的距离。负号表示距离越小（越紧密），奖励越大。
-
-> **综合效果**：亲和力高的 BLE 通过"引力"自然聚拢形成 CLB，同时容量约束防止过多人挤进同一个 CLB。这是在物理模拟上同时实现了 Packing（聚类）和 Placement（全局分布）。
+1. **动态 LUT/FF 面积调整（DAA）**：在 FIP 迭代中动态调整每个 LUT/FF 的面积，以考虑 Packing 效应和资源类型利用率，使 FIP 尽量接近真正合法的布局
+2. **完全可并行的直接合法化（DL）**：受 Gale-Shapley 大学录取问题启发，每个 CLB slice 独立并行地寻找最优 BLE 聚类，同时满足 Placement 和 Packing 合法性
+3. **实验验证**：ISPD 2016 基准上 routed wirelength 比 UTPlaceF 改善 **4.4%**，在难打包设计 FPGA-10 上改善 **29.5%**
 
 ---
 
-## 5. 算法设计与实现
+## 3. FPGA 架构与问题定义
 
-### 5.1 整体优化框架
+### 3.1 目标 FPGA 架构：Xilinx UltraScale VU095
 
-本文沿用 ePlace/RePlAce/DREAMPlace 系列的解析布局框架：
+本文采用 ISPD 2016 竞赛使用的 Xilinx UltraScale VU095 架构：
 
-1. **目标函数**：WA 线长 + 双层静电密度
-2. **优化器**：Nesterov 加速梯度（NAG）
-3. **密度求解**：FFT 谱方法求解 Poisson 方程
-4. **步长策略**：Lipschitz 常数估计或自适应步长
+```
+CLB (Configurable Logic Block)
+├── Half CLB 0
+│   ├── BLE 0: LUT_A + LUT_B + FF_A + FF_B  ← 共享 CK₀, SR₀, CEA₀, CEB₀
+│   ├── BLE 1: LUT_A + LUT_B + FF_A + FF_B
+│   ├── BLE 2: LUT_A + LUT_B + FF_A + FF_B
+│   └── BLE 3: LUT_A + LUT_B + FF_A + FF_B
+└── Half CLB 1
+    ├── BLE 4: LUT_A + LUT_B + FF_A + FF_B  ← 共享 CK₁, SR₁, CEA₁, CEB₁
+    ├── BLE 5: LUT_A + LUT_B + FF_A + FF_B
+    ├── BLE 6: LUT_A + LUT_B + FF_A + FF_B
+    └── BLE 7: LUT_A + LUT_B + FF_A + FF_B
+```
 
-### 5.2 FPGA 特性带来的修改
+**架构规则**：
+- 每个 BLE 包含 **2 个 LUT**（可实现 1 个 6-input LUT 或 2 个总输入 ≤ 5 的小 LUT）和 **2 个 FF**
+- 同一 BLE 中的 2 个 FF 必须共享 **CK（时钟）和 SR（置位/复位）**信号，但 **CE（时钟使能）**可以不同
+- 同一 Half CLB 中的 4 个 BLE 共享相同的 CK, SR, CEA, CEB
 
-| 特性 | ASIC 处理方式 | FPGA 处理方式（本文） |
-|------|------------|-------------------|
-| 放置网格 | 连续空间（rows） | **离散的 CLB tile 位置** |
-| 单元粒度 | 标准单元（~1 site） | BLE（子 CLB 粒度） |
-| 密度目标 | 全局目标密度 | 每个 CLB tile ≤ 1 |
-| 合法化 | 标准单元 site 对齐 | CLB slot 分配 + BLE 对齐 |
+> **控制集（Control Set）**：FF 的控制集定义为 (CK, SR, CE)；Half CLB 的控制集定义为 (CK, SR, CEA, CEB)。控制集的多样性直接决定了 Packing 的难度——不同控制集的 FF 无法放入同一个 Half CLB。
 
-### 5.3 后处理：轻量级 CLB 分配
+### 3.2 直接合法化（DL）问题的数学定义
 
-由于软约束不能保证精确满足 CLB 容量，优化后需要一个**轻量级的 CLB 分配步骤**：
+给定 FIP 中所有单元的坐标 \( (\bar{x}, \bar{y}) \)，直接合法化问题定义为：
 
-1. 对于每个物理 CLB tile 位置，查看附近聚集的 BLE
-2. 使用贪心算法将 BLE 分配到该 tile 内的 slot
-3. 对于溢出或未满足的分配，使用小范围交换修复
+\[
+\max_{\mathbf{x}, \mathbf{y}} \sum_{s \in S} \Psi(\{v \in V \mid z_{v,s} = 1\}) - \frac{1}{\eta} \cdot \text{HPWL}(\mathbf{x}, \mathbf{y})
+\]
 
-与传统 Packing 不同，这个后处理步骤非常轻量——因为大部分聚类已经在全局优化中"自然地"形成了。
+\[
+\text{s.t.} \quad \sum_{s \in S} z_{v,s} = 1, \quad \forall v \in V \quad \text{(每个单元恰好分配到一个 slice)}
+\]
 
-### 5.4 与 UTPlaceF 和 ELFPlace 的关系
+\[
+\{v \mid v \in V, z_{v,s} = 1\} \text{ 是架构合法的}, \quad \forall s \in S \quad \text{(满足所有控制集/容量规则)}
+\]
 
-本文的研究线是 UT Austin FPGA 布局系列的一部分：
+\[
+|x_v - \bar{x}_v| + |y_v - \bar{y}_v| \leq D, \quad \forall v \in V \quad \text{(最大位移约束)}
+\]
 
-| 工具 | 会议 | 关键贡献 |
-|------|------|---------|
-| **UTPlaceF** | ICCAD 2016 | 可布线性驱动的 FPGA 布局 + 物理感知 Packing |
-| **本文（无显式 Packing）** | TCAD 2019 | 消除 Packing 阶段，统一优化 |
-| **ELFPlace** | DAC/FCCM | 基于静电模型的 FPGA 解析布局 |
+其中：
+- \( V \) 是所有 LUT 和 FF 的集合，\( S \) 是所有 CLB slice 的集合
+- \( z_{v,s} \) 是二元变量：\( z_{v,s} = 1 \) 当且仅当单元 \( v \) 分配到 slice \( s \)
+- \( \Psi(\cdot) \) 是聚类评分函数（捕捉引脚/网络共享、时序影响等）
+- \( \eta > 0 \) 是线长归一化参数
+- \( D \) 是最大位移约束（软约束）
 
-本文可以被视为 UTPlaceF 到 ELFPlace 之间的**方法论过渡**——从"改进 Packing"到"消除 Packing"再到"完全解析化的 FPGA 布局"。
+> **公式解读**：目标函数同时最大化聚类质量（Packing 目标）和最小化线长（Placement 目标）。约束 (3b) 保证每个单元恰好属于一个 slice，约束 (3c) 保证架构合法性（控制集兼容、容量不超），约束 (3d) 限制位移以保持 FIP 质量。**这是第一个同时保证 Placement 和 Packing 合法性的公式化表述。**
+
+---
+
+## 4. 创新点一：动态 LUT/FF 面积调整（DAA）
+
+### 4.1 核心思想
+
+在 FIP 的每次迭代后，动态调整每个 LUT 和 FF 的面积，使得：
+1. **难打包的单元获得更大面积**（反映其实际资源需求）
+2. **不同资源类型的利用率分别控制**（解决 LUT/FF 不平衡问题）
+3. **布线拥塞区域避免过度压缩**
+
+### 4.2 局部资源利用率
+
+对于单元 \( v \)，定义其局部利用率为：
+
+\[
+U_v = \frac{\sum_{i \in N_v^+} A_i}{C_v}
+\]
+
+其中：
+- \( N_v^+ = \{v\} \cup N_v \)，\( N_v \) 是与 \( v \) 同类型且在 \( (x_v - L, y_v - L, x_v + L, y_v + L) \) 范围内的邻居
+- \( A_i \) 是单元 \( i \) 的资源需求（反映打包难度）
+- \( C_v \) 是该范围内的 CLB slice 数量
+- \( L = 5 \)（经验值）
+
+> **公式解读**：\( U_v \) 衡量了单元 \( v \) 附近区域的"拥挤程度"。\( U_v > 1 \) 意味着该区域的资源需求超过供给，需要膨胀单元面积来推开它们。关键创新是**对 LUT 和 FF 分别计算利用率**——这解决了"总面积不溢出但 FF 溢出"的问题。
+
+### 4.3 面积更新规则
+
+\[
+a_v = \begin{cases}
+\min(a_v^+, A_v \cdot U_v \cdot \nu_v), & \text{if } A_v \cdot U_v \cdot \nu_v > a_v \\[4pt]
+\max(a_v^-, A_v \cdot U_v \cdot \nu_v), & \text{if } A_v \cdot U_v \cdot \nu_v < a_v \text{ and } R_v < R_{\max} \\[4pt]
+a_v, & \text{otherwise}
+\end{cases}
+\]
+
+其中：
+- \( a_v \) 是当前面积，\( a_v^+ = a_v \cdot 1.1 \)（膨胀率），\( a_v^- = a_v \cdot 0.95 \)（收缩率）
+- \( \nu_v \geq 1 \) 是累积布线膨胀比
+- \( R_v \) 是局部布线利用率，\( R_{\max} = 0.65 \)
+
+> **三种情况的含义**：
+> - **情况 1（膨胀）**：当估计的资源需求超过当前面积时，增大面积。上限为 \( a_v^+ \) 确保平滑增长
+> - **情况 2（收缩）**：当区域资源充足且布线不拥塞时，缩小面积让其他单元进入
+> - **情况 3（保持）**：当布线拥塞（\( R_v \geq R_{\max} \)）时，即使资源充足也不收缩——避免进一步加重布线压力
+
+### 4.4 LUT 资源需求估计
+
+每个 LUT 的资源需求基于其与邻居的架构兼容性：
+
+\[
+A_v^{(\text{LUT})} = \frac{|N_v'|}{|N_v^+|} \cdot \frac{1}{16} + \frac{|N_v^+| - |N_v'|}{|N_v^+|} \cdot \frac{1}{8}
+\]
+
+其中 \( N_v' \) 是 \( N_v^+ \) 中与 \( v \) 架构兼容（可放入同一 BLE）的 LUT 集合。
+
+> **公式解读**：在 UltraScale 中，每个 BLE 可容纳 2 个兼容 LUT。如果 \( v \) 的大部分邻居都与之兼容，\( |N_v'|/|N_v^+| \) 接近 1，需求为 1/16 CLB（紧凑打包，两个 LUT 共享一个 BLE）；如果很少有兼容邻居，需求为 1/8 CLB（独占一个 BLE）。这是一个**概率估计**，不需要实际的 Packing 解。
+
+### 4.5 FF 资源需求估计
+
+FF 的需求估计更复杂，因为控制集规则限制了哪些 FF 可以共处同一个 Half CLB。本文采用**最紧打包下界估计**：
+
+\[
+A_v^{(\text{FF})} = \frac{1}{2} \cdot \left\lceil \frac{\sum_{i=0}^{m} \lceil n_i / 4 \rceil}{2} \right\rceil \cdot \frac{1}{n_0} \cdot \beta^{(\text{FF})}
+\]
+
+其中：
+- FF \( v \) 的控制集为 \( (\text{CK}_0, \text{SR}_0, \text{CE}_0) \)
+- \( \{\text{CE}_0, \text{CE}_1, \ldots, \text{CE}_m\} \) 是邻居 \( N_v^+ \) 中与 \( v \) 共享 \( (\text{CK}_0, \text{SR}_0) \) 的 FF 的不同 CE 集合
+- \( n_i \) 是控制集为 \( (\text{CK}_0, \text{SR}_0, \text{CE}_i) \) 的 FF 数量
+- \( \beta^{(\text{FF})} = 1.1 \)，补偿最紧打包与实际打包之间的差距
+
+> **推导思路**：4 个共享同一 (CK, SR, CE) 的 FF 组成一个"quarter CLB"，2 个共享同一 (CK, SR) 的 quarter CLB 组成一个"half CLB"。先计算每种 CE 变体需要多少 quarter CLB（\( \lceil n_i/4 \rceil \)），再计算总共需要多少 half CLB（\( \lceil \text{sum}/2 \rceil \)），最后将需求均摊到每个 FF。FF 需求范围 [1/16, 1/2]，差异可达 **8 倍**——这正是传统方法忽略的关键方差来源。
+
+---
+
+## 5. 创新点二：完全可并行的直接合法化（DL）
+
+### 5.1 大学录取问题类比
+
+DL 算法受 **Gale-Shapley 大学录取问题** 启发：
+
+```
+大学录取问题                    直接合法化
+──────────────────────────────────────────
+大学 (College)                 CLB Slice
+学生 (Student)                 LUT/FF 单元
+朋友 (Friends)                 共享网络的单元
+大学录取学生                   Slice 接受 BLE 聚类
+学生选择大学                   单元选择 Slice
+```
+
+关键差异：
+1. 单元对 Slice 的偏好取决于其**连接单元的选择**（朋友也去了哪所"大学"）
+2. 某些单元**不能同处一个 Slice**（架构合法性约束）
+
+### 5.2 节点中心算法
+
+每个 Slice 作为一个**计算节点**独立运行，维护以下数据结构：
+
+| 数据结构 | 含义 |
+|---------|------|
+| `det` | 已确定分配到该 Slice 的单元集合 |
+| `pq` | 优先队列，存储当前 Top-K 候选聚类 |
+| `nbr` | 邻居单元集合（距离 ≤ d 的单元） |
+| `scl` | 种子聚类集合（用于生成新候选） |
+| `i` | 自上次最优候选变化以来的迭代数 |
+
+```mermaid
+graph TD
+    A["检查 pq.top()<br/>是否稳定且被接受?"] -->|Yes| B["提交到 det<br/>重置 pq"]
+    A -->|No| C["移除无效候选/单元"]
+    C --> D{"邻居太少<br/>且 d < D?"}
+    D -->|Yes| E["扩展搜索范围<br/>d += Δd<br/>添加更多邻居"]
+    D -->|No| F["生成新候选<br/>nbr × scl → pq"]
+    E --> F
+    F --> G["广播 pq.top()<br/>给涉及单元"]
+    G --> H["单元选择<br/>最高 SCORE 的 Slice"]
+```
+
+### 5.3 评分函数
+
+给定 Slice \( s \) 和聚类 \( c \)：
+
+\[
+\text{SCORE}(c, s) = \sum_{e \in \text{Net}(c)} \frac{\text{InternalPins}(e, c)}{\text{TotalPins}(e)} - \frac{1}{\eta} \cdot \text{HPWL}(c, s)
+\]
+
+其中：
+- \( \text{Net}(c) \)：至少包含聚类 \( c \) 中一个单元的网络集合
+- \( \text{InternalPins}(e, c) \)：网络 \( e \) 在聚类 \( c \) 内的引脚数
+- \( \text{TotalPins}(e) \)：网络 \( e \) 的总引脚数
+- \( \text{HPWL}(c, s) \)：将聚类 \( c \) 中的单元从 FIP 位置移到 Slice \( s \) 位置的线长增量
+- \( \eta = 0.02 \)
+
+> **评分函数的双重含义**：
+>
+> **第一项（Packing 质量）**：\( \text{InternalPins}/\text{TotalPins} \) 衡量了聚类将外部网络"吸收"为内部网络的比例。高比例 = 更多网络被封装在 CLB 内部 = 更少的 CLB 间布线需求 = 更好的可布线性。这是 Packing 阶段优化目标的直接体现。
+>
+> **第二项（Placement 质量）**：线长增量越小 = 从 FIP 移动的代价越小 = 更好地保持 FIP 质量。
+
+### 5.4 并行化与串行等价性
+
+**并行化**：所有 Slice 计算节点可以**完全并行**执行（Algorithm 1 line 9-11），所有单元也可以并行处理 offer 并返回决策（line 12-16）。
+
+**串行等价性（Serial Equivalency）**：这是本文的一个重要理论贡献——保证无论使用多少线程，算法产生**完全相同**的解。关键机制是 Lemma 1：
+
+> **Lemma 1**：如果在同一 DL 迭代中，任意两个计算节点提供相同的 SCORE 改进，则通过基于 Slice 唯一标识符的确定性 tie-breaking，可以保证算法收敛。
+
+> **为什么串行等价性重要？** 它意味着可以放心使用尽可能多的并行资源（甚至 GPU/FPGA 加速），而不会牺牲结果质量。这与模拟退火等随机算法形成鲜明对比——后者通常在并行化时结果不一致。
+
+### 5.5 后处理：异常处理
+
+DL 完成后，通常有 < 1% 的单元无法在位移约束 \( D \) 内找到合法位置。处理策略是**拆解重分配（Rip-up and Reallocate）**：
+
+\[
+\text{SCORE}_{\text{ripup}}(v, s, c) = -\frac{1}{\eta_1} \cdot \text{HPWL}(v, s) - \eta_2 \cdot \text{SCORE}(c, s) - \eta_3 \cdot \text{Area}(c)
+\]
+
+> 选择拆解哪个 Slice 的原则：线长代价小 + 原聚类评分低 + 原聚类面积小（面积大意味着单元多或难打包，拆解后难以重新合法化）。参数 \( \eta_1 = 0.02, \eta_2 = 1.0, \eta_3 = 4.0 \)。
 
 ---
 
@@ -301,13 +319,24 @@ W_{\text{intra}}(c) = -\alpha \cdot \sum_{i,j \in c, i \neq j} A_{ij} \cdot \tex
 
 ```mermaid
 graph TD
-    A["<b>输入</b><br/>技术映射后的 LUT/FF 网表<br/>FPGA 架构描述"] --> B["<b>初始化</b><br/>BLE 初始布局<br/>二次线长最小化"]
-    B --> C["<b>统一解析优化</b><br/>WA 线长 + 双层密度<br/>CLB 间排斥 + CLB 内软约束<br/>BLE 亲和引力"]
-    C --> D{"<b>收敛?</b>"}
-    D -->|No| C
-    D -->|Yes| E["<b>轻量级 CLB 分配</b><br/>BLE → CLB slot<br/>溢出修复"]
-    E --> F["<b>输出</b><br/>CLB 布局 + BLE 映射<br/>= Packing + Placement 同时完成"]
+    A["<b>输入</b><br/>LUT/FF 网表<br/>FPGA 架构"] --> B["<b>扁平初始布局 FIP</b><br/>二次布局 + 粗合法化<br/>+ 动态面积调整 DAA"]
+    B --> C{"<b>收敛?</b>"}
+    C -->|No| B
+    C -->|Yes| D["<b>并行直接合法化 DL</b><br/>Gale-Shapley 式<br/>Slice↔BLE 双向选择<br/>同时满足 Packing+Placement 合法性"]
+    D --> E["<b>后处理</b><br/>拆解重分配<br/>(< 1% 单元)"]
+    E --> F["<b>详细布局</b><br/>局部优化"]
+    F --> G["<b>输出</b><br/>合法布局"]
 ```
+
+### 运行时间分布
+
+| 阶段 | 占比 | 说明 |
+|------|------|------|
+| 二次布局 (QP + 粗合法化) | 64.5% | 主要时间消耗 |
+| 详细布局 | 18.5% | — |
+| 直接合法化 (DL) | 12.5% | 16 线程并行 |
+| 动态面积调整 (DAA) | 2.2% | 开销极小 |
+| 后处理异常处理 | 0.7% | — |
 
 ---
 
@@ -317,128 +346,144 @@ graph TD
 
 | 项目 | 配置 |
 |------|------|
-| **基准测试集** | ISPD 2016 和 ISPD 2017 FPGA 布局基准 |
-| **FPGA 架构** | 类似 Xilinx 的岛式结构 |
-| **对比方法** | 传统 Packing + Placement 流程（T-VPack + VPR） |
-| **评估指标** | HPWL, 关键路径时延, CLB 数量, 运行时间 |
+| **CPU** | Intel Core i9-7900X (3.30 GHz, 10 核, 13.75 MB L3) |
+| **内存** | 128 GB RAM |
+| **基准** | ISPD 2016 (12 个设计) + ISPD 2017 (13 个设计) |
+| **FPGA** | Xilinx UltraScale VU095 (67K CLB slices) |
+| **布线器** | Xilinx Vivado v2015.4 (2016) / v2016.4 (2017) |
+| **并行** | DL 使用 16 线程 (OpenMP)，其余单线程 |
 
-### 7.2 主要结果
+### 7.2 消融实验（ISPD 2016）
 
-根据 Semantic Scholar 的摘要信息，实验在 ISPD 2016 和 ISPD 2017 基准上**验证了所提出框架的有效性**。
+| 方法 | Routed WL (归一化) | 运行时间 (归一化) |
+|------|-------------------|-----------------|
+| UTPlaceF（原始） | **1.044** | 1.24 |
+| UTPlaceF + DAA | 1.030 | 1.29 |
+| DAA + 贪心 DL | 1.060 | 0.93 |
+| **Proposed (DAA + DL)** | **1.000** | **1.00** |
 
-预期改进方向（基于论文的声称和方法论推断）：
-- **线长改善**：由于 Packing 决策可以在全局优化中调整，避免了"局部最优 Packing 导致全局次优 Placement"的问题
-- **CLB 利用率**：不会显著变差——软约束保证了容量被大致满足
-- **运行时间**：略快于 Packing + Placement 两个阶段的传统流程（因为省去了独立的 Packing 阶段）
+> **关键发现**：
+> - DAA 单独带来 1.4% 的 WL 改善（FIP 更接近合法解）
+> - DL 比 UTPlaceF 的 Packing+合法化流程好 3.0%
+> - DL 比贪心 DL 好 6.0%（并行探索更大解空间的价值）
+> - 整体改善 4.4%，**同时运行更快**（1.24× 加速）
 
-> **注意**：由于 IEEE 全文需付费获取，具体数值（如线长改善百分比、运行时间对比等）无法在此次分析中完整呈现。建议通过 IEEE Xplore (DOI: 10.1109/TCAD.2018.2877017) 获取完整结果。
+### 7.3 FIP 与合法解的位移对比
 
----
+| 方法 | 平均位移 | 最大位移 |
+|------|---------|---------|
+| UTPlaceF | 21.4 | 162.5 |
+| UTPlaceF + DAA | 11.7 | 135.0 |
+| DAA + 贪心 DL | 1.5 | 57.4 |
+| **Proposed (DAA + DL)** | **1.2** | **11.6** |
 
-## 8. 与 DREAMPlace 和 ASIC 布局的关系
+> **Proposed 方法将最大位移从 162.5 降到 11.6**（恰好低于预设的位移约束 D = 12）。这意味着 FIP 中优化的指标（线长、时序、可布线性）在合法化后几乎完全保留。
 
-### 8.1 共享的作者和哲学
+### 7.4 难打包设计的突出表现
 
-```
-UT Austin EDA Lab (David Z. Pan)
-├── ASIC 布局
-│   ├── ePlace (2015) → 静电模型基础
-│   ├── RePlAce (2019) → CPU 上质量优化
-│   └── DREAMPlace (2019) → GPU 加速 ← Wuxi Li 参与
-└── FPGA 布局
-    ├── UTPlaceF (ICCAD 2016)
-    ├── 本文 (TCAD 2019) → 消除 Packing ← Wuxi Li 一作
-    └── ELFPlace → 解析 FPGA 布局器
-```
+| 设计 | 控制集数 | vs UTPlaceF WL 改善 | 说明 |
+|------|---------|-------------------|------|
+| FPGA-10 | 2541 | **-29.5%** | 控制集最多，传统 Packing 最难 |
+| FPGA-06 | 2541 | -12.1% | |
+| FPGA-07 | 2541 | -5.6% | |
+| FPGA-09 | 1281 | -3.7% | |
 
-### 8.2 方法论对比
+> **核心洞察**：传统流程在控制集密集的设计上表现差，因为 Packing 阶段无法预见 CLB 的物理位置，导致大量位移。本文方法通过在合法化过程中同时考虑 Packing 和 Placement，特别适合这类**难打包设计**。
 
-| 维度 | ASIC 解析布局 | FPGA 统一布局（本文） |
-|------|------------|-------------------|
-| **基本框架** | ePlace 静电模型 + Nesterov | 同左 |
-| **密度约束** | 单层（单元不重叠） | **双层**（CLB 间 + CLB 内） |
-| **单元粒度** | 标准单元 | BLE（子 CLB 粒度） |
-| **特殊约束** | 无 | CLB 容量限制, BLE 亲和力 |
-| **Packing 阶段** | 不存在 | **被整合进布局优化** |
-| **后处理** | 详细布局合法化 | CLB slot 分配 |
+### 7.5 与其他学术布局器的对比（ISPD 2016）
 
-> **方法论共性**：两篇论文共享同一个核心理念——**将传统 EDA 流程中分离的阶段统一到连续可微的优化框架中**。DREAMPlace 统一了"布局优化 + 深度学习框架"，本文统一了"Packing + Placement"。两者都是"可微分 EDA"（Differentiable EDA）范式的体现。
+| 对比方法 | Routed WL (归一化) | 运行时间 (归一化) |
+|---------|-------------------|-----------------|
+| ISPD 2016 第 1 名 | 1.080 | 3.96 |
+| ISPD 2016 第 2 名 | 1.140 | 4.90 |
+| ISPD 2016 第 3 名 | 1.444 | 5.84 |
+| GPlace | 1.254 | 0.88 |
+| RippleFPGA | 1.041 | 0.64 |
+| **Proposed** | **1.000** | **1.00** |
 
----
+> 比 ISPD 2016 冠军好 8.0%，比 RippleFPGA 好 4.1%。RippleFPGA 是最接近的竞争者——它采用了类似的方法论（Place-SemiPack-Legalize），但使用静态面积和贪心合法化。
 
-## 9. 创新点深度分析
+### 7.6 DL 并行化扩展性
 
-### 9.1 创新点一：消除 FPGA 流程中的 Packing 阶段
+| 线程数 | 加速比 |
+|--------|-------|
+| 1 | 1.00× |
+| 2 | 1.65× |
+| 4 | 3.15× |
+| 8 | 6.19× |
+| 16 (超线程) | 8.68× |
 
-**本质是什么**：将 FPGA 设计流程中持续了几十年的 **Packing → Placement 顺序流程** 替换为 **统一优化框架**。
-
-**为什么此前没人做？**
-
-传统 FPGA 流程深植于学术界和工业界的思维惯性——FPGA 设计的经典教科书（如 Betz, Rose, Marquardt 的 VPR 架构）将 Packing 和 Placement 作为两个明确分离的阶段。这种分离源于历史原因：早期的 Packing 算法（T-VPack）基于贪心聚类，Placement 基于模拟退火（VPR），两者优化框架完全不同，难以融合。
-
-本文之所以能做到，是因为**解析布局方法的成熟**（ePlace 系列提供了连续可微的目标函数框架）使得 Packing 的离散约束可以表达为**软约束**——这在模拟退火框架中是难以做到的。
-
-**技术巧妙之处**：Packing 本质上是"将 BLE 分组到容量为 N 的桶中"的**装箱问题**。本文没有直接求解装箱问题（NP-hard），而是将它松弛为**双层密度约束下的连续优化**——这等价于在连续域中渐进逼近离散装箱。软约束 + 逐步收紧 λ₂ 的策略使得优化器在早期自由探索（可能暂时违反容量），在后期逐渐满足容量。
-
-### 9.2 创新点二：双层密度约束
-
-**与 ASIC 布局的单层密度的对比**：
-
-```
-ASIC 单层密度:                          FPGA 双层密度:
-┌─────────────────────┐               ┌─────────────────────┐
-│ 单元 → site          │               │ CLB ↔ tile (外层)    │
-│ 密度=单个层次        │               │ BLE ↔ CLB (内层)     │
-│ 约束=不重叠          │               │ 约束=不重叠+容量限制  │
-└─────────────────────┘               └─────────────────────┘
-```
-
-这是对 ePlace 静电模型的重要泛化——证明了该模型不仅适用于"一对一"的分配问题（单元→site），也可以拓展到"多对一"的层次化分配问题（BLE→CLB→tile）。这种双层扩展思路对后续的 3D IC 布局和 chiplets 布局也有参考价值。
-
-### 9.3 创新点三：BLE 亲和力作为软引导
-
-传统 Packing 使用**硬规则**（共享网络数、端口数匹配等）来决定 BLE 分组。本文使用**连续可微的亲和力**：
-
-- 共享网络的 BLE 之间有更强的吸引力项（因为它们共享线长目标）
-- 没有共享网络的 BLE 之间没有额外吸引力
-- 容量约束作为一个全局的硬上限
-
-这种设计使得 Packing 决策变得**可微分**且**全局感知**——一个 BLE 是否应该与另一个 BLE 打包，不仅取决于它们之间的连接，还取决于它们在芯片上的相对位置和周围 CLB 的占用情况。这是传统 Packing 算法无法做到的。
-
-### 9.4 与现有四篇分析的关联
-
-| Day | 论文 | 如何关联到本文 |
-|-----|------|--------------|
-| Day 1 | DREAMPlace (DAC 2019) | **共享作者**（Wuxi Li, David Pan）；共享 UT Austin 解析布局框架 |
-| Day 2 | RePlAce (TCAD 2019) | 共享静电密度模型；共享 Nesterov 优化框架 |
-| Day 3 | ePlace (TODAES 2015) | 本文的静电密度模型直接继承自 ePlace |
-| Day 4 | 本文 (TCAD 2019) | 将 ASIC 布局方法拓展到 FPGA，引入"消除 Packing"范式 |
-
-### 9.5 影响与局限
-
-**影响**：本文开启了"可微分 FPGA 设计流程"的研究方向。后续工作如 ELFPlace 进一步完善了 FPGA 解析布局的方法论，DREAMPlace 的 GPU 加速也可以应用于 FPGA 布局。
-
-**局限**：
-- 软约束的容量保证不如硬约束精确，需要后处理步骤
-- 对于具有复杂架构约束的现代 FPGA（如 UltraScale+ 的多 die 结构），双层密度可能不够
-- 开放基准的规模有限（ISPD 2016/2017），对工业级超大规模 FPGA 的验证不充分
+> 近线性扩展到 8 线程，16 线程时因超线程资源竞争开始饱和。
 
 ---
 
-## 10. 参考文献
+## 8. 创新点深度分析
+
+### 8.1 创新点一：消除显式 Packing —— 从"先打包再放置"到"放置中自然打包"
+
+**本质**：将 FPGA CAD 中分离了二十多年的两个阶段合并为一个统一过程。
+
+**为什么此前没人做到？**
+
+1. **思维惯性**：经典 VPR 框架（Betz, Rose, 1997）将 Packing 和 Placement 定义为两个独立阶段，后续所有工作都在这个框架内改进
+2. **技术障碍**：没有 DAA，FIP 解与合法解之间偏差太大，直接合法化会产生极差的结果。DAA 是使 Place-Legalize 流程可行的**必要前提**
+3. **合法化算法瓶颈**：传统 Tetris 式贪心合法化一次只考虑一个单元，解空间极窄。本文的 Gale-Shapley 式并行合法化使解空间探索成为可能
+
+**本文的关键洞察**：不是"如何做更好的 Packing"，而是"Packing 是否真的需要作为独立阶段存在？"。答案是否定的——如果 FIP 已经考虑了 Packing 效应（通过 DAA），且合法化算法足够强（通过 DL），Packing 就会自然涌现。
+
+### 8.2 创新点二：DAA —— 将 Packing 信息隐式注入 FIP
+
+**巧妙之处**：DAA 不直接求解 Packing 问题，而是通过**调整单元面积**间接影响 FIP 的密度分布。
+
+- 面积大的单元 → 在粗合法化中被推开更远 → 自然占据更多空间 → 反映其"难打包"的特性
+- 不同类型（LUT/FF）分别计算利用率 → 解决资源类型不平衡
+- 布线拥塞区域禁止面积收缩 → 维护可布线性
+
+> **反直觉的发现**：DAA 使 FIP 的 HPWL **增大了 2.5%**（Table VI），但最终 routed wirelength **改善了 1.4%**。这说明更大的 FIP HPWL 不是质量退化——而是 FIP 更接近合法解的信号。传统流程中 FIP HPWL 偏小是因为它忽略了 Packing 效应，看似好实则不可实现。
+
+### 8.3 创新点三：Gale-Shapley 式并行合法化
+
+**与经典 Gale-Shapley 的差异**：
+
+| 维度 | 经典 Gale-Shapley | 本文 DL |
+|------|-------------------|---------|
+| 对象偏好 | 固定且独立 | 取决于"朋友"的选择 |
+| 约束 | 仅容量 | 容量 + 架构合法性（控制集兼容） |
+| 解空间 | 每个"学生"去一个"大学" | 聚类级别的绑定 |
+| 收敛保证 | 经典理论 | Lemma 1（确定性 tie-breaking） |
+
+**串行等价性**的工程价值极高——它允许用户在任何并行度下运行，总是得到相同结果。这是工业工具的基本要求（可复现性），也是后续 GPU/FPGA 加速实现的基础。
+
+### 8.4 与前三天论文的方法论对比
+
+| 维度 | ePlace/RePlAce/DREAMPlace | 本文 |
+|------|--------------------------|------|
+| **基础框架** | 静电模型 + Nesterov 优化 | 二次布局 + 粗合法化 |
+| **密度处理** | Poisson 方程 + FFT | 动态面积调整 + 粗合法化 |
+| **合法化** | 不涉及（ASIC 标准单元简单对齐） | **核心创新**（FPGA 架构约束极复杂） |
+| **优化目标** | 线长 + 密度 | 线长 + Packing 质量 + 位移约束 |
+| **并行化** | GPU 张量运算 | CPU 多线程 + 串行等价性 |
+
+> ASIC 布局与 FPGA 布局的根本差异在于**合法化的复杂度**：ASIC 中标准单元只需要对齐到 site row，而 FPGA 中还需要满足 BLE/CLB 的架构约束（控制集兼容、容量限制）。这导致 FPGA 的合法化本质上是**装箱+分配的组合问题**，需要全新的算法思路。
+
+---
+
+## 9. 参考文献
 
 1. W. Li and D. Z. Pan, "A New Paradigm for FPGA Placement without Explicit Packing," *IEEE Trans. Computer-Aided Design (TCAD)*, vol. 38, no. 11, pp. 2113–2126, 2019. DOI: [10.1109/TCAD.2018.2877017](https://doi.org/10.1109/TCAD.2018.2877017)
 
-2. W. Li, S. Dhar, and D. Z. Pan, "UTPlaceF: A Routability-Driven FPGA Placer with Physical and Congestion Aware Packing," in *Proc. IEEE/ACM Int'l Conf. Computer-Aided Design (ICCAD)*, Austin, TX, 2016.
+2. W. Li, S. Dhar, and D. Z. Pan, "UTPlaceF: A Routability-Driven FPGA Placer with Physical and Congestion Aware Packing," *IEEE TCAD*, 2017.
 
-3. J. Lu et al., "ePlace: Electrostatics-Based Placement Using Fast Fourier Transform and Nesterov's Method," *ACM Trans. Design Automation of Electronic Systems (TODAES)*, vol. 20, no. 2, pp. 1–34, 2015.
+3. G. Chen et al., "RippleFPGA: Routability-Driven Simultaneous Packing and Placement for Modern FPGAs," *IEEE TCAD*, 2017.
 
-4. Y. Lin et al., "DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement," in *Proc. DAC*, 2019.
+4. D. Gale and L. S. Shapley, "College Admissions and the Stability of Marriage," *The American Mathematical Monthly*, vol. 69, no. 1, pp. 9–15, 1962.
 
-5. V. Betz, J. Rose, and A. Marquardt, *Architecture and CAD for Deep-Submicron FPGAs*, Springer, 1999.
+5. V. Betz and J. Rose, "VPR: A New Packing, Placement and Routing Tool for FPGA Research," in *FPL*, 1997.
 
-6. J. Rose, J. Luu, et al., "The VTR Project: Architecture and CAD for FPGAs from Verilog to Routing," in *Proc. FPGA*, 2012.
+6. J. Lu et al., "ePlace: Electrostatics-Based Placement Using Fast Fourier Transform and Nesterov's Method," *ACM TODAES*, vol. 20, no. 2, 2015.
+
+7. Y. Lin et al., "DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement," in *Proc. DAC*, 2019.
 
 ---
 
-*本文档由 Claude Code 于 2026-06-08 生成，作为 EDA 论文每日分析系列的第 4 天内容。Day 4 首次将分析范围从 ASIC 布局拓展到 FPGA 布局，展示了解析布局方法的跨域泛化能力。由于 IEEE 付费墙限制，部分实验数据无法完整获取——建议通过机构订阅获取全文获取精确数值。*
+*本文档由 Claude Code 于 2026-06-08 基于论文全文重写，作为 EDA 论文每日分析系列的第 4 天内容。与前三天 ASIC 布局论文不同，本文展示了 FPGA 布局的独特挑战——架构约束使得合法化成为核心难题，而 Gale-Shapley 式并行算法提供了一种优雅的解决方案。*
