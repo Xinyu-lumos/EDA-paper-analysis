@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 7: DREAMPlace 4.1 —— 基于二阶信息的混合尺寸布局骨干</title>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$']],
+    displayMath: [['$$', '$$']],
+    processEscapes: true
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'default'});</script>
+<style>
+body {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 40px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.7;
+  color: #333;
+  background: #fafafa;
+}
+h1 { color: #1a1a2e; border-bottom: 2px solid #16213e; padding-bottom: 8px; }
+h2 { color: #16213e; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; margin-top: 2em; }
+h3 { color: #0f3460; }
+blockquote {
+  border-left: 4px solid #e94560;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background: #fff;
+  border-radius: 0 4px 4px 0;
+}
+code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; color: inherit; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+th { background: #16213e; color: white; }
+tr:nth-child(even) { background: #f5f5f5; }
+a { color: #e94560; text-decoration: none; }
+a:hover { text-decoration: underline; }
+img { max-width: 100%; }
+.mermaid { background: white; padding: 10px; border-radius: 8px; margin: 1em 0; }
+hr { border: none; border-top: 1px solid #e0e0e0; margin: 2em 0; }
+</style>
+</head>
+<body>
+<h1 id="day-7-dreamplace-41">Day 7: DREAMPlace 4.1 —— 基于二阶信息的混合尺寸布局骨干</h1>
+<blockquote>
+<p><strong>论文标题</strong>: Stronger Mixed-Size Placement Backbone Considering Second-Order Information</p>
+<p><strong>作者</strong>: Yifan Chen, Zaiwen Wen, Yun Liang, Yibo Lin</p>
+<p><strong>机构</strong>: School of Integrated Circuits, Peking University; Beijing International Center for Mathematical Research, Peking University; Institute of Electronic Design Automation, Peking University</p>
+<p><strong>会议</strong>: IEEE/ACM International Conference on Computer-Aided Design (ICCAD)</p>
+<p><strong>年份</strong>: 2023</p>
+<p><strong>分析日期</strong>: 2026-06-08</p>
+<p><strong>系列定位</strong>: 本文解决了一个被长期忽视的关键问题——<strong>混合尺寸布局（Mixed-Size Placement）中宏单元导致的优化器发散</strong>。Day 1-3 和 Day 6 的全局布局方法主要针对标准单元，而实际设计中包含大量大小不一的宏单元（macro）。DREAMPlace 4.1 引入 Barzilai-Borwein 二阶方法，使混合尺寸布局从"经常发散"变为"稳健收敛"。</p>
+</blockquote>
+<hr />
+<h2 id="_1">目录</h2>
+<ol>
+<li><a href="#1-背景混合尺寸布局为什么难">背景：混合尺寸布局为什么难？</a></li>
+<li><a href="#2-核心贡献概述">核心贡献概述</a></li>
+<li><a href="#3-barzilai-borwein-方法一阶到二阶的跨越">Barzilai-Borwein 方法：一阶到二阶的跨越</a></li>
+<li><a href="#4-宏单元合法化多策略协同">宏单元合法化：多策略协同</a></li>
+<li><a href="#5-整体框架两阶段布局流程">整体框架：两阶段布局流程</a></li>
+<li><a href="#6-实验结果与分析">实验结果与分析</a></li>
+<li><a href="#7-创新点深度分析">创新点深度分析</a></li>
+<li><a href="#8-eplace-系列演进全景对比">ePlace 系列演进全景对比</a></li>
+<li><a href="#9-参考文献">参考文献</a></li>
+</ol>
+<hr />
+<h2 id="1">1. 背景：混合尺寸布局为什么难？</h2>
+<h3 id="11">1.1 混合尺寸布局的定义</h3>
+<p>现代 VLSI 设计包含两类实例：<br />
+- <strong>标准单元（Standard Cells）</strong>：尺寸统一（1-2 行高），数量巨大（百万级）<br />
+- <strong>宏单元（Macros）</strong>：尺寸差异大（从几行到数百行），数量较少（数十到数千）</p>
+<p>混合尺寸布局需要同时优化宏单元和标准单元的位置。</p>
+<h3 id="12">1.2 核心挑战：宏单元导致优化器发散</h3>
+<div class="mermaid">
+graph TD
+    A["<b>标准单元布局</b><br/>单元尺寸均匀<br/>梯度变化平缓<br/>Nesterov 收敛稳定"] --> B["<b>混合尺寸布局</b><br/>宏单元尺寸差异大<br/>梯度剧烈波动<br/>Nesterov 经常发散"]
+    B --> C["<b>发散的后果</b><br/>HPWL 极差<br/>合法化失败<br/>整个流程崩溃"]
+</div>
+
+<blockquote>
+<p><strong>根本原因</strong>：宏单元的面积远大于标准单元。当一个宏单元移动时，其密度梯度变化量是标准单元的数千倍。这种<strong>梯度的异质性</strong>使得一阶优化方法（如 Nesterov 加速梯度）的 Lipschitz 常数估计严重失准——用全局 Lipschitz 常数作为步长，标准单元的移动可能过于保守；用局部 Lipschitz 常数，宏单元附近可能步长过大导致发散。</p>
+</blockquote>
+<p>论文给出了实际例子：在 ISPD2005 的 bigblue2 和 MMS 的 newblue3 上，默认 DREAMPlace 发散——密度溢出无法降低，HPWL 极差，合法化失败。</p>
+<h3 id="13-l-bfgs">1.3 为什么 L-BFGS 不行？</h3>
+<p>Newton 法和 L-BFGS 是经典的二阶方法，但在布局中面临两个困难：</p>
+<ol>
+<li><strong>线长函数的平滑系数 $\epsilon$ 不断变化</strong>：每次变化导致 Hessian 矩阵的结构改变，之前缓存的梯度信息失效</li>
+<li><strong>密度惩罚权重 $\lambda$ 不断增大</strong>：同样的原因导致 Hessian 近似需要重新计算</li>
+</ol>
+<p>这意味着 L-BFGS 需要频繁重置，失去了其"有限内存"的优势。</p>
+<hr />
+<h2 id="2">2. 核心贡献概述</h2>
+<p>DREAMPlace 4.1 的两大核心贡献：</p>
+<div class="mermaid">
+graph TD
+    A["<b>DREAMPlace 4.1</b>"] --> B["<b>BB-Nesterov 优化器</b><br/>Barzilai-Borwein 二阶步长<br/>非单调线搜索<br/>稳健收敛"]
+    A --> C["<b>多策略宏合法化</b><br/>TCG 最小费用流<br/>ILP 修复<br/>并行回火搜索"]
+</div>
+
+<ol>
+<li><strong>BB-Nesterov 优化器</strong>：将 Barzilai-Borwein 步长估计融入 Nesterov 加速梯度框架——用二阶信息近似 Hessian 逆，以对角矩阵的形式（$\beta I$）融入预条件，不增加显存和计算开销</li>
+<li><strong>多策略宏合法化</strong>：结合 TCG 最小费用流（可行情况）、ILP 修复（小规模不可行）、并行回火搜索（大规模不可行），保证任何情况都能得到合法解</li>
+</ol>
+<hr />
+<h2 id="3-barzilai-borwein">3. Barzilai-Borwein 方法：一阶到二阶的跨越</h2>
+<h3 id="31-vs">3.1 一阶 vs 二阶优化</h3>
+<p>考虑无约束优化问题 $\min f(\mathbf{x})$，记 $\mathbf{g}^{(k)} = \nabla f(\mathbf{x}^{(k)})$，$H^{(k)} = \nabla^2 f(\mathbf{x}^{(k)})$：</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>更新规则</th>
+<th>信息阶数</th>
+<th>收敛速度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>梯度下降</strong></td>
+<td>$\mathbf{x}^{(k+1)} = \mathbf{x}^{(k)} - \alpha \mathbf{g}^{(k)}$</td>
+<td>一阶</td>
+<td>线性</td>
+</tr>
+<tr>
+<td><strong>Newton 法</strong></td>
+<td>$\mathbf{x}^{(k+1)} = \mathbf{x}^{(k)} - (H^{(k)})^{-1} \mathbf{g}^{(k)}$</td>
+<td>二阶</td>
+<td>二次</td>
+</tr>
+<tr>
+<td><strong>BB 方法</strong></td>
+<td>$\mathbf{x}^{(k+1)} = \mathbf{x}^{(k)} - \beta^{(k)}_{BB} \mathbf{g}^{(k)}$</td>
+<td>一阶+二阶近似</td>
+<td>超线性</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-barzilai-borwein">3.2 Barzilai-Borwein 步长推导</h3>
+<p>BB 方法的核心思想：用<strong>两个连续迭代点的梯度差</strong>来近似 Hessian 矩阵，从而获得隐式的二阶信息。</p>
+<p>令 $\mathbf{s}^{(k-1)} = \mathbf{x}^{(k)} - \mathbf{x}^{(k-1)}$，$\mathbf{y}^{(k-1)} = \mathbf{g}^{(k)} - \mathbf{g}^{(k-1)}$。</p>
+<p>由 Taylor 展开，Hessian 近似满足：</p>
+<p>$$H^{(k)} \mathbf{s}^{(k-1)} \approx \mathbf{y}^{(k-1)}<br />
+$$</p>
+<p>BB 方法用标量 $\beta$ 近似 Hessian 的逆（即 $\beta^{-1} I \approx H$），求解最小二乘：</p>
+<p><strong>BB1 步长</strong>（长步长）：</p>
+<p>$$\beta_{BB1}^{(k)} = \frac{(\mathbf{s}^{(k-1)})^T \mathbf{s}^{(k-1)}}{(\mathbf{s}^{(k-1)})^T \mathbf{y}^{(k-1)}}<br />
+$$</p>
+<p><strong>BB2 步长</strong>（短步长）：</p>
+<p>$$\beta_{BB2}^{(k)} = \frac{(\mathbf{s}^{(k-1)})^T \mathbf{y}^{(k-1)}}{(\mathbf{y}^{(k-1)})^T \mathbf{y}^{(k-1)}}<br />
+$$</p>
+<blockquote>
+<p><strong>公式解读</strong>：<br />
+- BB1 最小化 $|\beta^{-1} \mathbf{s} - \mathbf{y}|^2$：让标量 Hessian 逆的预测最接近实际的梯度差<br />
+- BB2 最小化 $|\mathbf{s} - \beta \mathbf{y}|^2$：让步长的预测最接近实际的位移<br />
+- 两者满足关系：$\beta_{BB2} \leq \lambda_{Lip} \leq \beta_{BB1}$，其中 $\lambda_{Lip}$ 是 Lipschitz 步长</p>
+</blockquote>
+<h3 id="33-bb">3.3 短 BB 步长的选择</h3>
+<p>DREAMPlace 4.1 选择<strong>短 BB 步长</strong>（$\beta_{BB2}$），原因有二：</p>
+<ol>
+<li><strong>非凸安全</strong>：当目标函数非凸时，$(\mathbf{s}^{(k-1)})^T \mathbf{y}^{(k-1)}$ 可能为零甚至为负——此时 BB1 步长可能无穷大或为负，而 BB2 仅涉及 $\mathbf{y}^T \mathbf{y}$，始终为正</li>
+<li><strong>更保守</strong>：短步长更接近 Lipschitz 步长，不容易因步长过大而发散</li>
+</ol>
+<h3 id="34-bb-nesterov-algorithm-1">3.4 BB-Nesterov 算法（Algorithm 1）</h3>
+<pre><code>输入：主解 u^(k)，参考解 v^(k)，加速参数 a_k
+
+计算梯度差：
+  g^(k-1) = ∇f(v^(k-1))
+  g^(k)   = ∇f(v^(k))
+  s^(k-1) = v^(k) - v^(k-1)
+  y^(k-1) = g^(k) - g^(k-1)
+
+计算 BB 步长：
+  β_bb = (s^T · y) / (y^T · y)    ← 短 BB 步长
+  if β_bb &gt; 0:
+    α₀ = β_bb                      ← BB 步长作为初始步长
+  else:
+    α₀ = λ_Lip                     ← 非凸时回退到 Lipschitz 步长
+
+非单调线搜索：
+  α = LineSearch(v^(k), g^(k), starts from α₀)  ← Zhang-Hager 线搜索
+
+Nesterov 加速更新：
+  u^(k+1) = v^(k) - α · g^(k)
+  a_(k+1) = (1 + √(4a²_k + 1)) / 2
+  v^(k+1) = u^(k+1) + (a_k - 1)/(a_(k+1)) · (u^(k+1) - u^(k))
+</code></pre>
+<blockquote>
+<p><strong>与原始 DREAMPlace 的关键差异</strong>：<br />
+- 原始 DREAMPlace 使用<strong>预测 Lipschitz 步长</strong> $\lambda_{Lip} = \frac{\mathbf{s}^T \mathbf{s}}{\mathbf{s}^T \mathbf{y}}$（类似 BB1）作为线搜索起点<br />
+- DREAMPlace 4.1 使用<strong>短 BB 步长</strong> $\beta_{BB2} = \frac{\mathbf{s}^T \mathbf{y}}{\mathbf{y}^T \mathbf{y}}$，更保守，更适合非凸的混合尺寸布局<br />
+- 更重要的是：当 $\beta_{BB2} \leq 0$ 时（Hessian 在该方向上不是正定的），<strong>回退到 Lipschitz 步长</strong>——这提供了安全网</p>
+</blockquote>
+<h3 id="35-zhang-hager">3.5 非单调线搜索：Zhang-Hager 方法</h3>
+<p>BB 方法不保证目标函数单调下降——某些迭代可能使目标函数上升。为保证全局收敛，DREAMPlace 4.1 使用 Zhang-Hager 非单调线搜索：</p>
+<p>$$C_{k+1} = \frac{\eta \cdot Q_k \cdot C_k + f(\mathbf{x}<em>{k+1})}{Q</em>{k+1}}, \quad Q_{k+1} = \eta \cdot Q_k + 1<br />
+$$</p>
+<blockquote>
+<p><strong>直觉</strong>：非单调线搜索允许目标函数在短期内上升，但要求其<strong>加权移动平均</strong>在下降。这比严格单调线搜索更灵活——允许优化器"越过小山丘"以到达更深的山谷，同时保证不会持续恶化。</p>
+</blockquote>
+<h3 id="36">3.6 收敛性保证</h3>
+<p>论文引用了 Raydan (1997) 的定理：</p>
+<blockquote>
+<p><strong>Theorem 1</strong>：假设水平集 $\Omega_0 = {x : f(x) \leq f(x_0)}$ 有界，$f$ 在 $\Omega_0$ 的某邻域内连续可微。则 BB 方法 + 非单调线搜索产生的序列满足：<br />
+- $\liminf_{k \to \infty} |\nabla f_k| = 0$<br />
+- 无极限点是局部极大值<br />
+- 若 $\Omega_0$ 中驻点有限，则序列收敛</p>
+<p><strong>意义</strong>：虽然布局问题是高度非凸的（不保证全局最优），但 BB-Nesterov 保证<strong>收敛到某个驻点</strong>，不会发散——这正是混合尺寸布局最需要保证的。</p>
+</blockquote>
+<hr />
+<h2 id="4">4. 宏单元合法化：多策略协同</h2>
+<p>全局布局后，宏单元之间可能仍有重叠。宏合法化的目标是在<strong>最小化位移</strong>的前提下消除重叠。</p>
+<h3 id="41-sequence-pair">4.1 Sequence Pair 表示</h3>
+<p>宏合法化的基础是 <strong>Sequence Pair（SP）</strong>——用一对排列 $S^+, S^-$ 表示宏单元之间的相对位置关系：</p>
+<ul>
+<li>$a \prec_x b$（a 在 b 左边）：$S^+(a) &lt; S^+(b)$ 且 $S^-(a) &lt; S^-(b)$</li>
+<li>$b \prec_x a$（b 在 a 左边）：$S^+(a) &gt; S^+(b)$ 且 $S^-(a) &gt; S^-(b)$</li>
+<li>$a \prec_y b$（a 在 b 下面）：$S^+(a) &gt; S^+(b)$ 且 $S^-(a) &lt; S^-(b)$</li>
+<li>$b \prec_y a$（b 在 a 下面）：$S^+(a) &lt; S^+(b)$ 且 $S^-(a) &gt; S^-(b)$</li>
+</ul>
+<blockquote>
+<p><strong>从布局到 SP</strong>：通过切割式重叠消除（cutting-based overlap removal）和扫描线算法，可以在 $O(n \log n)$ 时间内从有重叠的布局中提取初始 SP。</p>
+</blockquote>
+<h3 id="42">4.2 三层合法化策略</h3>
+<div class="mermaid">
+graph TD
+    A["<b>初始 Sequence Pair</b><br/>从有重叠布局提取"] --> B{"<b>SP 是否可行？</b>"}
+    B -->|"是"| C["<b>TCG 最小费用流</b><br/>约束约简<br/>对偶最小费用流<br/>2 万宏 < 1 秒"]
+    B -->|"否"| D{"<b>宏数量</b>"}
+    D -->|"数百"| E["<b>ILP 合法化</b><br/>Gurobi 求解<br/>修改部分相对关系<br/>几秒内完成"]
+    D -->|"数千+"| F["<b>并行回火搜索</b><br/>多温度副本<br/>扰动 SP<br/>交换配置"]
+</div>
+
+<h4 id="tcg-sp">策略一：TCG 最小费用流（可行 SP）</h4>
+<p>如果初始 SP 是可行的（即存在合法布局满足该相对关系），则问题退化为线性规划：</p>
+<p>$$\min |\mathbf{x} - \hat{\mathbf{x}}|_1 + |\mathbf{y} - \hat{\mathbf{y}}|_1<br />
+$$</p>
+<p>$$\text{s.t.} \quad x_i + w_i \leq x_j, \quad e_{ij} \in G_x \quad \text{（TCG 水平约束图）}<br />
+$$</p>
+<p>$$y_i + h_i \leq y_j, \quad e_{ij} \in G_y \quad \text{（TCG 垂直约束图）}<br />
+$$</p>
+<blockquote>
+<p><strong>关键优化</strong>：使用传递闭包图（TCG）消除了 $O(n^2)$ 的冗余约束——如果 $i \prec_x j$ 且 $j \prec_x k$，则 $i \prec_x k$ 的约束是冗余的。TCG 只保留直接约束，将约束数从 $O(n^2)$ 降到 $O(n)$ 级别。</p>
+</blockquote>
+<p>x 和 y 方向<strong>独立求解</strong>：先解 x 方向的最小费用流，再解 y 方向（只考虑 x 方向有重叠的宏对）。</p>
+<h4 id="ilp-sp">策略二：ILP 合法化（不可行 SP，宏数少）</h4>
+<p>当初始 SP 不可行时，需要修改某些宏对之间的相对关系。通过引入二值变量，将"或"约束转化为 ILP：</p>
+<p>$$\min |\mathbf{x} - \hat{\mathbf{x}}|_1 + |\mathbf{y} - \hat{\mathbf{y}}|_1<br />
+$$</p>
+<p>$$\text{s.t.} \quad x_i + w_i \leq x_j + W(x_{ij} + y_{ij}), \quad (i,j) \in D<br />
+$$</p>
+<p>$$x_{ij}, y_{ij} \in {0, 1}<br />
+$$</p>
+<p>其中 $D$ 是需要改变相对关系的宏对集合。算法逐步扩大 $D$（从 gap 小、距离近的宏对开始），直到 ILP 可行。</p>
+<h4 id="sp">策略三：并行回火搜索（不可行 SP，宏数多）</h4>
+<p>当宏数量太大导致 ILP 求解超时时，采用并行回火（Parallel Tempering）搜索可行 SP：</p>
+<ul>
+<li>多个"温度"副本并行运行</li>
+<li>高温副本接受较差的移动，低温副本更贪心</li>
+<li>周期性地交换相邻温度的配置——帮助低温副本逃离局部最优</li>
+</ul>
+<p>扰动操作包括：交换 $S^+$ 或 $S^-$ 中的元素、移动元素位置。</p>
+<p>代价函数设计：</p>
+<p>$$\text{Cost} = \begin{cases} \alpha \cdot \text{TNG} + \beta \cdot \text{GreedyDisp}, &amp; \text{if TNG} &gt; 0 \ \alpha \cdot \text{TNG} + \gamma \cdot \text{Disp}, &amp; \text{if TNG} \leq 0 \end{cases}<br />
+$$</p>
+<p>其中 TNG（Total Negative Gap）衡量非法程度，$\alpha$ 足够大以保证优先消除非法性。</p>
+<hr />
+<h2 id="5">5. 整体框架：两阶段布局流程</h2>
+<div class="mermaid">
+graph TD
+    A["<b>第一阶段</b><br/>BB-Nesterov 混合尺寸<br/>全局布局"] --> B["<b>宏单元合法化</b><br/>TCG/ILP/PT"]
+    B --> C["<b>固定宏单元</b><br/>保留标准单元位置<br/>缩小密度权重 λ"]
+    C --> D["<b>第二阶段</b><br/>仅标准单元<br/>重新全局布局"]
+    D --> E["<b>输出布局解</b>"]
+</div>
+
+<h3 id="_2">为什么需要两阶段？</h3>
+<p>单一阶段的混合尺寸布局中，宏单元的移动会不断扰动标准单元的位置——宏单元"拖拽"周围的标准单元，造成优化不稳定。两阶段流程的精髓在于：</p>
+<ol>
+<li><strong>第一阶段</strong>：BB-Nesterov 同时优化宏单元和标准单元，确定宏单元的大致位置</li>
+<li><strong>宏合法化</strong>：消除宏单元之间的重叠，固定宏单元</li>
+<li><strong>第二阶段</strong>：宏单元固定后，标准单元在<strong>不受宏单元扰动</strong>的环境下精细优化</li>
+</ol>
+<blockquote>
+<p><strong>关键细节</strong>：第二阶段不是从头开始——标准单元从第一阶段的位置出发，密度权重 $\lambda$ 被缩小以避免过度扩散。这相当于"解锁"标准单元进行微调，而非重新布局。</p>
+</blockquote>
+<hr />
+<h2 id="6">6. 实验结果与分析</h2>
+<h3 id="61">6.1 实验配置</h3>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>配置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>平台</strong></td>
+<td>NVIDIA RTX 2080 + Intel Xeon Silver 4210R (10核)</td>
+</tr>
+<tr>
+<td><strong>基准</strong></td>
+<td>MMS, ISPD2005 (I/O-freed), TILOS</td>
+</tr>
+<tr>
+<td><strong>对比</strong></td>
+<td>默认 DREAMPlace (单阶段)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62">6.2 关键结果</h3>
+<h4 id="mms-16">MMS 基准（16 个设计）</h4>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>发散数</th>
+<th>HPWL 比</th>
+<th>迭代数比</th>
+<th>运行时比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>默认 DREAMPlace</td>
+<td>1 (newblue3)</td>
+<td>1.000</td>
+<td>1.000</td>
+<td>1.000</td>
+</tr>
+<tr>
+<td>Ours w/o BB</td>
+<td>1 (同上)</td>
+<td>0.953</td>
+<td>1.298</td>
+<td>2.135</td>
+</tr>
+<tr>
+<td><strong>Ours w/ BB</strong></td>
+<td><strong>0</strong></td>
+<td><strong>0.935</strong></td>
+<td><strong>1.186</strong></td>
+<td><strong>1.784</strong></td>
+</tr>
+</tbody>
+</table>
+<h4 id="io-freed-ispd20058">I/O-freed ISPD2005（8 个设计，更具挑战性）</h4>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>发散数</th>
+<th>HPWL 比</th>
+<th>迭代数比</th>
+<th>运行时比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>默认 DREAMPlace</td>
+<td>1 (bigblue2)</td>
+<td>1.000</td>
+<td>1.000</td>
+<td>1.000</td>
+</tr>
+<tr>
+<td>Ours w/o BB</td>
+<td>1 (同上)</td>
+<td>0.787</td>
+<td>1.295</td>
+<td>2.715</td>
+</tr>
+<tr>
+<td><strong>Ours w/ BB</strong></td>
+<td><strong>0</strong></td>
+<td><strong>0.704</strong></td>
+<td><strong>1.112</strong></td>
+<td><strong>2.802</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>HPWL 比值 0.704 意味着 <strong>29.6% 的线长改善</strong>！这主要来自两个方面：BB 方法避免了发散（发散情况下的 HPWL 极差），两阶段流程使得标准单元的布局质量更高。</p>
+</blockquote>
+<h4 id="tilos-5-risc-v">TILOS 基准（5 个 RISC-V 设计）</h4>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>发散数</th>
+<th>HPWL 比</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>默认 DREAMPlace</td>
+<td>1 (NVDLA)</td>
+<td>1.000</td>
+</tr>
+<tr>
+<td>Ours w/o BB</td>
+<td>1 (同上)</td>
+<td>0.684</td>
+</tr>
+<tr>
+<td><strong>Ours w/ BB</strong></td>
+<td><strong>0</strong></td>
+<td><strong>0.667</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>HPWL 比值 0.667 意味着 <strong>33.3% 的线长改善</strong>。NVDLA 设计包含 128 个宏单元，默认 DREAMPlace 发散，BB 方法使其稳健收敛。</p>
+</blockquote>
+<h3 id="63-bb">6.3 BB 方法的额外开销</h3>
+<p>BB 方法本身几乎不增加运行时（仅需计算一次向量内积），主要的运行时增加来自：<br />
+1. <strong>两阶段流程</strong>比单阶段多一次全局布局<br />
+2. <strong>宏合法化</strong>的额外时间</p>
+<p>但 HPWL 的显著改善证明了这些开销是值得的。</p>
+<h3 id="64-autodmp">6.4 集成到 AutoDMP</h3>
+<p>AutoDMP 是一个基于多目标贝叶斯优化的宏布局框架，它使用 DREAMPlace 作为后端。将默认 Nesterov 替换为 BB-Nesterov 后：</p>
+<table>
+<thead>
+<tr>
+<th>设计</th>
+<th>Bad Runs（默认）</th>
+<th>Bad Runs（+BB）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ariane133</td>
+<td>22/354</td>
+<td><strong>0/354</strong></td>
+</tr>
+<tr>
+<td>Ariane136</td>
+<td>40/360</td>
+<td><strong>0/365</strong></td>
+</tr>
+<tr>
+<td>MemPool</td>
+<td>27/356</td>
+<td><strong>0/353</strong></td>
+</tr>
+<tr>
+<td>BlackParrot</td>
+<td>29/51</td>
+<td><strong>0/357</strong></td>
+</tr>
+<tr>
+<td>NVDLA</td>
+<td>29/56</td>
+<td><strong>0/44</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>"Bad Run"</strong> 指优化器发散、最终目标函数值为 INF 的情况。BB 方法将 Bad Runs 数量从<strong>数十次</strong>降到<strong>零</strong>——这是鲁棒性的质变。对于 AutoDMP 这种需要运行数百次采样的超参优化框架，零 Bad Runs 意味着不需要浪费任何计算预算在失败的运行上。</p>
+</blockquote>
+<hr />
+<h2 id="7">7. 创新点深度分析</h2>
+<h3 id="71-bb">7.1 创新点一：BB 步长作为二阶信息的轻量级引入</h3>
+<p><strong>核心洞察</strong>：混合尺寸布局的发散问题根源是一阶优化方法对 Hessian 信息"视而不见"——宏单元的巨大尺寸导致 Hessian 矩阵的条件数极差，一阶方法无法自适应调整步长。</p>
+<p>BB 方法以<strong>极低的代价</strong>引入了二阶信息：<br />
+- <strong>存储</strong>：只需额外保存上一步的梯度和位置（$O(n)$），不像 L-BFGS 需要 $O(mn)$<br />
+- <strong>计算</strong>：每步仅增加两次向量内积（$O(n)$），几乎可忽略<br />
+- <strong>效果</strong>：将"盲目的"一阶步长变为"有方向的"准二阶步长</p>
+<blockquote>
+<p><strong>设计哲学</strong>：不追求精确的 Hessian（Newton/L-BFGS 太贵），也不放弃二阶信息（梯度下降太盲目），而是在两者之间找到最佳平衡点——用最少的代价获取最有用的二阶信息。</p>
+</blockquote>
+<h3 id="72-bb">7.2 创新点二：BB + 非单调线搜索的组合保证收敛</h3>
+<p>BB 方法单独使用不保证收敛——步长可能振荡。Zhang-Hager 非单调线搜索提供了<strong>安全网</strong>：</p>
+<ul>
+<li>允许短期目标函数上升（非单调性 → 跳出浅的局部最优）</li>
+<li>要求加权平均下降（收敛性 → 不会持续恶化）</li>
+<li>BB 步长提供搜索起点（比 Lipschitz 步长更好的起点）</li>
+</ul>
+<blockquote>
+<p><strong>与 DREAMPlace 3.0 的对比</strong>：DREAMPlace 3.0 用回滚（rollback）和熵注入（entropy injection）应对发散——这是一种"检测并修复"的后处理策略。DREAMPlace 4.1 用 BB 步长从根源上避免发散——这是一种"预防"策略。两者互补：BB 解决步长估计问题，回滚/熵注入解决鞍点问题。</p>
+</blockquote>
+<h3 id="73-tcg">7.3 创新点三：TCG + 最小费用流的高效宏合法化</h3>
+<p>传统宏合法化使用模拟退火或贪心策略，质量差且速度慢。本文的 TCG 最小费用流方法：</p>
+<ol>
+<li><strong>用 SP 编码相对关系</strong> → 用 TCG 消除冗余约束 → 用最小费用流精确求解 LP</li>
+<li><strong>2 万个宏在 1 秒内完成</strong>——比通用 LP 求解器（如 Gurobi）快几个数量级</li>
+<li><strong>x 和 y 解耦</strong>：先解 x 再解 y，每次只考虑相关约束</li>
+</ol>
+<blockquote>
+<p><strong>为什么快？</strong> 最小费用流是网络优化中最成熟的问题之一，其专用算法（如 network simplex）比通用 LP 求解器快得多。TCG 的约束约简进一步降低了问题规模。</p>
+</blockquote>
+<h3 id="74">7.4 创新点四：多策略合法化的系统设计</h3>
+<p>论文没有试图找到一个"万能"的合法化算法，而是根据问题的<strong>可行性和规模</strong>选择不同策略：</p>
+<table>
+<thead>
+<tr>
+<th>情况</th>
+<th>策略</th>
+<th>时间复杂度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SP 可行</td>
+<td>TCG 最小费用流</td>
+<td>$O(V(V+E))$ + 最小费用流</td>
+</tr>
+<tr>
+<td>SP 不可行，宏数少</td>
+<td>ILP（Gurobi）</td>
+<td>指数级但实际秒级</td>
+</tr>
+<tr>
+<td>SP 不可行，宏数多</td>
+<td>并行回火</td>
+<td>启发式，可控</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>工程智慧</strong>：学术上追求统一优雅的算法，工程上追求"每种情况都有最优解"。DREAMPlace 4.1 选择了工程路线——不同情况用不同工具，总有一款适合你。</p>
+</blockquote>
+<hr />
+<h2 id="8-eplace">8. ePlace 系列演进全景对比</h2>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>ePlace</th>
+<th>RePlAce</th>
+<th>DREAMPlace</th>
+<th>DREAMPlace 3.0</th>
+<th><strong>DREAMPlace 4.1</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>年份</strong></td>
+<td>2015</td>
+<td>2019</td>
+<td>2019</td>
+<td>2020</td>
+<td><strong>2023</strong></td>
+</tr>
+<tr>
+<td><strong>核心创新</strong></td>
+<td>静电模型</td>
+<td>局部平滑</td>
+<td>GPU 加速</td>
+<td>多电场 + 鲁棒</td>
+<td><strong>BB 二阶步长</strong></td>
+</tr>
+<tr>
+<td><strong>优化器</strong></td>
+<td>Nesterov</td>
+<td>Nesterov + 回溯</td>
+<td>Nesterov + Lipschitz</td>
+<td>Nesterov + 回滚</td>
+<td><strong>BB-Nesterov</strong></td>
+</tr>
+<tr>
+<td><strong>步长策略</strong></td>
+<td>估计 Lipschitz</td>
+<td>动态步长</td>
+<td>预测 Lipschitz</td>
+<td>同 DREAMPlace</td>
+<td><strong>BB 步长 + 非单调线搜索</strong></td>
+</tr>
+<tr>
+<td><strong>二阶信息</strong></td>
+<td>对角 Hessian 预条件</td>
+<td>无</td>
+<td>无</td>
+<td>无</td>
+<td><strong>BB 隐式 Hessian</strong></td>
+</tr>
+<tr>
+<td><strong>混合尺寸</strong></td>
+<td>✓ (ePlace-MS)</td>
+<td>✓</td>
+<td>✓（常发散）</td>
+<td>✗（仅标准单元 + 区域）</td>
+<td><strong>✓（稳健收敛）</strong></td>
+</tr>
+<tr>
+<td><strong>区域约束</strong></td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+<td>✗</td>
+</tr>
+<tr>
+<td><strong>宏合法化</strong></td>
+<td>通用</td>
+<td>通用</td>
+<td>通用</td>
+<td>Abacus</td>
+<td><strong>TCG + ILP + PT</strong></td>
+</tr>
+<tr>
+<td><strong>发散发解</strong></td>
+<td>手动调参</td>
+<td>手动调参</td>
+<td>可能发散</td>
+<td>回滚 + 熵注入</td>
+<td><strong>BB 预防 + 两阶段</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>演进脉络</strong>：ePlace 系列的优化器经历了四代演进：<br />
+1. <strong>ePlace</strong>：Nesterov + 估计 Lipschitz（基础但脆弱）<br />
+2. <strong>RePlAce</strong>：Nesterov + 动态步长 + 回溯线搜索（更稳定）<br />
+3. <strong>DREAMPlace 3.0</strong>：Nesterov + 回滚 + 熵注入（后处理式救急）<br />
+4. <strong>DREAMPlace 4.1</strong>：<strong>BB-Nesterov + 非单调线搜索</strong>（从根源预防发散）</p>
+<p>每一代都在解决前一代遗留下来的收敛性问题，从"被动修复"到"主动预防"，反映了布局优化理论的逐步成熟。</p>
+</blockquote>
+<hr />
+<h2 id="9">9. 参考文献</h2>
+<ol>
+<li>
+<p>Y. Chen, Z. Wen, Y. Liang, and Y. Lin, "Stronger Mixed-Size Placement Backbone Considering Second-Order Information," in <em>Proc. IEEE/ACM ICCAD</em>, 2023.</p>
+</li>
+<li>
+<p>J. Barzilai and J. M. Borwein, "Two-Point Step Size Gradient Methods," <em>IMA Journal of Numerical Analysis</em>, vol. 8, no. 1, pp. 141–148, 1988.</p>
+</li>
+<li>
+<p>M. Raydan, "The Barzilai and Borwein Gradient Method for the Large Scale Unconstrained Minimization Problem," <em>SIAM Journal on Optimization</em>, vol. 7, 1997.</p>
+</li>
+<li>
+<p>H. Zhang and W. W. Hager, "A Nonmonotone Line Search Technique and Its Application to Unconstrained Optimization," <em>SIAM Journal on Optimization</em>, vol. 14, no. 4, pp. 1043–1056, 2004.</p>
+</li>
+<li>
+<p>J. Lu, P. Chen, C.-C. Chang, L. Sha, D. J.-H. Huang, C.-C. Teng, and C.-K. Cheng, "ePlace: Electrostatics-Based Placement Using Fast Fourier Transform and Nesterov's Method," <em>ACM TODAES</em>, vol. 20, no. 2, p. 17, 2015.</p>
+</li>
+<li>
+<p>Y. Lin, S. Dhar, W. Li, H. Ren, B. Khailany, and D. Z. Pan, "DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement," in <em>Proc. DAC</em>, 2019.</p>
+</li>
+<li>
+<p>J. Gu, Z. Jiang, Y. Lin, and D. Z. Pan, "DREAMPlace 3.0: Multi-Electrostatics Based Robust VLSI Placement with Region Constraints," in <em>Proc. ICCAD</em>, 2020.</p>
+</li>
+<li>
+<p>H. Murata, K. Fujiyoshi, S. Nakatake, and Y. Kajitani, "VLSI Module Placement Based on Rectangle-Packing by the Sequence-Pair," <em>IEEE TCAD</em>, vol. 15, no. 12, pp. 1518–1524, 1996.</p>
+</li>
+<li>
+<p>A. Agnesina, P. Rajvanshi, T. Yang, et al., "AutoDMP: Automated DREAMPlace-based Macro Placement," in <em>Proc. ISPD</em>, 2023.</p>
+</li>
+</ol>
+<hr />
+<p><em>本文档由 Claude Code 于 2026-06-08 生成，作为 EDA 论文每日分析系列的第 7 天内容。Day 7 从优化理论的角度审视布局问题——Barzilai-Borwein 方法证明了"在正确的地方引入二阶信息"比"盲目增加计算量"更有效。这是 ePlace 系列中第一个从优化算法底层改变步长策略的工作，标志着布局优化从"调参工程"走向"理论驱动"的新阶段。</em></p>
+</body>
+</html>
