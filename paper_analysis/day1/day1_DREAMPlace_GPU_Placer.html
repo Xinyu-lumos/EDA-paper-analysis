@@ -154,81 +154,81 @@ graph LR
 <h2 id="3">3. 数学建模</h2>
 <h3 id="31">3.1 总体优化问题</h3>
 <p>解析布局被建模为如下<strong>无约束最小化问题</strong>：</p>
-<p>[<br />
+<p>$$<br />
 \min_{\mathbf{x}, \mathbf{y}} \quad f(\mathbf{x}, \mathbf{y}) = W(\mathbf{x}, \mathbf{y}) + \lambda \cdot D(\mathbf{x}, \mathbf{y})<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( (\mathbf{x}, \mathbf{y}) \in \mathbb{R}^{2n} ) 为 ( n ) 个可移动单元的坐标向量<br />
-- ( W(\mathbf{x}, \mathbf{y}) ) 为<strong>线长目标函数</strong><br />
-- ( D(\mathbf{x}, \mathbf{y}) ) 为<strong>密度惩罚函数</strong><br />
-- ( \lambda \in \mathbb{R}^+ ) 为<strong>拉格朗日乘子</strong>，平衡线长与密度</p>
+- $(\mathbf{x}, \mathbf{y}) \in \mathbb{R}^{2n}$ 为 $n$ 个可移动单元的坐标向量<br />
+- $W(\mathbf{x}, \mathbf{y})$ 为<strong>线长目标函数</strong><br />
+- $D(\mathbf{x}, \mathbf{y})$ 为<strong>密度惩罚函数</strong><br />
+- $\lambda \in \mathbb{R}^+$ 为<strong>拉格朗日乘子</strong>，平衡线长与密度</p>
 <blockquote>
-<p><strong>公式解读</strong>：这个目标函数本质上是将<strong>有约束的布局问题</strong>（单元不能重叠）转化为<strong>无约束优化问题</strong>。密度惩罚项 ( D ) 起到了"软约束"的作用——当单元重叠严重时 ( D ) 增大，推动优化器将单元分散；当单元分布均匀时 ( D ) 趋近于 0，优化器主要专注于减小线长。( \lambda ) 类似于"弹簧刚度"：太小则单元重叠严重（不可布线），太大则线长优化被牺牲（性能差）。因此 ( \lambda ) 的自适应调节是整个算法的关键控制机制。</p>
+<p><strong>公式解读</strong>：这个目标函数本质上是将<strong>有约束的布局问题</strong>（单元不能重叠）转化为<strong>无约束优化问题</strong>。密度惩罚项 $D$ 起到了"软约束"的作用——当单元重叠严重时 $D$ 增大，推动优化器将单元分散；当单元分布均匀时 $D$ 趋近于 0，优化器主要专注于减小线长。$\lambda$ 类似于"弹簧刚度"：太小则单元重叠严重（不可布线），太大则线长优化被牺牲（性能差）。因此 $\lambda$ 的自适应调节是整个算法的关键控制机制。</p>
 </blockquote>
 <h3 id="32-weighted-average-wa">3.2 线长模型：加权平均（Weighted-Average, WA）线长</h3>
-<p>对每一根网线（net）( e )，其半周长线长（HPWL）的平滑近似为：</p>
-<p>[<br />
+<p>对每一根网线（net）$e$，其半周长线长（HPWL）的平滑近似为：</p>
+<p>$$<br />
 \tilde{W}<em>e(\mathbf{x}, \mathbf{y}) = \left( \frac{\sum</em>{i \in e} x_i \cdot \exp(x_i/\gamma)}{\sum_{i \in e} \exp(x_i/\gamma)} - \frac{\sum_{i \in e} x_i \cdot \exp(-x_i/\gamma)}{\sum_{i \in e} \exp(-x_i/\gamma)} \right) + \text{y方向对应项}<br />
-]</p>
-<p>其中 ( \gamma ) 为<strong>平滑参数</strong>，控制近似精度：</p>
+$$</p>
+<p>其中 $\gamma$ 为<strong>平滑参数</strong>，控制近似精度：</p>
 <ul>
-<li>( \gamma \to 0 )：WA线长趋近于精确HPWL</li>
-<li>( \gamma \to \infty )：WA线长趋于二次函数，更平滑但近似精度降低</li>
+<li>$\gamma \to 0$：WA线长趋近于精确HPWL</li>
+<li>$\gamma \to \infty$：WA线长趋于二次函数，更平滑但近似精度降低</li>
 </ul>
 <p><strong>梯度计算</strong>（x方向，y方向对称）：</p>
 <p>定义每个网络的加权平均值：</p>
-<p>[<br />
+<p>$$<br />
 \tilde{x}<em>+ = \frac{\sum_i x_i e^{x_i/\gamma}}{\sum_i e^{x_i/\gamma}}, \quad<br />
 \tilde{x}</em>- = \frac{\sum_i x_i e^{-x_i/\gamma}}{\sum_i e^{-x_i/\gamma}}<br />
-]</p>
-<p>则对于网络 ( e ) 中的引脚 ( i )：</p>
-<p>[<br />
+$$</p>
+<p>则对于网络 $e$ 中的引脚 $i$：</p>
+<p>$$<br />
 \frac{\partial \tilde{W}<em>e}{\partial x_i} = \underbrace{\frac{e^{x_i/\gamma}}{\sum_j e^{x_j/\gamma}} \left(1 + \frac{x_i - \tilde{x}</em>+}{\gamma} \right)}<em>{\text{max 分支}} - \underbrace{\frac{e^{-x_i/\gamma}}{\sum_j e^{-x_j/\gamma}} \left(1 + \frac{x_i - \tilde{x}</em>-}{\gamma} \right)}_{\text{min 分支}}<br />
-]</p>
+$$</p>
 <blockquote>
 <p><strong>公式解读</strong>：</p>
-<p><strong>为什么用指数加权？</strong> WA 线长模型通过 softmax 形式的权重 ( \frac{e^{x_i/\gamma}}{\sum_j e^{x_j/\gamma}} )，使得坐标最大的引脚获得接近 1 的权重，其余引脚权重趋近于 0。这样 ( \tilde{x}<em>+ ) 近似了网络中所有引脚的<strong>最大 x 坐标</strong>，( \tilde{x}</em>- ) 近似了<strong>最小 x 坐标</strong>，它们的差 ( \tilde{x}<em>+ - \tilde{x}</em>- ) 就近似了 x 方向的<strong>半周长线长（HPWL）</strong>。</p>
-<p><strong>γ 的作用</strong>：( \gamma ) 控制 softmax 的"锐度"。当 ( \gamma ) 很大时，所有引脚权重接近 ( 1/|e| )，WA 退化为简单的算术平均，线长近似非常平滑但误差大；当 ( \gamma ) 很小时，权重高度集中到极值引脚，近似精度高但梯度变得陡峭不连续。这就是为什么 DREAMPlace 需要外层循环逐步减小 ( \gamma )——<strong>从平滑的全局视图粗调，逐步过渡到精确的局部细调</strong>。</p>
-<p><strong>梯度含义</strong>：max 分支的梯度将单元向<strong>减小最大 x 坐标</strong>的方向推（正值 → 向左移），min 分支将单元向<strong>增大最小 x 坐标</strong>的方向推（负号 → 向右移），合力使得网络的 bounding box 缩小，也就是减小线长。每个单元的受力大小由 softmax 权重 ( \frac{e^{x_i/\gamma}}{\sum_j e^{x_j/\gamma}} ) 决定——越接近极值的单元受力越大，因为它对线长的贡献最大。</p>
+<p><strong>为什么用指数加权？</strong> WA 线长模型通过 softmax 形式的权重 $\frac{e^{x_i/\gamma}}{\sum_j e^{x_j/\gamma}}$，使得坐标最大的引脚获得接近 1 的权重，其余引脚权重趋近于 0。这样 $\tilde{x}<em>+$ 近似了网络中所有引脚的<strong>最大 x 坐标</strong>，$\tilde{x}</em>-$ 近似了<strong>最小 x 坐标</strong>，它们的差 $\tilde{x}<em>+ - \tilde{x}</em>-$ 就近似了 x 方向的<strong>半周长线长（HPWL）</strong>。</p>
+<p><strong>γ 的作用</strong>：$\gamma$ 控制 softmax 的"锐度"。当 $\gamma$ 很大时，所有引脚权重接近 $1/|e|$，WA 退化为简单的算术平均，线长近似非常平滑但误差大；当 $\gamma$ 很小时，权重高度集中到极值引脚，近似精度高但梯度变得陡峭不连续。这就是为什么 DREAMPlace 需要外层循环逐步减小 $\gamma$——<strong>从平滑的全局视图粗调，逐步过渡到精确的局部细调</strong>。</p>
+<p><strong>梯度含义</strong>：max 分支的梯度将单元向<strong>减小最大 x 坐标</strong>的方向推（正值 → 向左移），min 分支将单元向<strong>增大最小 x 坐标</strong>的方向推（负号 → 向右移），合力使得网络的 bounding box 缩小，也就是减小线长。每个单元的受力大小由 softmax 权重 $\frac{e^{x_i/\gamma}}{\sum_j e^{x_j/\gamma}}$ 决定——越接近极值的单元受力越大，因为它对线长的贡献最大。</p>
 </blockquote>
 <h3 id="33">3.3 密度模型：静电场类比</h3>
 <h4 id="331">3.3.1 基本思想</h4>
-<p>将布局区域划分为 ( m \times m ) 的均匀网格（bin），每个网格的单元面积密度作为电荷密度。通过求解电场分布，高密度区域的单元会受到"电场力"推离。</p>
+<p>将布局区域划分为 $m \times m$ 的均匀网格（bin），每个网格的单元面积密度作为电荷密度。通过求解电场分布，高密度区域的单元会受到"电场力"推离。</p>
 <h4 id="332">3.3.2 数学推导</h4>
 <p><strong>步骤1 —— 电荷密度计算</strong>：</p>
-<p>对于网格bin ( b )，电荷密度定义为：</p>
-<p>[<br />
+<p>对于网格bin $b$，电荷密度定义为：</p>
+<p>$$<br />
 \rho_b = \frac{\sum_{i} A_i \cdot \text{overlap}(i, b)}{A_b}<br />
-]</p>
-<p>其中 ( A_i ) 为单元 ( i ) 的面积，( \text{overlap}(i, b) ) 为单元与bin的重叠面积，( A_b ) 为bin的面积。</p>
+$$</p>
+<p>其中 $A_i$ 为单元 $i$ 的面积，$\text{overlap}(i, b)$ 为单元与bin的重叠面积，$A_b$ 为bin的面积。</p>
 <p><strong>步骤2 —— Poisson方程</strong>：</p>
-<p>电势 ( \Phi ) 满足Poisson方程：</p>
-<p>[<br />
+<p>电势 $\Phi$ 满足Poisson方程：</p>
+<p>$$<br />
 \nabla^2 \Phi(x, y) = -\rho(x, y)<br />
-]</p>
+$$</p>
 <p>在离散网格上，使用<strong>离散余弦变换（DCT）</strong> 求解：</p>
-<p>[<br />
+<p>$$<br />
 \Phi = \text{IDCT}\left( \frac{\text{DCT}(\rho)}{\omega_u^2 + \omega_v^2} \right)<br />
-]</p>
-<p>其中 ( \omega_u = 2 - 2\cos(\pi u/m) )，( \omega_v = 2 - 2\cos(\pi v/m) ) 是二阶差分算子的特征值，对应DCT的频率分量。</p>
+$$</p>
+<p>其中 $\omega_u = 2 - 2\cos(\pi u/m)$，$\omega_v = 2 - 2\cos(\pi v/m)$ 是二阶差分算子的特征值，对应DCT的频率分量。</p>
 <p><strong>步骤3 —— 密度惩罚和梯度</strong>：</p>
 <p>密度惩罚（系统电势能）：</p>
-<p>[<br />
+<p>$$<br />
 D = \sum_{b} \Phi_b \cdot \rho_b<br />
-]</p>
+$$</p>
 <p>密度梯度（电场力）：</p>
-<p>[<br />
+<p>$$<br />
 \frac{\partial D}{\partial x_i} = A_i \cdot \sum_{b} \frac{\partial \Phi_b}{\partial x_i} \cdot \rho_b + \Phi_b \cdot \frac{\partial \rho_b}{\partial x_i}<br />
-]</p>
+$$</p>
 <blockquote>
-<p>实际上，( \frac{\partial D}{\partial x_i} ) 等价于单元 ( i ) 所在位置的<strong>电场矢量</strong> ( \mathbf{E}_i = -\nabla\Phi_i )，方向指向低密度区域，大小与局部密度梯度成正比。</p>
+<p>实际上，$\frac{\partial D}{\partial x_i}$ 等价于单元 $i$ 所在位置的<strong>电场矢量</strong> $\mathbf{E}_i = -\nabla\Phi_i$，方向指向低密度区域，大小与局部密度梯度成正比。</p>
 <p><strong>静电场类比的物理直觉</strong>：</p>
 <p>这个模型的精妙之处在于将<strong>组合约束</strong>（单元不能重叠）转化为了<strong>连续可微的物理力</strong>。想象将芯片版图上的每个单元看作一块带正电的金属片：<br />
 - 单元面积越大 → 电荷越多 → 对周围单元的排斥力越强<br />
 - 单元密集堆积 → 局部电荷密度高 → 电势梯度陡 → 排斥力大<br />
-- 排斥力恰好等于<strong>电场 ( \mathbf{E} = -\nabla\Phi )</strong>，方向从高密度指向低密度</p>
-<p><strong>为什么用 Poisson 方程？</strong> Poisson 方程 ( \nabla^2\Phi = -\rho ) 是静电学的基本方程，它将局部电荷密度 ( \rho ) 与全局电势分布 ( \Phi ) 联系起来。求解这个 PDE 等同于同时计算所有单元之间的排斥力——这比逐对计算单元重叠（( O(n^2) ) 复杂度）高效得多。</p>
-<p><strong>为什么用 DCT/FFT 求解？</strong> Poisson 方程在自由边界条件下，用 DCT（II 型）可以解析对角化——拉普拉斯算子 ( \nabla^2 ) 在 DCT 域变成简单的乘法：( \hat{\Phi}(u,v) = \hat{\rho}(u,v) / (\omega_u^2 + \omega_v^2) )。这等价于在频域对电荷密度做了一次<strong>低通滤波</strong>（( 1/(\omega_u^2+\omega_v^2) ) 随着频率增大而衰减），物理上对应"远处的单元感受到的是近邻单元的平滑化密度"，而非精确的逐 bin 密度。这种全局平滑性质天然适合全局布局的粗粒度阶段。</p>
+- 排斥力恰好等于<strong>电场 $\mathbf{E} = -\nabla\Phi$</strong>，方向从高密度指向低密度</p>
+<p><strong>为什么用 Poisson 方程？</strong> Poisson 方程 $\nabla^2\Phi = -\rho$ 是静电学的基本方程，它将局部电荷密度 $\rho$ 与全局电势分布 $\Phi$ 联系起来。求解这个 PDE 等同于同时计算所有单元之间的排斥力——这比逐对计算单元重叠（$O(n^2)$ 复杂度）高效得多。</p>
+<p><strong>为什么用 DCT/FFT 求解？</strong> Poisson 方程在自由边界条件下，用 DCT（II 型）可以解析对角化——拉普拉斯算子 $\nabla^2$ 在 DCT 域变成简单的乘法：$\hat{\Phi}(u,v) = \hat{\rho}(u,v) / (\omega_u^2 + \omega_v^2)$。这等价于在频域对电荷密度做了一次<strong>低通滤波</strong>（$1/(\omega_u^2+\omega_v^2)$ 随着频率增大而衰减），物理上对应"远处的单元感受到的是近邻单元的平滑化密度"，而非精确的逐 bin 密度。这种全局平滑性质天然适合全局布局的粗粒度阶段。</p>
 <p><strong>关键公式串联理解</strong>：<br />
 [<br />
 \rho \xrightarrow{\text{DCT}} \hat{\rho} \xrightarrow{\div (\omega_u^2+\omega_v^2)} \hat{\Phi} \xrightarrow{\text{IDCT}} \Phi \xrightarrow{-\nabla} \mathbf{E} \xrightarrow{\text{作用于单元}} \text{排斥力}<br />
@@ -237,72 +237,72 @@ D = \sum_{b} \Phi_b \cdot \rho_b<br />
 </blockquote>
 <h3 id="34">3.4 拉格朗日乘子 λ 的更新</h3>
 <p>λ 采用<strong>归一化次梯度方法</strong>（Normalized Subgradient）自适应更新：</p>
-<p>[<br />
+<p>$$<br />
 \lambda_{k+1} = \lambda_k \cdot \mu<br />
-]</p>
+$$</p>
 <p>其中：</p>
-<p>[<br />
+<p>$$<br />
 \mu = \begin{cases}<br />
 \mu_{\max} = 1.05, &amp; \text{如果 } \max_b(\text{overflow}<em>b) &gt; \text{target} \<br />
 \mu</em>{\min} = 0.95, &amp; \text{否则}<br />
 \end{cases}<br />
-]</p>
+$$</p>
 <p>overflow的定义为：</p>
-<p>[<br />
+<p>$$<br />
 \text{overflow}_b = \max\left(0, \frac{\sum_i A_i \cdot \text{overlap}(i,b)}{A_b} - \text{target_density}\right)<br />
-]</p>
+$$</p>
 <blockquote>
 <p><strong>公式解读</strong>：</p>
-<p>( \lambda ) 的更新采用<strong>简单的乘性规则</strong>，但背后有深刻的自适应控制逻辑：<br />
-- 当任一 bin 的 overflow 超过目标时，说明密度约束被违反，( \lambda ) 乘以 1.05（增大），给密度惩罚更高的权重，加大排斥力<br />
-- 当所有 bin 都满足密度约束时，( \lambda ) 乘以 0.95（减小），让优化器更多地专注于线长优化<br />
-- 这种交替增大/减小的机制让 ( \lambda ) 在"刚好满足约束"的临界值附近震荡，恰好找到了线长与密度的最优权衡点</p>
-<p><strong>为什么用乘性更新而不是加性？</strong> 因为 ( \lambda ) 的数量级会跨越多倍（比如从 ( 10^{-4} ) 到 ( 10^{-1} )），加性步长难以选择合适的固定值。乘性更新天然具有对数尺度适应能力——每一步改变 5% 的幅度在 ( \lambda ) 很小时是小步，在 ( \lambda ) 很大时仍保持相同比例的有效调整。</p>
+<p>$\lambda$ 的更新采用<strong>简单的乘性规则</strong>，但背后有深刻的自适应控制逻辑：<br />
+- 当任一 bin 的 overflow 超过目标时，说明密度约束被违反，$\lambda$ 乘以 1.05（增大），给密度惩罚更高的权重，加大排斥力<br />
+- 当所有 bin 都满足密度约束时，$\lambda$ 乘以 0.95（减小），让优化器更多地专注于线长优化<br />
+- 这种交替增大/减小的机制让 $\lambda$ 在"刚好满足约束"的临界值附近震荡，恰好找到了线长与密度的最优权衡点</p>
+<p><strong>为什么用乘性更新而不是加性？</strong> 因为 $\lambda$ 的数量级会跨越多倍（比如从 $10^{-4}$ 到 $10^{-1}$），加性步长难以选择合适的固定值。乘性更新天然具有对数尺度适应能力——每一步改变 5% 的幅度在 $\lambda$ 很小时是小步，在 $\lambda$ 很大时仍保持相同比例的有效调整。</p>
 </blockquote>
 <hr />
 <h2 id="4">4. 优化算法</h2>
 <h3 id="41-nesterovnag">4.1 Nesterov加速梯度（NAG）方法</h3>
 <p>DREAMPlace使用<strong>Nesterov加速梯度</strong>作为默认优化器。其更新规则为：</p>
-<p>[<br />
+<p>$$<br />
 \begin{aligned}<br />
 \mathbf{v}<em>{k+1} &amp;= \mathbf{x}_k - \alpha_k \cdot \nabla f(\mathbf{x}_k) \<br />
 \mathbf{x}</em>{k+1} &amp;= \mathbf{v}<em>{k+1} + \beta_k \cdot (\mathbf{v}</em>{k+1} - \mathbf{v}_k)<br />
 \end{aligned}<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( \mathbf{v}_k ) 为Nesterov动量变量（look-ahead位置）<br />
-- ( \alpha_k ) 为<strong>自适应步长</strong>（通过Barzilai-Borwein方法确定）<br />
-- ( \beta_k = \frac{k}{k+3} ) 为动量系数</p>
+- $\mathbf{v}_k$ 为Nesterov动量变量（look-ahead位置）<br />
+- $\alpha_k$ 为<strong>自适应步长</strong>（通过Barzilai-Borwein方法确定）<br />
+- $\beta_k = \frac{k}{k+3}$ 为动量系数</p>
 <p><strong>步长的Barzilai-Borwein（BB）估计</strong>：</p>
-<p>[<br />
+<p>$$<br />
 \alpha_k = \frac{|\mathbf{s}<em>{k-1}|_2^2}{\mathbf{s}</em>{k-1}^T \mathbf{y}_{k-1}}<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( \mathbf{s}<em>{k-1} = \mathbf{x}_k - \mathbf{x}</em>{k-1} ) （位置变化）<br />
-- ( \mathbf{y}<em>{k-1} = \nabla f(\mathbf{x}_k) - \nabla f(\mathbf{x}</em>{k-1}) ) （梯度变化）</p>
-<p>当BB步长无法计算时（如 ( \mathbf{s}^T\mathbf{y} \leq 0 )），回退到<strong>Lipschitz步长</strong>：</p>
-<p>[<br />
+- $\mathbf{s}<em>{k-1} = \mathbf{x}_k - \mathbf{x}</em>{k-1}$ （位置变化）<br />
+- $\mathbf{y}<em>{k-1} = \nabla f(\mathbf{x}_k) - \nabla f(\mathbf{x}</em>{k-1})$ （梯度变化）</p>
+<p>当BB步长无法计算时（如 $\mathbf{s}^T\mathbf{y} \leq 0$），回退到<strong>Lipschitz步长</strong>：</p>
+<p>$$<br />
 \alpha_k = \frac{|\mathbf{s}<em>{k-1}|_2}{|\mathbf{y}</em>{k-1}|_2}<br />
-]</p>
+$$</p>
 <blockquote>
 <p><strong>算法解读 —— Nesterov vs 标准梯度下降</strong>：</p>
-<p>标准梯度下降 ( \mathbf{x}_{k+1} = \mathbf{x}_k - \alpha \nabla f(\mathbf{x}_k) ) 有两个固有问题：<br />
+<p>标准梯度下降 $\mathbf{x}_{k+1} = \mathbf{x}_k - \alpha \nabla f(\mathbf{x}_k)$ 有两个固有问题：<br />
 1. <strong>收敛慢</strong>：在目标函数的"峡谷"地形中（Hessian 条件数大），梯度方向与最优方向偏差大，产生 zig-zag 震荡<br />
 2. <strong>步长难选</strong>：固定步长要么太小（收敛慢）要么太大（震荡/发散）</p>
 <p>Nesterov 加速梯度（NAG）通过两个机制解决这些问题：</p>
-<p><strong>机制一 —— 动量（Momentum）</strong>：公式中的 ( \beta_k \cdot (\mathbf{v}_{k+1} - \mathbf{v}_k) ) 是动量项，它将之前迭代的方向累积起来。物理类比：一个球在山坡上滚下，它不会因为局部地形的小起伏而改变大方向。在布局问题中，这意味着即使单个网络的梯度方向嘈杂多变，动量仍能维持稳定的"扩散方向"将单元推离密集区域。</p>
-<p><strong>机制二 —— Look-ahead</strong>：Nesterov 的关键创新在于<strong>先在动量方向上前进一步，在那个位置计算梯度</strong>，而不是在当前点计算。这就像开车时先看前方路况再做调整，而非到了弯道才急转。数学上，这对应了 ( \mathbf{v}_{k+1} = \mathbf{x}_k - \alpha_k \nabla f(\mathbf{x}_k) ) 中梯度仍在 ( \mathbf{x}_k ) 处计算（而非外推后的位置），然后通过动量项修正方向。</p>
-<p><strong>为什么用 Barzilai-Borwein（BB）步长？</strong> BB 步长 ( \frac{|\mathbf{s}|^2}{\mathbf{s}^T\mathbf{y}} ) 本质上是对 Hessian 逆矩阵对角线元素的<strong>无矩阵估计</strong>——不需要显式计算 ( \nabla^2 f )（这在百万维度的布局问题中根本不可行），只需要最新两次迭代的函数值和梯度变化 ( (\mathbf{s}, \mathbf{y}) )。直观理解：( \mathbf{s}^T\mathbf{y} ) 测量了梯度沿搜索方向的变化率（大 = Hessian 的特征值大 = 曲率大 = 需要小步长），( |\mathbf{s}|^2 ) 归一化了尺度。BB 方法在实践中表现出接近最优步长的性能，且计算开销几乎为零。</p>
+<p><strong>机制一 —— 动量（Momentum）</strong>：公式中的 $\beta_k \cdot (\mathbf{v}_{k+1} - \mathbf{v}_k)$ 是动量项，它将之前迭代的方向累积起来。物理类比：一个球在山坡上滚下，它不会因为局部地形的小起伏而改变大方向。在布局问题中，这意味着即使单个网络的梯度方向嘈杂多变，动量仍能维持稳定的"扩散方向"将单元推离密集区域。</p>
+<p><strong>机制二 —— Look-ahead</strong>：Nesterov 的关键创新在于<strong>先在动量方向上前进一步，在那个位置计算梯度</strong>，而不是在当前点计算。这就像开车时先看前方路况再做调整，而非到了弯道才急转。数学上，这对应了 $\mathbf{v}_{k+1} = \mathbf{x}_k - \alpha_k \nabla f(\mathbf{x}_k)$ 中梯度仍在 $\mathbf{x}_k$ 处计算（而非外推后的位置），然后通过动量项修正方向。</p>
+<p><strong>为什么用 Barzilai-Borwein（BB）步长？</strong> BB 步长 $\frac{|\mathbf{s}|^2}{\mathbf{s}^T\mathbf{y}}$ 本质上是对 Hessian 逆矩阵对角线元素的<strong>无矩阵估计</strong>——不需要显式计算 $\nabla^2 f$（这在百万维度的布局问题中根本不可行），只需要最新两次迭代的函数值和梯度变化 $(\mathbf{s}, \mathbf{y})$。直观理解：$\mathbf{s}^T\mathbf{y}$ 测量了梯度沿搜索方向的变化率（大 = Hessian 的特征值大 = 曲率大 = 需要小步长），$|\mathbf{s}|^2$ 归一化了尺度。BB 方法在实践中表现出接近最优步长的性能，且计算开销几乎为零。</p>
 </blockquote>
 <h3 id="42-gradient-preconditioning">4.2 梯度预条件（Gradient Preconditioning）</h3>
 <p>为提高收敛效率，DREAMPlace对梯度进行预条件处理：</p>
-<p>[<br />
+<p>$$<br />
 \tilde{\nabla}_i f = \frac{\nabla_i f}{\max\left(1.0, w_i^{\text{pin}} + \alpha_k \cdot \lambda \cdot A_i\right)}<br />
-]</p>
-<p>其中 ( w_i^{\text{pin}} ) 为单元 ( i ) 的引脚权重（连接到该单元的网线数量）。</p>
+$$</p>
+<p>其中 $w_i^{\text{pin}}$ 为单元 $i$ 的引脚权重（连接到该单元的网线数量）。</p>
 <p>这一预条件处理等价于<strong>对角Hessian近似</strong>，有效地归一化了不同单元的梯度尺度。</p>
 <blockquote>
-<p><strong>为什么要预条件？</strong> 考虑一个典型场景：大宏单元（面积( A_i )很大，( w_i^{\text{pin}} )也大）和小标准单元（面积小，连接少）共存。大单元的总梯度量级可能是小单元的 100 倍以上（因为线长梯度与引脚数成正比，密度梯度与面积成正比），导致小单元"动不了"——它们在优化中几乎被冻结。预条件处理通过除以 ( w_i^{\text{pin}} + \alpha \lambda A_i ) 将梯度<strong>归一化</strong>，使得大单元和小单元在每次迭代中移动的幅度相当。分母中的 <code>max(1.0, ...)</code> 确保即使极小的单元也不会因为除以接近0的值而产生过大的步长。</p>
+<p><strong>为什么要预条件？</strong> 考虑一个典型场景：大宏单元（面积$A_i$很大，$w_i^{\text{pin}}$也大）和小标准单元（面积小，连接少）共存。大单元的总梯度量级可能是小单元的 100 倍以上（因为线长梯度与引脚数成正比，密度梯度与面积成正比），导致小单元"动不了"——它们在优化中几乎被冻结。预条件处理通过除以 $w_i^{\text{pin}} + \alpha \lambda A_i$ 将梯度<strong>归一化</strong>，使得大单元和小单元在每次迭代中移动的幅度相当。分母中的 <code>max(1.0, ...)</code> 确保即使极小的单元也不会因为除以接近0的值而产生过大的步长。</p>
 </blockquote>
 <h3 id="43">4.3 三层嵌套优化循环</h3>
 <p>DREAMPlace的优化采用<strong>三层嵌套循环</strong>结构：</p>
@@ -321,12 +321,12 @@ graph TD
 3. 达到最大迭代次数</p>
 <h3 id="44-entropy-injection">4.4 熵注入（Entropy Injection）</h3>
 <p>当优化陷入高overflow平台（plateau），DREAMPlace引入<strong>高斯噪声扰动</strong>帮助逃离鞍点：</p>
-<p>[<br />
+<p>$$<br />
 x_i \leftarrow x_i + \mathcal{N}(0, \sigma^2)<br />
-]</p>
-<p>其中噪声标准差 ( \sigma ) 随优化进程递减。</p>
+$$</p>
+<p>其中噪声标准差 $\sigma$ 随优化进程递减。</p>
 <blockquote>
-<p><strong>为什么需要熵注入？</strong> 布局目标函数 ( f = W + \lambda D ) 是高度非凸的，存在大量鞍点和局部极小值。当优化陷入高 overflow 平台——即单元互相挤在一起、密度惩罚很大、但梯度指示的所有方向都因为对称性互相抵消——梯度下降就会停滞。熵注入通过在坐标上施加随机扰动打破对称性，类似于<strong>模拟退火</strong>中的热涨落。噪声方差随 ( \gamma ) 递减而减小，对应着从"高温探索"到"低温精化"的退火过程。</p>
+<p><strong>为什么需要熵注入？</strong> 布局目标函数 $f = W + \lambda D$ 是高度非凸的，存在大量鞍点和局部极小值。当优化陷入高 overflow 平台——即单元互相挤在一起、密度惩罚很大、但梯度指示的所有方向都因为对称性互相抵消——梯度下降就会停滞。熵注入通过在坐标上施加随机扰动打破对称性，类似于<strong>模拟退火</strong>中的热涨落。噪声方差随 $\gamma$ 递减而减小，对应着从"高温探索"到"低温精化"的退火过程。</p>
 </blockquote>
 <hr />
 <h2 id="5-gpu">5. GPU加速实现</h2>
@@ -342,7 +342,7 @@ __global__ void wirelength_forward_backward_kernel(
     float* wirelength       // 输出线长
 );
 </code></pre>
-<p><strong>核心优化</strong>：每个线程块处理一个网络，将 ( \tilde{x}<em>+, \tilde{x}</em>-, a_+, a_- ) 等中间变量保存在寄存器中，避免了昂贵的全局内存写入。</p>
+<p><strong>核心优化</strong>：每个线程块处理一个网络，将 $\tilde{x}<em>+, \tilde{x}</em>-, a_+, a_-$ 等中间变量保存在寄存器中，避免了昂贵的全局内存写入。</p>
 <h4 id="22d">（2）密度映射算子（2D直方图）</h4>
 <p>使用<strong>原子加法（Atomic Add）</strong> 实现并行化：每个单元映射到覆盖的bin，通过原子操作累加面积。论文实验了 1×1 到 4×4 线程/单元的策略，在GPU memory coalescing和线程利用率之间寻找平衡。</p>
 <h4 id="3fftdct">（3）FFT/DCT算子</h4>
@@ -648,14 +648,14 @@ graph TD
 <tbody>
 <tr>
 <td>优化变量</td>
-<td>单元坐标 ( (\mathbf{x},\mathbf{y}) )</td>
-<td>网络权重 ( \theta )</td>
+<td>单元坐标 $(\mathbf{x},\mathbf{y})$</td>
+<td>网络权重 $\theta$</td>
 <td>都是高维连续变量</td>
 </tr>
 <tr>
 <td>目标函数</td>
-<td>( W(\mathbf{x},\mathbf{y}) + \lambda D(\mathbf{x},\mathbf{y}) )</td>
-<td>( L(\theta) + R(\theta) )</td>
+<td>$W(\mathbf{x},\mathbf{y}) + \lambda D(\mathbf{x},\mathbf{y})$</td>
+<td>$L(\theta) + R(\theta)$</td>
 <td>都是"主目标+正则化"形式</td>
 </tr>
 <tr>
@@ -706,9 +706,9 @@ graph TD
 <p><strong>DCT到FFT的转换技巧</strong>：</p>
 </li>
 </ul>
-<p>[<br />
+<p>$$<br />
 \text{2D DCT-II: } X_{u,v} = \sum_{i=0}^{m-1}\sum_{j=0}^{m-1} x_{i,j} \cos\left[\frac{\pi u(2i+1)}{2m}\right] \cos\left[\frac{\pi v(2j+1)}{2m}\right]<br />
-]</p>
+$$</p>
 <p>DREAMPlace通过将 2D DCT 转化为 2D 实数 FFT（利用对称性和重排），将计算量减少约 50%。这利用了 cuFFT 库已经高度优化的 GPU 实现。</p>
 <p><strong>物理直观 vs 数值实现</strong>：</p>
 <table>
@@ -721,7 +721,7 @@ graph TD
 </thead>
 <tbody>
 <tr>
-<td>电荷密度 ( \rho )</td>
+<td>电荷密度 $\rho$</td>
 <td>密度图（2D数组）</td>
 <td>GPU纹理内存/全局内存</td>
 </tr>
@@ -731,12 +731,12 @@ graph TD
 <td>cufftExecR2C → 逐元素除法 → cufftExecC2R</td>
 </tr>
 <tr>
-<td>电势场 ( \Phi )</td>
+<td>电势场 $\Phi$</td>
 <td>电势图（2D数组）</td>
 <td>GPU全局内存</td>
 </tr>
 <tr>
-<td>电场 ( \mathbf{E} = -\nabla\Phi )</td>
+<td>电场 $\mathbf{E} = -\nabla\Phi$</td>
 <td>中心差分求梯度</td>
 <td>CUDA kernel（合并访存）</td>
 </tr>
@@ -783,7 +783,7 @@ graph LR
     传统 -.->|"优化: 消除3次<br/>全局内存读写"| 合并
 </div>
 
-<p>DREAMPlace 将所有这些合并为一个 kernel：每个线程块处理一个网络，所有中间变量 ( (x_+, x_-, a_+, a_-) ) 保持在<strong>寄存器</strong>中。这避免了多次全局内存的读写，对于内存带宽敏感的 GPU 计算来说，这种优化可能带来 2-3× 的性能提升。</p>
+<p>DREAMPlace 将所有这些合并为一个 kernel：每个线程块处理一个网络，所有中间变量 $(x_+, x_-, a_+, a_-)$ 保持在<strong>寄存器</strong>中。这避免了多次全局内存的读写，对于内存带宽敏感的 GPU 计算来说，这种优化可能带来 2-3× 的性能提升。</p>
 <h3 id="94">9.4 创新点四：三层嵌套优化的协同设计</h3>
 <p>DREAMPlace 的三层循环并非简单的参数扫描，而是精心设计的<strong>多尺度优化策略</strong>：</p>
 <table>

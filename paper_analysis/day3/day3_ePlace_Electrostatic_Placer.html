@@ -189,65 +189,65 @@ graph LR
 <hr />
 <h2 id="4">4. 数学建模</h2>
 <h3 id="41">4.1 优化问题形式</h3>
-<p>[<br />
+<p>$$<br />
 \min_{\mathbf{v}} \quad f(\mathbf{v}) = \widetilde{W}(\mathbf{v}) + \lambda \cdot N(\mathbf{v})<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( \mathbf{v} = (\mathbf{x}, \mathbf{y}) ) 为所有单元的坐标向量<br />
-- ( \widetilde{W}(\mathbf{v}) ) 为平滑线长函数（Weighted-Average 或 Log-Sum-Exp）<br />
-- ( N(\mathbf{v}) ) 为<strong>静电密度惩罚</strong>（eDensity）<br />
-- ( \lambda ) 为惩罚因子</p>
+- $\mathbf{v} = (\mathbf{x}, \mathbf{y})$ 为所有单元的坐标向量<br />
+- $\widetilde{W}(\mathbf{v})$ 为平滑线长函数（Weighted-Average 或 Log-Sum-Exp）<br />
+- $N(\mathbf{v})$ 为<strong>静电密度惩罚</strong>（eDensity）<br />
+- $\lambda$ 为惩罚因子</p>
 <blockquote>
 <p><strong>与 RePlAce/DREAMPlace 的关系</strong>：这个公式结构与 Day 1、Day 2 完全相同——RePlAce 和 DREAMPlace 直接继承了 ePlace 的目标函数形式。ePlace 是所有这些后续工作的<strong>数学源头</strong>。</p>
 </blockquote>
 <h3 id="42-edensity">4.2 eDensity：静电密度函数</h3>
 <h4 id="421">4.2.1 电势与电荷密度</h4>
 <p>ePlace 定义密度惩罚为系统的<strong>总电势能</strong>：</p>
-<p>[<br />
+<p>$$<br />
 N(\mathbf{v}) = \sum_{i \in V} q_i \cdot \psi_i(\mathbf{v})<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( q_i ) 为单元 ( i ) 的电荷量（正比于其面积 ( A_i )）<br />
-- ( \psi_i(\mathbf{v}) ) 为单元 ( i ) 所在位置的电势</p>
+- $q_i$ 为单元 $i$ 的电荷量（正比于其面积 $A_i$）<br />
+- $\psi_i(\mathbf{v})$ 为单元 $i$ 所在位置的电势</p>
 <blockquote>
-<p><strong>关键设计决策</strong>：( N = \sum q_i \psi_i ) 而非 ( \sum \psi_i ) 或 ( \sum q_i^2 )。乘以 ( q_i ) 意味着大面积单元对密度惩罚的贡献更大——它们不仅自身占据更多空间，还"感知"到更强的电势。这确保了优化器优先关注大单元的密度违反。</p>
+<p><strong>关键设计决策</strong>：$N = \sum q_i \psi_i$ 而非 $\sum \psi_i$ 或 $\sum q_i^2$。乘以 $q_i$ 意味着大面积单元对密度惩罚的贡献更大——它们不仅自身占据更多空间，还"感知"到更强的电势。这确保了优化器优先关注大单元的密度违反。</p>
 </blockquote>
 <h4 id="422-poisson">4.2.2 Poisson 方程与边界条件</h4>
-<p>电势 ( \psi ) 与电荷密度 ( \rho ) 通过 Poisson 方程关联：</p>
-<p>[<br />
+<p>电势 $\psi$ 与电荷密度 $\rho$ 通过 Poisson 方程关联：</p>
+<p>$$<br />
 \begin{cases}<br />
 \nabla^2 \psi(x, y) = -\rho(x, y), &amp; (x, y) \in R \[4pt]<br />
 \hat{\mathbf{n}} \cdot \nabla \psi(x, y) = \mathbf{0}, &amp; (x, y) \in \partial R \[4pt]<br />
 \iint_R \rho(x, y) \, dxdy = \iint_R \psi(x, y) \, dxdy = 0<br />
 \end{cases}<br />
-]</p>
+$$</p>
 <blockquote>
 <p><strong>三个方程的物理含义</strong>：</p>
-<p><strong>方程 1（Poisson 方程）</strong>：电荷密度 ( \rho ) 是电势 ( \psi ) 的"源"——正电荷产生正电势。这是静电学的基本定律。</p>
+<p><strong>方程 1（Poisson 方程）</strong>：电荷密度 $\rho$ 是电势 $\psi$ 的"源"——正电荷产生正电势。这是静电学的基本定律。</p>
 <p><strong>方程 2（Neumann 边界条件）</strong>：边界上电势的法向导数为零——即电场线不能穿透芯片边界。这意味着单元会被边界"反射"回来，不会跑到芯片外面。这等价于在边界处有一面"电势镜"。</p>
 <p><strong>方程 3（零频率移除）</strong>：总电荷为零、总电势为零。这个条件保证了静电平衡状态对应的是<strong>域内均匀分布</strong>，而非所有电荷堆积在边界。如果没有零频率移除，电势的最小值可能出现在边界——电荷会全被推到边界上。零频率移除确保了这个系统的唯一平衡解是全空间均匀分布。</p>
 </blockquote>
 <h4 id="423">4.2.3 密度梯度：电场力</h4>
 <p>密度惩罚对单元坐标的梯度具有极其优雅的物理形式：</p>
-<p>[<br />
+<p>$$<br />
 \frac{\partial N}{\partial x_i} = 2 q_i \cdot \xi_{i,x}, \quad \frac{\partial N}{\partial y_i} = 2 q_i \cdot \xi_{i,y}<br />
-]</p>
-<p>其中 ( \boldsymbol{\xi}_i = -\nabla \psi(x_i, y_i) ) 是单元 ( i ) 所在位置的<strong>电场强度</strong>。</p>
+$$</p>
+<p>其中 $\boldsymbol{\xi}_i = -\nabla \psi(x_i, y_i)$ 是单元 $i$ 所在位置的<strong>电场强度</strong>。</p>
 <blockquote>
-<p><strong>为什么是 ( 2q_i ) 而非 ( q_i )？</strong> 因子 2 来自电势能的互能（mutual energy）性质：当单元 ( i ) 移动时，它不仅改变自身位置的电势 ( \psi_i )，还通过改变密度分布间接改变所有单元的 ( \psi_j )。互能对称性 ( N_{i,j} = N_{j,i} )（即单元 ( i ) 对 ( j ) 的电势能等于 ( j ) 对 ( i ) 的电势能）保证了总电势能梯度恰好是 ( 2q_i \mathbf{E}_i )。</p>
+<p><strong>为什么是 ( 2q_i ) 而非 ( q_i )？</strong> 因子 2 来自电势能的互能（mutual energy）性质：当单元 $i$ 移动时，它不仅改变自身位置的电势 $\psi_i$，还通过改变密度分布间接改变所有单元的 $\psi_j$。互能对称性 $N_{i,j} = N_{j,i}$（即单元 $i$ 对 $j$ 的电势能等于 $j$ 对 $i$ 的电势能）保证了总电势能梯度恰好是 $2q_i \mathbf{E}_i$。</p>
 <p><strong>梯度直觉</strong>：每个单元沿电场反方向移动（负梯度方向 = 电场方向 = 从高电势到低电势 = 从高密度到低密度）。大电荷单元（大面积单元）受力更大，被推开得更快。</p>
 </blockquote>
 <h3 id="43-fft-poisson">4.3 FFT 谱方法求解 Poisson 方程</h3>
 <h4 id="431">4.3.1 离散化</h4>
-<p>将布局区域划分为 ( m \times m ) 的均匀网格：<br />
+<p>将布局区域划分为 $m \times m$ 的均匀网格：<br />
 - 每个单元的面积根据其与各 bin 的重叠面积分配到相邻 bin（面积分配/2D 直方图）<br />
-- 电荷密度 ( \rho_{b} ) 在每个 bin 上定义为单元面积密度与目标密度之差</p>
+- 电荷密度 $\rho_{b}$ 在每个 bin 上定义为单元面积密度与目标密度之差</p>
 <h4 id="432-dct">4.3.2 DCT 对角化</h4>
 <p>Poisson 方程在 Neumann 边界条件下用<strong>离散余弦变换（DCT-II 型）</strong>对角化。在 DCT 域：</p>
-<p>[<br />
+<p>$$<br />
 \hat{\psi}(u, v) = \frac{\hat{\rho}(u, v)}{\omega_u^2 + \omega_v^2}, \quad \omega_u = 2 - 2\cos\left(\frac{\pi u}{m}\right)<br />
-]</p>
-<p>其中 ( \omega_u^2 + \omega_v^2 ) 是离散拉普拉斯算子在 DCT 基下的特征值。</p>
+$$</p>
+<p>其中 $\omega_u^2 + \omega_v^2$ 是离散拉普拉斯算子在 DCT 基下的特征值。</p>
 <p>整个求解过程为：</p>
 <div class="mermaid">
 graph LR
@@ -257,18 +257,18 @@ graph LR
     D --> E["电势场 ψ"]
 </div>
 
-<p><strong>总复杂度</strong>：( O(m^2 \log m) )，其中 ( m^2 ) 是网格 bin 的总数。</p>
+<p><strong>总复杂度</strong>：$O(m^2 \log m)$，其中 $m^2$ 是网格 bin 的总数。</p>
 <blockquote>
 <p><strong>对后续工作的影响</strong>：这个 FFT 求解流程直接启发了 DREAMPlace 的 GPU 实现（见 Day 1）。cuFFT 库将 DCT/IDCT 高效映射到 GPU，使得密度求解成为整个 GPU 加速布局中最"GPU-friendly"的部分。</p>
 </blockquote>
 <h3 id="44">4.4 线长模型</h3>
 <p>ePlace 使用<strong>加权平均（Weighted-Average, WA）线长</strong>作为平滑 HPWL 近似。公式与 Day 1 中 DREAMPlace 的 WA 模型完全一致（因为 DREAMPlace 直接继承自 ePlace）。</p>
 <p><strong>关键公式回顾</strong>：</p>
-<p>对于网络 ( e )：</p>
-<p>[<br />
+<p>对于网络 $e$：</p>
+<p>$$<br />
 \tilde{W}_e = \left( \frac{\sum_i x_i e^{x_i/\gamma}}{\sum_i e^{x_i/\gamma}} - \frac{\sum_i x_i e^{-x_i/\gamma}}{\sum_i e^{-x_i/\gamma}} \right) + \text{y-分量}<br />
-]</p>
-<p>ePlace 中 ( \gamma ) 从初始值（如芯片尺寸的 1%）逐步递减到最终值（如芯片尺寸的 0.1%），使得 WA 线长从平滑近似逐渐逼近精确 HPWL。</p>
+$$</p>
+<p>ePlace 中 $\gamma$ 从初始值（如芯片尺寸的 1%）逐步递减到最终值（如芯片尺寸的 0.1%），使得 WA 线长从平滑近似逐渐逼近精确 HPWL。</p>
 <hr />
 <h2 id="5">5. 优化算法</h2>
 <h3 id="51-nesterov">5.1 Nesterov 加速梯度</h3>
@@ -281,47 +281,47 @@ graph LR
 <p>Nesterov 加速梯度（NAG）只用<strong>一次梯度计算</strong>和<strong>闭式步长</strong>完成每次迭代，无需线搜索。ePlace 实测 NAG <strong>比 CG + 线搜索快 2 倍以上</strong>。</p>
 <h4 id="512">5.1.2 更新规则</h4>
 <p>ePlace 的 Nesterov 更新：</p>
-<p>[<br />
+<p>$$<br />
 \begin{aligned}<br />
 \mathbf{v}<em>{k+1} &amp;= \mathbf{x}_k - \alpha_k \cdot \nabla f(\mathbf{x}_k) \<br />
 \mathbf{x}</em>{k+1} &amp;= \mathbf{v}<em>{k+1} + \beta_k \cdot (\mathbf{v}</em>{k+1} - \mathbf{v}_k)<br />
 \end{aligned}<br />
-]</p>
-<p>其中 ( \beta_k = \frac{k-1}{k+2} ) 为 Nesterov 动量系数（与 Day 1 DREAMPlace 中的 ( \beta_k = k/(k+3) ) 略有差异，但本质相同）。</p>
+$$</p>
+<p>其中 $\beta_k = \frac{k-1}{k+2}$ 为 Nesterov 动量系数（与 Day 1 DREAMPlace 中的 $\beta_k = k/(k+3)$ 略有差异，但本质相同）。</p>
 <h3 id="52-eplace-lipschitz">5.2 ePlace 最独特的创新：Lipschitz 常数闭式估计</h3>
 <h4 id="521-lipschitz">5.2.1 Lipschitz 常数与步长的关系</h4>
-<p>一个函数 ( f ) 的 Lipschitz 常数 ( L ) 定义为其梯度的<strong>最大变化率</strong>：</p>
-<p>[<br />
+<p>一个函数 $f$ 的 Lipschitz 常数 $L$ 定义为其梯度的<strong>最大变化率</strong>：</p>
+<p>$$<br />
 |\nabla f(\mathbf{x}) - \nabla f(\mathbf{y})| \leq L \cdot |\mathbf{x} - \mathbf{y}|, \quad \forall \mathbf{x}, \mathbf{y}<br />
-]</p>
-<p>Nesterov 方法的标准收敛性要求步长 ( \alpha \leq 1/L )。如果 ( \alpha ) 取得太大，算法可能发散；取 ( \alpha = 1/L ) 是理论最优的（给出了最快的收敛保证）。</p>
+$$</p>
+<p>Nesterov 方法的标准收敛性要求步长 $\alpha \leq 1/L$。如果 $\alpha$ 取得太大，算法可能发散；取 $\alpha = 1/L$ 是理论最优的（给出了最快的收敛保证）。</p>
 <h4 id="522-eplace">5.2.2 ePlace 的闭式估计公式</h4>
 <p>ePlace 的核心算法贡献是给出了布局目标函数的 Lipschitz 常数的<strong>解析上界估计</strong>：</p>
-<p>[<br />
+<p>$$<br />
 L_W = \sum_{e \in \text{nets}} \frac{2|e|}{\gamma} \cdot w_e<br />
-]</p>
-<p>[<br />
+$$</p>
+<p>$$<br />
 L_D = \lambda \cdot \sum_{i} \frac{2q_i^2}{\epsilon}<br />
-]</p>
-<p>[<br />
+$$</p>
+<p>$$<br />
 L = L_W + L_D<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( L_W ) 是线长项的 Lipschitz 估计：( |e| ) 是网络的引脚数，( \gamma ) 是 WA 平滑参数，( w_e ) 是网络权重<br />
-- ( L_D ) 是密度项的 Lipschitz 估计：( q_i ) 是单元电荷量，( \epsilon ) 是与网格分辨率相关的小常数<br />
-- ( L = L_W + L_D ) 是总目标函数的 Lipschitz 上界</p>
+- $L_W$ 是线长项的 Lipschitz 估计：$|e|$ 是网络的引脚数，$\gamma$ 是 WA 平滑参数，$w_e$ 是网络权重<br />
+- $L_D$ 是密度项的 Lipschitz 估计：$q_i$ 是单元电荷量，$\epsilon$ 是与网格分辨率相关的小常数<br />
+- $L = L_W + L_D$ 是总目标函数的 Lipschitz 上界</p>
 <p>步长取为：</p>
-<p>[<br />
+<p>$$<br />
 \alpha_k = \frac{1}{L}<br />
-]</p>
+$$</p>
 <blockquote>
 <p><strong>这个公式的意义</strong>：</p>
 <ol>
 <li>
-<p><strong>无额外计算开销</strong>：( L_W ) 和 ( L_D ) 中的所有量（( |e| )、( \gamma )、( q_i )、( \epsilon )）在每次迭代前已知，无需额外的函数评估。只需一次公式计算即可获得步长。</p>
+<p><strong>无额外计算开销</strong>：$L_W$ 和 $L_D$ 中的所有量（$|e|$、$\gamma$、$q_i$、$\epsilon$）在每次迭代前已知，无需额外的函数评估。只需一次公式计算即可获得步长。</p>
 </li>
 <li>
-<p><strong>自适应变化</strong>：( L_W ) 随 ( \gamma ) 递减而变化（外层循环中 ( \gamma ) 减小 → ( L_W ) 增大 → 步长减小）。( L_D ) 随密度分布变化而变化。步长自然地随着优化的进行自我调节。</p>
+<p><strong>自适应变化</strong>：$L_W$ 随 $\gamma$ 递减而变化（外层循环中 $\gamma$ 减小 → $L_W$ 增大 → 步长减小）。$L_D$ 随密度分布变化而变化。步长自然地随着优化的进行自我调节。</p>
 </li>
 <li>
 <p><strong>保守但安全</strong>：这是一个<strong>上界</strong>估计（over-estimation of L），意味着实际步长比最优步长小，保证不会发散。代价是可能比最优步长保守——这正是 RePlAce 后来通过动态步长改进的问题。</p>
@@ -364,10 +364,10 @@ L = L_W + L_D<br />
 </blockquote>
 <h3 id="53">5.3 梯度预条件</h3>
 <p>ePlace 引入了预条件处理来缩小大宏单元和小标准单元之间的梯度尺度差异：</p>
-<p>[<br />
+<p>$$<br />
 \tilde{\nabla}_i f = \frac{\nabla_i f}{\max(1.0, w_i^{\text{pin}} + q_i)}<br />
-]</p>
-<p>其中 ( w_i^{\text{pin}} ) 是单元 ( i ) 的连接引脚数，( q_i ) 是其电荷量（面积）。</p>
+$$</p>
+<p>其中 $w_i^{\text{pin}}$ 是单元 $i$ 的连接引脚数，$q_i$ 是其电荷量（面积）。</p>
 <blockquote>
 <p><strong>预条件的必要性</strong>：在混合尺寸设计中，最大的宏单元面积可能是最小标准单元的 10000 倍以上。如果不做预条件，大宏单元的梯度（正比于其面积）主导了整个优化，小单元几乎没有机会移动调整。预条件通过除以单元"尺度"（引脚数 + 面积）将不同单元的梯度归一化到可比的量级。</p>
 </blockquote>
@@ -549,7 +549,7 @@ graph TD
 <p><strong>核心创新</strong>：</p>
 <ol>
 <li>
-<p><strong>eDensity-3D</strong>：将 2D 的静电场模型拓展到 3D，x/y/z 三个维度平等处理。Poisson 方程变为 ( \nabla^2\psi(x,y,z) = -\rho(x,y,z) )，用 3D FFT 求解。</p>
+<p><strong>eDensity-3D</strong>：将 2D 的静电场模型拓展到 3D，x/y/z 三个维度平等处理。Poisson 方程变为 $\nabla^2\psi(x,y,z) = -\rho(x,y,z)$，用 3D FFT 求解。</p>
 </li>
 <li>
 <p><strong>2D/3D 交错布局</strong>：先在 2D 层面做全局布局（速度快），再在 3D 层面做精细调整（针对 TSV/MIV 数量优化），交错进行以平衡效率与质量。</p>
@@ -567,7 +567,7 @@ graph TD
 - 钟形平滑：人工选择平滑带宽，缺乏理论依据</p>
 <p><strong>ePlace 的方案</strong>：用 Poisson 方程自动产生具有物理一致性的全局平滑密度场。</p>
 <p><strong>为什么这是一个突破？</strong></p>
-<p>传统的密度平滑方法需要手工指定平滑半径（如高斯平滑的 σ）。半径太小 → 密度场不平滑 → 优化困难；半径太大 → 密度信息丢失 → 最终布局质量差。ePlace 的 Poisson 方程<strong>自动确定</strong>了"正确的"平滑程度——( 1/(\omega_u^2+\omega_v^2) ) 在频域等价于一个特定形式的低通滤波器，其截止频率由问题的物理特性（而非人工调参）决定。</p>
+<p>传统的密度平滑方法需要手工指定平滑半径（如高斯平滑的 σ）。半径太小 → 密度场不平滑 → 优化困难；半径太大 → 密度信息丢失 → 最终布局质量差。ePlace 的 Poisson 方程<strong>自动确定</strong>了"正确的"平滑程度——$1/(\omega_u^2+\omega_v^2)$ 在频域等价于一个特定形式的低通滤波器，其截止频率由问题的物理特性（而非人工调参）决定。</p>
 <h3 id="92-nesterov-lipschitz">9.2 创新点二：Nesterov + Lipschitz 闭式估计</h3>
 <p><strong>核心洞察</strong>：将数值优化中的收敛性理论（Lipschitz 连续性和 Nesterov 加速）<strong>直接应用于</strong>布局的特定目标函数，推导出可用于实际计算的闭式公式。</p>
 <p><strong>技术难点</strong>：目标函数由两部分组成——线长（WA 模型）和密度（静电模型）。需要分别估计两部分的 Lipschitz 常数，然后组合。WA 线长的 Lipschitz 估计相对直接（因为 WA 函数是 γ-平滑的），但静电密度的 Lipschitz 估计需要分析 FFT 求解的谱特性。</p>

@@ -178,38 +178,38 @@ LUT  FF  LUT+FF  面积容量  CLB容量         LUT  FF  LUT+FF  面积容量  
 <h3 id="33">3.3 二次布局基础</h3>
 <p>本文的 FIP 采用<strong>二次布局（Quadratic Placement）+ 粗合法化（Rough Legalization）</strong>的迭代框架，与前三天的 ePlace/RePlAce/DREAMPlace 使用的静电模型+Nesterov 方法不同。</p>
 <p><strong>二次线长目标函数</strong>：</p>
-<p>[<br />
+<p>$$<br />
 W(\mathbf{x}, \mathbf{y}) = \frac{1}{2}\mathbf{x}^T Q_x \mathbf{x} + \mathbf{c}_x^T \mathbf{x} + \frac{1}{2}\mathbf{y}^T Q_y \mathbf{y} + \mathbf{c}_y^T \mathbf{y} + \text{const}<br />
-]</p>
-<p>其中 ( Q_x, Q_y ) 是从网表连接关系构造的二次矩阵（使用 Hybrid 或 B2B 网模型），( \mathbf{c}_x, \mathbf{c}_y ) 是线性项向量。</p>
+$$</p>
+<p>其中 $Q_x, Q_y$ 是从网表连接关系构造的二次矩阵（使用 Hybrid 或 B2B 网模型），$\mathbf{c}_x, \mathbf{c}_y$ 是线性项向量。</p>
 <blockquote>
-<p><strong>为什么用二次布局而非静电模型？</strong> 本文基于 UTPlaceF 框架，而 UTPlaceF 使用二次布局。FPGA 布局中二次布局的优势在于：矩阵 ( Q ) 的稀疏结构与 FPGA 网表高度匹配，可以用高效的稀疏线性求解器快速求解。此外，FPGA 的 FIP 阶段只是起点，真正的核心在后续的 DAA 和 DL——因此 FIP 方法的选择不是本文的重点。</p>
+<p><strong>为什么用二次布局而非静电模型？</strong> 本文基于 UTPlaceF 框架，而 UTPlaceF 使用二次布局。FPGA 布局中二次布局的优势在于：矩阵 $Q$ 的稀疏结构与 FPGA 网表高度匹配，可以用高效的稀疏线性求解器快速求解。此外，FPGA 的 FIP 阶段只是起点，真正的核心在后续的 DAA 和 DL——因此 FIP 方法的选择不是本文的重点。</p>
 </blockquote>
 <p><strong>FIP 的迭代流程</strong>：<br />
-1. 求解二次方程组 ( Q\mathbf{x} = -\mathbf{c} )（每轮迭代）<br />
+1. 求解二次方程组 $Q\mathbf{x} = -\mathbf{c}$（每轮迭代）<br />
 2. 粗合法化：将单元推向密度均匀的位置（消除重叠）<br />
 3. <strong>动态面积调整（DAA，本文新增）</strong>：根据 Packing 效应调整单元面积<br />
 4. 检查收敛，若未收敛则返回步骤 1</p>
 <h3 id="34-dl">3.4 直接合法化（DL）问题的数学定义</h3>
-<p>给定 FIP 中所有单元的坐标 ( (\bar{x}, \bar{y}) )，直接合法化问题定义为：</p>
-<p>[<br />
+<p>给定 FIP 中所有单元的坐标 $(\bar{x}, \bar{y})$，直接合法化问题定义为：</p>
+<p>$$<br />
 \max_{\mathbf{x}, \mathbf{y}} \sum_{s \in S} \Psi({v \in V \mid z_{v,s} = 1}) - \frac{1}{\eta} \cdot \text{HPWL}(\mathbf{x}, \mathbf{y})<br />
-]</p>
-<p>[<br />
+$$</p>
+<p>$$<br />
 \text{s.t.} \quad \sum_{s \in S} z_{v,s} = 1, \quad \forall v \in V \quad \text{(每个单元恰好分配到一个 slice)}<br />
-]</p>
-<p>[<br />
+$$</p>
+<p>$$<br />
 {v \mid v \in V, z_{v,s} = 1} \text{ 是架构合法的}, \quad \forall s \in S \quad \text{(满足所有控制集/容量规则)}<br />
-]</p>
-<p>[<br />
+$$</p>
+<p>$$<br />
 |x_v - \bar{x}_v| + |y_v - \bar{y}_v| \leq D, \quad \forall v \in V \quad \text{(最大位移约束)}<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( V ) 是所有 LUT 和 FF 的集合，( S ) 是所有 CLB slice 的集合<br />
-- ( z_{v,s} ) 是二元变量：( z_{v,s} = 1 ) 当且仅当单元 ( v ) 分配到 slice ( s )<br />
-- ( \Psi(\cdot) ) 是聚类评分函数（捕捉引脚/网络共享、时序影响等）<br />
-- ( \eta &gt; 0 ) 是线长归一化参数<br />
-- ( D ) 是最大位移约束（软约束）</p>
+- $V$ 是所有 LUT 和 FF 的集合，$S$ 是所有 CLB slice 的集合<br />
+- $z_{v,s}$ 是二元变量：$z_{v,s} = 1$ 当且仅当单元 $v$ 分配到 slice $s$<br />
+- $\Psi(\cdot)$ 是聚类评分函数（捕捉引脚/网络共享、时序影响等）<br />
+- $\eta &gt; 0$ 是线长归一化参数<br />
+- $D$ 是最大位移约束（软约束）</p>
 <blockquote>
 <p><strong>公式解读</strong>：目标函数同时最大化聚类质量（Packing 目标）和最小化线长（Placement 目标）。约束 (3b) 保证每个单元恰好属于一个 slice，约束 (3c) 保证架构合法性（控制集兼容、容量不超），约束 (3d) 限制位移以保持 FIP 质量。<strong>这是第一个同时保证 Placement 和 Packing 合法性的公式化表述。</strong></p>
 </blockquote>
@@ -221,61 +221,61 @@ W(\mathbf{x}, \mathbf{y}) = \frac{1}{2}\mathbf{x}^T Q_x \mathbf{x} + \mathbf{c}_
 2. <strong>不同资源类型的利用率分别控制</strong>（解决 LUT/FF 不平衡问题）<br />
 3. <strong>布线拥塞区域避免过度压缩</strong></p>
 <h3 id="42">4.2 局部资源利用率</h3>
-<p>对于单元 ( v )，定义其局部利用率为：</p>
-<p>[<br />
+<p>对于单元 $v$，定义其局部利用率为：</p>
+<p>$$<br />
 U_v = \frac{\sum_{i \in N_v^+} A_i}{C_v}<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( N_v^+ = {v} \cup N_v )，( N_v ) 是与 ( v ) 同类型且在 ( (x_v - L, y_v - L, x_v + L, y_v + L) ) 范围内的邻居<br />
-- ( A_i ) 是单元 ( i ) 的资源需求（反映打包难度）<br />
-- ( C_v ) 是该范围内的 CLB slice 数量<br />
-- ( L = 5 )（经验值）</p>
+- $N_v^+ = {v} \cup N_v$，$N_v$ 是与 $v$ 同类型且在 $(x_v - L, y_v - L, x_v + L, y_v + L)$ 范围内的邻居<br />
+- $A_i$ 是单元 $i$ 的资源需求（反映打包难度）<br />
+- $C_v$ 是该范围内的 CLB slice 数量<br />
+- $L = 5$（经验值）</p>
 <blockquote>
-<p><strong>公式解读</strong>：( U_v ) 衡量了单元 ( v ) 附近区域的"拥挤程度"。( U_v &gt; 1 ) 意味着该区域的资源需求超过供给，需要膨胀单元面积来推开它们。关键创新是<strong>对 LUT 和 FF 分别计算利用率</strong>——这解决了"总面积不溢出但 FF 溢出"的问题。</p>
+<p><strong>公式解读</strong>：$U_v$ 衡量了单元 $v$ 附近区域的"拥挤程度"。$U_v &gt; 1$ 意味着该区域的资源需求超过供给，需要膨胀单元面积来推开它们。关键创新是<strong>对 LUT 和 FF 分别计算利用率</strong>——这解决了"总面积不溢出但 FF 溢出"的问题。</p>
 </blockquote>
 <h3 id="43">4.3 面积更新规则</h3>
-<p>[<br />
+<p>$$<br />
 a_v = \begin{cases}<br />
 \min(a_v^+, A_v \cdot U_v \cdot \nu_v), &amp; \text{if } A_v \cdot U_v \cdot \nu_v &gt; a_v \[4pt]<br />
 \max(a_v^-, A_v \cdot U_v \cdot \nu_v), &amp; \text{if } A_v \cdot U_v \cdot \nu_v &lt; a_v \text{ and } R_v &lt; R_{\max} \[4pt]<br />
 a_v, &amp; \text{otherwise}<br />
 \end{cases}<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( a_v ) 是当前面积，( a_v^+ = a_v \cdot 1.1 )（膨胀率），( a_v^- = a_v \cdot 0.95 )（收缩率）<br />
-- ( \nu_v \geq 1 ) 是累积布线膨胀比<br />
-- ( R_v ) 是局部布线利用率，( R_{\max} = 0.65 )</p>
+- $a_v$ 是当前面积，$a_v^+ = a_v \cdot 1.1$（膨胀率），$a_v^- = a_v \cdot 0.95$（收缩率）<br />
+- $\nu_v \geq 1$ 是累积布线膨胀比<br />
+- $R_v$ 是局部布线利用率，$R_{\max} = 0.65$</p>
 <blockquote>
 <p><strong>三种情况的含义</strong>：<br />
-- <strong>情况 1（膨胀）</strong>：当估计的资源需求超过当前面积时，增大面积。上限为 ( a_v^+ ) 确保平滑增长<br />
+- <strong>情况 1（膨胀）</strong>：当估计的资源需求超过当前面积时，增大面积。上限为 $a_v^+$ 确保平滑增长<br />
 - <strong>情况 2（收缩）</strong>：当区域资源充足且布线不拥塞时，缩小面积让其他单元进入<br />
-- <strong>情况 3（保持）</strong>：当布线拥塞（( R_v \geq R_{\max} )）时，即使资源充足也不收缩——避免进一步加重布线压力</p>
+- <strong>情况 3（保持）</strong>：当布线拥塞（$R_v \geq R_{\max}$）时，即使资源充足也不收缩——避免进一步加重布线压力</p>
 </blockquote>
 <h3 id="44-lut">4.4 LUT 资源需求估计</h3>
 <p>每个 LUT 的资源需求基于其与邻居的架构兼容性：</p>
-<p>[<br />
+<p>$$<br />
 A_v^{(\text{LUT})} = \frac{|N_v'|}{|N_v^+|} \cdot \frac{1}{16} + \frac{|N_v^+| - |N_v'|}{|N_v^+|} \cdot \frac{1}{8}<br />
-]</p>
-<p>其中 ( N_v' ) 是 ( N_v^+ ) 中与 ( v ) 架构兼容（可放入同一 BLE）的 LUT 集合。</p>
+$$</p>
+<p>其中 $N_v'$ 是 $N_v^+$ 中与 $v$ 架构兼容（可放入同一 BLE）的 LUT 集合。</p>
 <blockquote>
-<p><strong>公式解读</strong>：在 UltraScale 中，每个 BLE 可容纳 2 个兼容 LUT。如果 ( v ) 的大部分邻居都与之兼容，( |N_v'|/|N_v^+| ) 接近 1，需求为 1/16 CLB（紧凑打包，两个 LUT 共享一个 BLE）；如果很少有兼容邻居，需求为 1/8 CLB（独占一个 BLE）。这是一个<strong>概率估计</strong>，不需要实际的 Packing 解。</p>
+<p><strong>公式解读</strong>：在 UltraScale 中，每个 BLE 可容纳 2 个兼容 LUT。如果 $v$ 的大部分邻居都与之兼容，$|N_v'|/|N_v^+|$ 接近 1，需求为 1/16 CLB（紧凑打包，两个 LUT 共享一个 BLE）；如果很少有兼容邻居，需求为 1/8 CLB（独占一个 BLE）。这是一个<strong>概率估计</strong>，不需要实际的 Packing 解。</p>
 </blockquote>
 <h3 id="45-ff">4.5 FF 资源需求估计</h3>
 <p>FF 的需求估计更复杂，因为控制集规则限制了哪些 FF 可以共处同一个 Half CLB。本文采用<strong>最紧打包下界估计</strong>：</p>
-<p>[<br />
+<p>$$<br />
 A_v^{(\text{FF})} = \frac{1}{2} \cdot \left\lceil \frac{\sum_{i=0}^{m} \lceil n_i / 4 \rceil}{2} \right\rceil \cdot \frac{1}{n_0} \cdot \beta^{(\text{FF})}<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- FF ( v ) 的控制集为 ( (\text{CK}_0, \text{SR}_0, \text{CE}_0) )<br />
-- ( {\text{CE}_0, \text{CE}_1, \ldots, \text{CE}_m} ) 是邻居 ( N_v^+ ) 中与 ( v ) 共享 ( (\text{CK}_0, \text{SR}_0) ) 的 FF 的不同 CE 集合<br />
-- ( n_i ) 是控制集为 ( (\text{CK}_0, \text{SR}_0, \text{CE}_i) ) 的 FF 数量<br />
-- ( \beta^{(\text{FF})} = 1.1 )，补偿最紧打包与实际打包之间的差距</p>
+- FF $v$ 的控制集为 $(\text{CK}_0, \text{SR}_0, \text{CE}_0)$<br />
+- ${\text{CE}_0, \text{CE}_1, \ldots, \text{CE}_m}$ 是邻居 $N_v^+$ 中与 $v$ 共享 $(\text{CK}_0, \text{SR}_0)$ 的 FF 的不同 CE 集合<br />
+- $n_i$ 是控制集为 $(\text{CK}_0, \text{SR}_0, \text{CE}_i)$ 的 FF 数量<br />
+- $\beta^{(\text{FF})} = 1.1$，补偿最紧打包与实际打包之间的差距</p>
 <blockquote>
-<p><strong>推导思路</strong>：4 个共享同一 (CK, SR, CE) 的 FF 组成一个"quarter CLB"，2 个共享同一 (CK, SR) 的 quarter CLB 组成一个"half CLB"。先计算每种 CE 变体需要多少 quarter CLB（( \lceil n_i/4 \rceil )），再计算总共需要多少 half CLB（( \lceil \text{sum}/2 \rceil )），最后将需求均摊到每个 FF。FF 需求范围 [1/16, 1/2]，差异可达 <strong>8 倍</strong>——这正是传统方法忽略的关键方差来源。</p>
+<p><strong>推导思路</strong>：4 个共享同一 (CK, SR, CE) 的 FF 组成一个"quarter CLB"，2 个共享同一 (CK, SR) 的 quarter CLB 组成一个"half CLB"。先计算每种 CE 变体需要多少 quarter CLB（$\lceil n_i/4 \rceil$），再计算总共需要多少 half CLB（$\lceil \text{sum}/2 \rceil$），最后将需求均摊到每个 FF。FF 需求范围 [1/16, 1/2]，差异可达 <strong>8 倍</strong>——这正是传统方法忽略的关键方差来源。</p>
 </blockquote>
 <h3 id="46-daa">4.6 DAA 完整演算示例</h3>
 <p>以论文 Fig. 6 中的 FF 需求估计为例，逐步说明：</p>
-<p><strong>场景</strong>：某个 FF ( v ) 的控制集为 (CK=A, SR=P, CE=X)，其邻居 ( N_v^+ ) 中的 FF 分布如下：</p>
+<p><strong>场景</strong>：某个 FF $v$ 的控制集为 (CK=A, SR=P, CE=X)，其邻居 $N_v^+$ 中的 FF 分布如下：</p>
 <table>
 <thead>
 <tr>
@@ -290,37 +290,37 @@ A_v^{(\text{FF})} = \frac{1}{2} \cdot \left\lceil \frac{\sum_{i=0}^{m} \lceil n_
 <td>(A, P)</td>
 <td>X</td>
 <td>6</td>
-<td>( \lceil 6/4 \rceil = 2 )</td>
+<td>$\lceil 6/4 \rceil = 2$</td>
 </tr>
 <tr>
 <td>(A, P)</td>
 <td>Z</td>
 <td>2</td>
-<td>( \lceil 2/4 \rceil = 1 )</td>
+<td>$\lceil 2/4 \rceil = 1$</td>
 </tr>
 <tr>
 <td>(B, P)</td>
 <td>X</td>
 <td>5</td>
-<td>( \lceil 5/4 \rceil = 2 )</td>
+<td>$\lceil 5/4 \rceil = 2$</td>
 </tr>
 <tr>
 <td>(B, P)</td>
 <td>Z</td>
 <td>2</td>
-<td>( \lceil 2/4 \rceil = 1 )</td>
+<td>$\lceil 2/4 \rceil = 1$</td>
 </tr>
 <tr>
 <td>(B, Q)</td>
 <td>Y</td>
 <td>1</td>
-<td>( \lceil 1/4 \rceil = 1 )</td>
+<td>$\lceil 1/4 \rceil = 1$</td>
 </tr>
 </tbody>
 </table>
 <p><strong>步骤 1</strong>：按 (CK, SR) 分组，计算每组需要的 half CLB：</p>
 <ul>
-<li>(A, P) 组：3 个 quarter CLB → ( \lceil 3/2 \rceil = 2 ) 个 half CLB → 需求 = 2 × (1/2) = <strong>1.0 CLB</strong></li>
+<li>(A, P) 组：3 个 quarter CLB → $\lceil 3/2 \rceil = 2$ 个 half CLB → 需求 = 2 × (1/2) = <strong>1.0 CLB</strong></li>
 <li>其中 (A, P, X) 占 2/(2+1) = 2/3 CLB，(A, P, Z) 占 1/(2+1) = 1/3 CLB</li>
 <li>(B, P) 组：3 个 quarter CLB → 2 个 half CLB → 需求 = <strong>1.0 CLB</strong></li>
 <li>其中 (B, P, X) 占 2/3 CLB，(B, P, Z) 占 1/3 CLB</li>
@@ -328,26 +328,26 @@ A_v^{(\text{FF})} = \frac{1}{2} \cdot \left\lceil \frac{\sum_{i=0}^{m} \lceil n_
 </ul>
 <p><strong>步骤 2</strong>：将组内需求均摊到每个 FF：</p>
 <ul>
-<li>FF (A, P, X)：( (2/3) / 6 = 2/18 = 1/9 \approx 0.111 )</li>
-<li>FF (A, P, Z)：( (1/3) / 2 = 1/6 \approx 0.167 )</li>
-<li>FF (B, P, X)：( (2/3) / 5 = 2/15 \approx 0.133 )</li>
-<li>FF (B, P, Z)：( (1/3) / 2 = 1/6 \approx 0.167 )</li>
-<li>FF (B, Q, Y)：( (1/2) / 1 = 1/2 = 0.500 )</li>
+<li>FF (A, P, X)：$(2/3) / 6 = 2/18 = 1/9 \approx 0.111$</li>
+<li>FF (A, P, Z)：$(1/3) / 2 = 1/6 \approx 0.167$</li>
+<li>FF (B, P, X)：$(2/3) / 5 = 2/15 \approx 0.133$</li>
+<li>FF (B, P, Z)：$(1/3) / 2 = 1/6 \approx 0.167$</li>
+<li>FF (B, Q, Y)：$(1/2) / 1 = 1/2 = 0.500$</li>
 </ul>
-<p><strong>步骤 3</strong>：乘以 ( \beta^{(\text{FF})} = 1.1 ) 补偿：</p>
+<p><strong>步骤 3</strong>：乘以 $\beta^{(\text{FF})} = 1.1$ 补偿：</p>
 <ul>
-<li>FF (A, P, X)：( 1/9 \times 1.1 = 0.122 ) CLB</li>
-<li>FF (B, Q, Y)：( 1/2 \times 1.1 = 0.550 ) CLB</li>
+<li>FF (A, P, X)：$1/9 \times 1.1 = 0.122$ CLB</li>
+<li>FF (B, Q, Y)：$1/2 \times 1.1 = 0.550$ CLB</li>
 </ul>
 <blockquote>
 <p><strong>关键洞察</strong>：最"贵"的 FF（B, Q, Y）的资源需求是最"便宜"的 FF（A, P, X）的 <strong>4.5 倍</strong>。传统方法将所有 FF 赋予相同面积，完全忽略了这种差异。DAA 通过公式 (7) 精确估计了每个 FF 的差异化需求，并通过公式 (5) 将其转化为面积调整。</p>
 </blockquote>
-<p><strong>步骤 4（面积更新）</strong>：假设 FF ( v ) 的当前面积 ( a_v = 0.15 )，局部利用率 ( U_v = 0.9 )，资源需求 ( A_v = 0.122 )，布线膨胀 ( \nu_v = 1.0 )：</p>
+<p><strong>步骤 4（面积更新）</strong>：假设 FF $v$ 的当前面积 $a_v = 0.15$，局部利用率 $U_v = 0.9$，资源需求 $A_v = 0.122$，布线膨胀 $\nu_v = 1.0$：</p>
 <ul>
-<li>目标面积 = ( A_v \cdot U_v \cdot \nu_v = 0.122 \times 0.9 \times 1.0 = 0.110 )</li>
+<li>目标面积 = $A_v \cdot U_v \cdot \nu_v = 0.122 \times 0.9 \times 1.0 = 0.110$</li>
 <li>因为 0.110 &lt; 0.15（目标面积小于当前面积）→ 检查布线条件</li>
-<li>如果 ( R_v &lt; 0.65 )：( a_v = \max(0.15 \times 0.95, 0.110) = \max(0.1425, 0.110) = 0.1425 )（缓慢收缩）</li>
-<li>如果 ( R_v \geq 0.65 )：( a_v = 0.15 )（保持不变，避免加重拥塞）</li>
+<li>如果 $R_v &lt; 0.65$：$a_v = \max(0.15 \times 0.95, 0.110) = \max(0.1425, 0.110) = 0.1425$（缓慢收缩）</li>
+<li>如果 $R_v \geq 0.65$：$a_v = 0.15$（保持不变，避免加重拥塞）</li>
 </ul>
 <blockquote>
 <p><strong>面积变化的效果</strong>：面积从 0.15 收缩到 0.1425 意味着该 FF 在下次粗合法化中占据更少空间，允许其他单元进入其附近。多次迭代后，DAA 使每个单元的面积趋于反映其实际打包难度，FIP 逐步逼近真正合法的布局。</p>
@@ -413,7 +413,7 @@ A_v^{(\text{FF})} = \frac{1}{2} \cdot \left\lceil \frac{\sum_{i=0}^{m} \lceil n_
 <h4 id="dl">DL 单次迭代的完整步骤</h4>
 <p><strong>步骤 1 —— 检查是否可以提交当前最优候选</strong></p>
 <p>检查 <code>pq.top()</code> 是否满足两个条件：<br />
-- 稳定性：( i \geq I = 3 )（连续 3 次迭代最优候选未变化）<br />
+- 稳定性：$i \geq I = 3$（连续 3 次迭代最优候选未变化）<br />
 - 全员接受：<code>pq.top()</code> 中的所有单元都接受了该 Slice 的 offer</p>
 <p>如果两个条件都满足：</p>
 <pre><code>det ← pq.top()    // 将最优候选锁定到该 Slice
@@ -429,7 +429,7 @@ scl ← {det}        // 种子聚类设为已确定的单元集合
 - 从 <code>nbr</code> 中移除与 <code>det</code> 架构不兼容的单元（如控制集冲突的 FF）<br />
 - 从 <code>pq</code> 中移除包含无效单元的候选聚类</p>
 <p><strong>步骤 3 —— 扩展搜索范围（如果必要）</strong></p>
-<p>如果 ( |nbr| &lt; N_{\text{NBRmin}} = 10 ) 且 ( d &lt; D = 12 )：</p>
+<p>如果 $|nbr| &lt; N_{\text{NBRmin}} = 10$ 且 $d &lt; D = 12$：</p>
 <pre><code>d ← min(d + Δd, D)       // Δd = 1，逐步扩大搜索半径
 nbr ← nbr ∪ {距离 ∈ (d-Δd, d] 的单元}
 scl ← scl ∪ pq 中所有候选    // 确保新邻居能参与已有候选的扩展
@@ -438,7 +438,7 @@ scl ← scl ∪ pq 中所有候选    // 确保新邻居能参与已有候选的
 <p><strong>为什么逐步扩展而非一次性搜索整个范围？</strong> 优先使用近处单元（位移小，线长代价低），只在近处资源不足时才逐步扩大。这等价于一种"贪心扩展"策略——先尝试局部最优，再逐渐放宽约束。</p>
 </blockquote>
 <p><strong>步骤 4 —— 生成新候选</strong></p>
-<p>对 <code>nbr</code> 中每个单元 ( i ) 和 <code>scl</code> 中每个种子聚类 ( j )：</p>
+<p>对 <code>nbr</code> 中每个单元 $i$ 和 <code>scl</code> 中每个种子聚类 $j$：</p>
 <pre><code>new_candidate = j ∪ {i}
 if new_candidate 架构合法:
     pq.insert(new_candidate)   // 保持 Top-K=10
@@ -455,9 +455,9 @@ else:               i ← 0
 <p>将 <code>pq.top()</code> 中的所有单元通知给该 Slice，等待单元的决策。</p>
 <h4 id="_2">单元端的决策过程</h4>
 <p>每个单元可能同时收到多个 Slice 的 offer。它选择 SCORE 改善最大的 Slice：</p>
-<p>[<br />
+<p>$$<br />
 \text{SCORE}(s) = \text{SCORE}(\text{pq.top() of } s, \, s) - \text{SCORE}(\text{det of } s, \, s)<br />
-]</p>
+$$</p>
 <blockquote>
 <p><strong>SCORE 改善的含义</strong>：不是选择绝对评分最高的 Slice，而是选择"如果接受该 offer，评分提升最大"的 Slice。一个已经有优秀聚类（高 SCORE(det, s)）的 Slice 需要提供更大的边际改善才能赢得该单元——这防止了"强者恒强"的马太效应。</p>
 </blockquote>
@@ -487,18 +487,18 @@ else:               i ← 0
 <p><strong>关键特性</strong>：同一时间，多个 Slice 可以同时竞争同一个单元。一个聚类只有在<strong>所有成员都接受</strong>时才会被提交——这保证了全局一致性，避免了贪心算法的局部最优陷阱。</p>
 </blockquote>
 <h3 id="53">5.3 评分函数</h3>
-<p>给定 Slice ( s ) 和聚类 ( c )：</p>
-<p>[<br />
+<p>给定 Slice $s$ 和聚类 $c$：</p>
+<p>$$<br />
 \text{SCORE}(c, s) = \sum_{e \in \text{Net}(c)} \frac{\text{InternalPins}(e, c)}{\text{TotalPins}(e)} - \frac{1}{\eta} \cdot \text{HPWL}(c, s)<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( \text{Net}(c) )：至少包含聚类 ( c ) 中一个单元的网络集合<br />
-- ( \text{InternalPins}(e, c) )：网络 ( e ) 在聚类 ( c ) 内的引脚数<br />
-- ( \text{TotalPins}(e) )：网络 ( e ) 的总引脚数<br />
-- ( \text{HPWL}(c, s) )：将聚类 ( c ) 中的单元从 FIP 位置移到 Slice ( s ) 位置的线长增量<br />
-- ( \eta = 0.02 )</p>
+- $\text{Net}(c)$：至少包含聚类 $c$ 中一个单元的网络集合<br />
+- $\text{InternalPins}(e, c)$：网络 $e$ 在聚类 $c$ 内的引脚数<br />
+- $\text{TotalPins}(e)$：网络 $e$ 的总引脚数<br />
+- $\text{HPWL}(c, s)$：将聚类 $c$ 中的单元从 FIP 位置移到 Slice $s$ 位置的线长增量<br />
+- $\eta = 0.02$</p>
 <h4 id="_3">评分函数的具体计算示例</h4>
-<p>假设聚类 ( c = {L1, L2, FF1} ) 被考虑分配到 Slice ( s )（位于芯片坐标 (10, 20)），这三个单元在 FIP 中的位置分别为 (9, 19), (11, 21), (10, 22)。</p>
+<p>假设聚类 $c = {L1, L2, FF1}$ 被考虑分配到 Slice $s$（位于芯片坐标 (10, 20)），这三个单元在 FIP 中的位置分别为 (9, 19), (11, 21), (10, 22)。</p>
 <p><strong>第一项：Packing 质量（内部引脚吸收率）</strong></p>
 <p>假设这些单元涉及以下网络：<br />
 - Net A：连接 L1, L2, L3（L3 不在聚类中）→ InternalPins=2, TotalPins=3 → 贡献 2/3 = 0.667<br />
@@ -509,9 +509,9 @@ else:               i ← 0
 <p><strong>含义</strong>：Net B 完全被吸收到 CLB 内部（贡献 1.0，最大值），Net A 大部分被吸收（2/3），Net C 一半被吸收。高 Packing 评分意味着更多外部网络变为内部网络 → CLB 间布线需求减少 → 可布线性改善。</p>
 </blockquote>
 <p><strong>第二项：Placement 质量（位移线长代价）</strong></p>
-<p>[<br />
+<p>$$<br />
 \text{HPWL}(c, s) = \sum_{v \in c} (|x_v - \bar{x}_v| + |y_v - \bar{y}_v|)<br />
-]</p>
+$$</p>
 <ul>
 <li>L1 位移：|9-10| + |19-20| = 2</li>
 <li>L2 位移：|11-10| + |21-20| = 2</li>
@@ -519,17 +519,17 @@ else:               i ← 0
 </ul>
 <p>线长代价 = 2 + 2 + 2 = 6</p>
 <p><strong>总分</strong>：</p>
-<p>[<br />
+<p>$$<br />
 \text{SCORE}(c, s) = 2.167 - \frac{1}{0.02} \times 6 = 2.167 - 300 = -297.833<br />
-]</p>
+$$</p>
 <blockquote>
-<p><strong>为什么线长项看起来这么大？</strong> 因为 ( \eta = 0.02 ) 非常小，使得线长项被放大了 50 倍。这保证了在大多数情况下，<strong>位移小的候选优先</strong>——只有当两个候选的位移接近时，Packing 质量才成为决定因素。这是一个精心的权衡：过大的位移会破坏 FIP 的优化结果，必须严格控制。</p>
+<p><strong>为什么线长项看起来这么大？</strong> 因为 $\eta = 0.02$ 非常小，使得线长项被放大了 50 倍。这保证了在大多数情况下，<strong>位移小的候选优先</strong>——只有当两个候选的位移接近时，Packing 质量才成为决定因素。这是一个精心的权衡：过大的位移会破坏 FIP 的优化结果，必须严格控制。</p>
 </blockquote>
 <h4 id="score">SCORE 改善（单元决策依据）</h4>
 <p>假设 Slice S0 当前 det={L1}，pq.top()={L1, L2, FF1}：</p>
-<p>[<br />
+<p>$$<br />
 \text{SCORE}(S0) = \text{SCORE}({L1, L2, FF1}, S0) - \text{SCORE}({L1}, S0)<br />
-]</p>
+$$</p>
 <p>这衡量了将 L2 和 FF1 加入 S0 带来的<strong>边际改善</strong>。即使 S0 的绝对评分很低，如果边际改善很大，S0 仍然可能赢得 L2 和 FF1。</p>
 <h3 id="54">5.4 并行化与串行等价性</h3>
 <p><strong>并行化</strong>：所有 Slice 计算节点可以<strong>完全并行</strong>执行（Algorithm 1 line 9-11），所有单元也可以并行处理 offer 并返回决策（line 12-16）。</p>
@@ -539,12 +539,12 @@ else:               i ← 0
 <p><strong>为什么串行等价性重要？</strong> 它意味着可以放心使用尽可能多的并行资源（甚至 GPU/FPGA 加速），而不会牺牲结果质量。这与模拟退火等随机算法形成鲜明对比——后者通常在并行化时结果不一致。</p>
 </blockquote>
 <h3 id="55">5.5 后处理：异常处理</h3>
-<p>DL 完成后，通常有 &lt; 1% 的单元无法在位移约束 ( D ) 内找到合法位置。处理策略是<strong>拆解重分配（Rip-up and Reallocate）</strong>：</p>
-<p>[<br />
+<p>DL 完成后，通常有 &lt; 1% 的单元无法在位移约束 $D$ 内找到合法位置。处理策略是<strong>拆解重分配（Rip-up and Reallocate）</strong>：</p>
+<p>$$<br />
 \text{SCORE}_{\text{ripup}}(v, s, c) = -\frac{1}{\eta_1} \cdot \text{HPWL}(v, s) - \eta_2 \cdot \text{SCORE}(c, s) - \eta_3 \cdot \text{Area}(c)<br />
-]</p>
+$$</p>
 <blockquote>
-<p>选择拆解哪个 Slice 的原则：线长代价小 + 原聚类评分低 + 原聚类面积小（面积大意味着单元多或难打包，拆解后难以重新合法化）。参数 ( \eta_1 = 0.02, \eta_2 = 1.0, \eta_3 = 4.0 )。</p>
+<p>选择拆解哪个 Slice 的原则：线长代价小 + 原聚类评分低 + 原聚类面积小（面积大意味着单元多或难打包，拆解后难以重新合法化）。参数 $\eta_1 = 0.02, \eta_2 = 1.0, \eta_3 = 4.0$。</p>
 </blockquote>
 <h4 id="_4">拆解重分配的完整流程</h4>
 <pre><code>对于每个非法单元 c:
@@ -569,7 +569,7 @@ else:               i ← 0
                 成功！处理下一个非法单元
 </code></pre>
 <blockquote>
-<p><strong>为什么不用 Tetris 式贪心合法化？</strong> Tetris 方法一次只处理一个单元，不考虑被挤走的单元的去向。而本文的 rip-up 方法<strong>同时考虑被拆解单元的重分配</strong>——确保全局可行性。此外，<code>SCORE_ripup</code> 中 <code>Area(c)</code> 项的 ( \eta_3 = 4.0 ) 权重很大，倾向于拆解面积小的 Slice（即单元少、容易重新合法化的 Slice），避免连锁失败。</p>
+<p><strong>为什么不用 Tetris 式贪心合法化？</strong> Tetris 方法一次只处理一个单元，不考虑被挤走的单元的去向。而本文的 rip-up 方法<strong>同时考虑被拆解单元的重分配</strong>——确保全局可行性。此外，<code>SCORE_ripup</code> 中 <code>Area(c)</code> 项的 $\eta_3 = 4.0$ 权重很大，倾向于拆解面积小的 Slice（即单元少、容易重新合法化的 Slice），避免连锁失败。</p>
 </blockquote>
 <hr />
 <h2 id="6">6. 算法流程</h2>

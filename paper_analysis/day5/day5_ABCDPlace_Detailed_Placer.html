@@ -147,10 +147,10 @@ graph LR
 <h2 id="3">3. 数学建模：详细布局问题形式化</h2>
 <h3 id="31">3.1 优化目标</h3>
 <p>详细布局的目标是<strong>在保持合法性的前提下最小化 HPWL</strong>：</p>
-<p>[<br />
+<p>$$<br />
 \text{HPWL} = \sum_{e \in E} \left( \max_{i,j \in e} |x_i - x_j| + \max_{i,j \in e} |y_i - y_j| \right)<br />
-]</p>
-<p>其中 \( e \) 表示一个网（hyperedge），\( E \) 为所有网的集合，\( i, j \) 为网 \( e \) 中任意两个连接的单元。</p>
+$$</p>
+<p>其中 \$e \) 表示一个网（hyperedge），\$E \) 为所有网的集合，\$i, j \) 为网 \$e \) 中任意两个连接的单元。</p>
 <blockquote>
 <p><strong>与全局布局的差异</strong>：全局布局使用平滑的 WA 线长近似（可微），而详细布局使用<strong>精确的 HPWL</strong>（不可微），因为单元的移动是离散的——直接从一个位置跳到另一个位置。这决定了详细布局必须使用组合优化方法而非梯度下降。</p>
 </blockquote>
@@ -168,7 +168,7 @@ graph LR
 <tr>
 <td><strong>局部重排序</strong></td>
 <td>一行中 k 个连续单元的所有排列</td>
-<td>枚举 \( k! \) 种排列，取 HPWL 最小者</td>
+<td>枚举 \$k! \) 种排列，取 HPWL 最小者</td>
 </tr>
 <tr>
 <td><strong>全局交换</strong></td>
@@ -184,23 +184,23 @@ graph LR
 </table>
 <h3 id="33-lap">3.3 线性分配问题（LAP）的形式化</h3>
 <p>独立集匹配的核心是将单元到位置的最优分配建模为 LAP：</p>
-<p>[<br />
+<p>$$<br />
 \max \sum_{i,j} a_{ij} x_{ij}<br />
-]</p>
-<p>[<br />
+$$</p>
+<p>$$<br />
 \text{s.t.} \quad \sum_{i=1}^{N} x_{ij} = 1, \quad j = 1, 2, \ldots, N<br />
-]</p>
-<p>[<br />
+$$</p>
+<p>$$<br />
 \sum_{j=1}^{N} x_{ij} = 1, \quad i = 1, 2, \ldots, N<br />
-]</p>
-<p>[<br />
+$$</p>
+<p>$$<br />
 x_{ij} \geq 0, \quad i, j = 1, 2, \ldots, N<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- \( x_{ij} = 1 \) 表示将单元 \( i \) 分配到位置 \( j \)<br />
-- \( a_{ij} \) 为该分配的权重——等于将单元 \( i \) 放到位置 \( j \) 带来的线长变化的<strong>负值</strong>（因为 LAP 是最大化问题，我们想要最小化线长）</p>
+- \$x_{ij} = 1 \) 表示将单元 \$i \) 分配到位置 \$j \)<br />
+- \$a_{ij} \) 为该分配的权重——等于将单元 \$i \) 放到位置 \$j \) 带来的线长变化的<strong>负值</strong>（因为 LAP 是最大化问题，我们想要最小化线长）</p>
 <blockquote>
-<p><strong>为什么独立集可以用 LAP 求解？</strong> 独立集的定义是集合中任意两个单元之间不存在网连接。因此单元 \( i \) 移到位置 \( j \) 的线长增量 \( a_{ij} \) 可以独立计算——它不受集合中其他单元位置变化的影响。这个"独立性"使得全局最优等价于 LAP 的最优解。</p>
+<p><strong>为什么独立集可以用 LAP 求解？</strong> 独立集的定义是集合中任意两个单元之间不存在网连接。因此单元 \$i \) 移到位置 \$j \) 的线长增量 \$a_{ij} \) 可以独立计算——它不受集合中其他单元位置变化的影响。这个"独立性"使得全局最优等价于 LAP 的最优解。</p>
 </blockquote>
 <hr />
 <h2 id="4">4. 算法一：并发独立集匹配</h2>
@@ -228,7 +228,7 @@ graph TD
 <li>给每个顶点分配一个<strong>随机优先级</strong> R(v)</li>
 <li>每轮迭代中：顶点 v 只有在它的优先级低于所有邻居时才加入独立集</li>
 <li>加入独立集的顶点及其邻居在下一轮之前被移除</li>
-<li><strong>最多需要 \( O(\log_2 |V|) \) 轮</strong>即可完成</li>
+<li><strong>最多需要 \$O(\log_2 |V|) \) 轮</strong>即可完成</li>
 <li>每轮内部的 for 循环是<strong>全并行的</strong>——每个顶点可独立判断</li>
 </ul>
 <blockquote>
@@ -239,15 +239,15 @@ graph TD
 - 同一子集的单元在<strong>物理上靠近</strong>（局部移动）<br />
 - 各子集的<strong>大小尽量均衡</strong>（适合 GPU 批量处理）</p>
 <p>标准 K-Means 可能导致子集大小不均衡。ABCDPlace 使用<strong>加权 K-Means</strong>：</p>
-<p>[<br />
+<p>$$<br />
 \min \sum_{i=1}^{K} w_i \sum_{x \in S_i} |x - \mu_i|^2<br />
-]</p>
-<p>权重 \( w_i \) 根据子集大小动态调整：</p>
-<p>[<br />
+$$</p>
+<p>权重 \$w_i \) 根据子集大小动态调整：</p>
+<p>$$<br />
 w_i^{k+1} \leftarrow w_i^k \cdot \left(1 + 0.5 \cdot \log(\max{1, |S_i|/s_t})\right)<br />
-]</p>
+$$</p>
 <blockquote>
-<p><strong>直观理解</strong>：当一个子集超出目标大小 \( s_t \) 时，其权重增大——更多的"质量"使其质心在下一轮迭代中吸引更少的单元。这形成了一种<strong>负载均衡机制</strong>：大子集"排斥"新单元，小子集"欢迎"新单元。实验表明只需 2 轮 K-Means 即可达到合理的均衡分布。</p>
+<p><strong>直观理解</strong>：当一个子集超出目标大小 \$s_t \) 时，其权重增大——更多的"质量"使其质心在下一轮迭代中吸引更少的单元。这形成了一种<strong>负载均衡机制</strong>：大子集"排斥"新单元，小子集"欢迎"新单元。实验表明只需 2 轮 K-Means 即可达到合理的均衡分布。</p>
 </blockquote>
 <h4 id="423-gpu">4.2.3 批量拍卖算法：全 GPU 内核融合</h4>
 <p>这是 ABCDPlace 中最精巧的 GPU 实现。LAP 的拍卖算法（Auction Algorithm）模拟了经济学中的拍卖过程：</p>

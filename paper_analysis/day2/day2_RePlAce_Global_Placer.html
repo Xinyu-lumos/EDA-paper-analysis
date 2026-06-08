@@ -82,7 +82,7 @@ hr { border: none; border-top: 1px solid #e0e0e0; margin: 2em 0; }
 <hr />
 <h2 id="1-eplace">1. 研究背景：ePlace 遗产与未解决的问题</h2>
 <h3 id="11-eplace">1.1 ePlace 的革命性贡献</h3>
-<p>2015 年，J. Lu 等人在 ACM TODAES 上发表了 <strong>ePlace</strong>，首次将静电场类比引入 VLSI 全局布局。其核心思想在 Day 1 中已有介绍——将单元面积视为电荷密度 ( \rho )，通过求解 Poisson 方程获得电势场 ( \Phi )，电场 ( \mathbf{E} = -\nabla\Phi ) 作为密度排斥力。</p>
+<p>2015 年，J. Lu 等人在 ACM TODAES 上发表了 <strong>ePlace</strong>，首次将静电场类比引入 VLSI 全局布局。其核心思想在 Day 1 中已有介绍——将单元面积视为电荷密度 $\rho$，通过求解 Poisson 方程获得电势场 $\Phi$，电场 $\mathbf{E} = -\nabla\Phi$ 作为密度排斥力。</p>
 <p>ePlace 取得了显著成果，但留下了几个关键问题：</p>
 <h3 id="12-eplace">1.2 ePlace 的三大局限</h3>
 <table>
@@ -134,39 +134,39 @@ graph LR
 <h2 id="3-eplace-replace">3. 数学建模：从 ePlace 到 RePlAce</h2>
 <h3 id="31">3.1 优化问题形式</h3>
 <p>与 ePlace 一致，RePlAce 将全局布局建模为无约束最小化问题：</p>
-<p>[<br />
+<p>$$<br />
 \min_{\mathbf{x}, \mathbf{y}} \quad f(\mathbf{x}, \mathbf{y}) = W(\mathbf{x}, \mathbf{y}) + \lambda \cdot D(\mathbf{x}, \mathbf{y})<br />
-]</p>
-<p>其中 ( W ) 为线长目标（Weighted-Average 平滑 HPWL），( D ) 为密度惩罚（静电势能），( \lambda ) 为拉格朗日乘子。</p>
+$$</p>
+<p>其中 $W$ 为线长目标（Weighted-Average 平滑 HPWL），$D$ 为密度惩罚（静电势能），$\lambda$ 为拉格朗日乘子。</p>
 <p>与 Day 1 中 DREAMPlace 的公式完全一致——因为 DREAMPlace 的数学框架完全继承自 ePlace/RePlAce。</p>
 <h3 id="32">3.2 静电密度模型的核心公式</h3>
 <h4 id="_2">电荷密度</h4>
-<p>布局区域划分为 ( m \times m ) 的均匀网格。网格 bin ( b ) 的电荷密度：</p>
-<p>[<br />
+<p>布局区域划分为 $m \times m$ 的均匀网格。网格 bin $b$ 的电荷密度：</p>
+<p>$$<br />
 \rho_b = \frac{\sum_{i} A_i \cdot \text{overlap}(i, b) - A_b \cdot \rho_{\text{target}}}{A_b}<br />
-]</p>
+$$</p>
 <blockquote>
-<p><strong>与 ePlace 的关键区别</strong>：RePlAce 减去了目标密度 ( \rho_{\text{target}} )。这意味着 ( \rho_b ) 可正可负——正电荷密度表示 bin 过密（overfilled），需要推开单元；负电荷表示 bin 有可用空间，可以吸引单元。这比 ePlace 的全正电荷模型更精确。</p>
+<p><strong>与 ePlace 的关键区别</strong>：RePlAce 减去了目标密度 $\rho_{\text{target}}$。这意味着 $\rho_b$ 可正可负——正电荷密度表示 bin 过密（overfilled），需要推开单元；负电荷表示 bin 有可用空间，可以吸引单元。这比 ePlace 的全正电荷模型更精确。</p>
 </blockquote>
 <h4 id="poisson-dct">Poisson 方程与 DCT 求解</h4>
 <p>电势场通过 Poisson 方程与电荷密度关联：</p>
-<p>[<br />
+<p>$$<br />
 \nabla^2 \Phi(x, y) = -\rho(x, y)<br />
-]</p>
+$$</p>
 <p>在离散网格上使用 <strong>离散余弦变换（DCT-II）</strong> 对角化求解：</p>
-<p>[<br />
+<p>$$<br />
 \Phi = \text{IDCT}\left( \frac{\text{DCT}(\rho)}{\omega_u^2 + \omega_v^2} \right), \quad \omega_u = 2 - 2\cos\left(\frac{\pi u}{m}\right)<br />
-]</p>
+$$</p>
 <h4 id="_3">系统电势能与电场力</h4>
 <p>密度惩罚为系统总电势能：</p>
-<p>[<br />
+<p>$$<br />
 D = \sum_{b} \Phi_b \cdot \rho_b<br />
-]</p>
-<p>单元 ( i ) 受到的电场力（密度梯度）：</p>
-<p>[<br />
+$$</p>
+<p>单元 $i$ 受到的电场力（密度梯度）：</p>
+<p>$$<br />
 \frac{\partial D}{\partial x_i} = q_i \cdot E_x(x_i, y_i), \quad \frac{\partial D}{\partial y_i} = q_i \cdot E_y(x_i, y_i)<br />
-]</p>
-<p>其中 ( q_i = A_i ) 为单元的"电荷量"，( \mathbf{E} = -\nabla\Phi ) 为电场。</p>
+$$</p>
+<p>其中 $q_i = A_i$ 为单元的"电荷量"，$\mathbf{E} = -\nabla\Phi$ 为电场。</p>
 <blockquote>
 <p><strong>物理直觉</strong>：每个单元如同带正电的物体——大单元电荷量大，受电场力更强，被推离高密度区域的速度更快。小单元电荷量小，能在密度梯度中更精细地调整位置。这个特性自然实现了大面积单元优先占据空旷区域、小单元填充缝隙的布局策略。</p>
 </blockquote>
@@ -176,81 +176,81 @@ D = \sum_{b} \Phi_b \cdot \rho_b<br />
 <p>ePlace 的密度函数对<strong>所有 bin</strong> 施加相同的平滑处理。问题在于：不同的 bin 可能需要不同程度的平滑——已经满足密度约束的 bin 不需要进一步平滑（会模糊掉精细的密度信息），而严重 overflow 的 bin 需要更强的平滑来产生足够的排斥力。</p>
 <h3 id="42-replace">4.2 RePlAce 的局部平滑策略</h3>
 <p>RePlAce 引入<strong>per-bin 的自适应平滑</strong>：</p>
-<p>[<br />
+<p>$$<br />
 \tilde{\rho}_b = (1 - \alpha_b) \cdot \rho_b + \alpha_b \cdot \bar{\rho}_b^{\text{local}}<br />
-]</p>
+$$</p>
 <p>其中：<br />
-- ( \rho_b ) 是原始电荷密度（精确值）<br />
-- ( \bar{\rho}_b^{\text{local}} ) 是 bin ( b ) 局部邻域的平滑密度<br />
-- ( \alpha_b ) 是<strong>局部平滑系数</strong>，由 bin ( b ) 的 overflow 程度决定</p>
-<p><strong>核心创新</strong>：( \alpha_b ) 不是全局统一的常量，而是根据每个 bin 的状态动态计算：</p>
-<p>[<br />
+- $\rho_b$ 是原始电荷密度（精确值）<br />
+- $\bar{\rho}_b^{\text{local}}$ 是 bin $b$ 局部邻域的平滑密度<br />
+- $\alpha_b$ 是<strong>局部平滑系数</strong>，由 bin $b$ 的 overflow 程度决定</p>
+<p><strong>核心创新</strong>：$\alpha_b$ 不是全局统一的常量，而是根据每个 bin 的状态动态计算：</p>
+<p>$$<br />
 \alpha_b = f(\text{overflow}<em>b) = \begin{cases}<br />
 \alpha</em>{\max}, &amp; \text{overflow}<em>b \text{ 严重（需要强排斥力）} \<br />
 \alpha</em>{\min}, &amp; \text{overflow}_b = 0 \text{（保持精确密度信息）}<br />
 \end{cases}<br />
-]</p>
+$$</p>
 <blockquote>
-<p><strong>设计哲学</strong>：这相当于在密度约束满足好的区域保持高精度（( \alpha ) 小 = 信赖原始 ( \rho )），而在 density hot-spot 区域增加平滑（( \alpha ) 大 = 使用邻域平均 ( \bar{\rho} )），产生更强的排斥力将单元推开。这是一种 <strong>自适应约束满足策略</strong>——将优化力度集中到真正有约束违反的地方。</p>
+<p><strong>设计哲学</strong>：这相当于在密度约束满足好的区域保持高精度（$\alpha$ 小 = 信赖原始 $\rho$），而在 density hot-spot 区域增加平滑（$\alpha$ 大 = 使用邻域平均 $\bar{\rho}$），产生更强的排斥力将单元推开。这是一种 <strong>自适应约束满足策略</strong>——将优化力度集中到真正有约束违反的地方。</p>
 </blockquote>
 <h3 id="43">4.3 局部平滑的物理等价</h3>
-<p>局部平滑等价于在静电系统中引入了<strong>空间变化的介电常数</strong> ( \epsilon(x, y) )：</p>
-<p>[<br />
+<p>局部平滑等价于在静电系统中引入了<strong>空间变化的介电常数</strong> $\epsilon(x, y)$：</p>
+<p>$$<br />
 \nabla \cdot (\epsilon(x, y) \nabla \Phi) = -\rho(x, y)<br />
-]</p>
-<p>在高 overflow 区域，( \epsilon ) 更小（或等价地说，有效电荷更大），电场更强、作用范围更远。这使得 dense region 的单元能更快扩散。</p>
+$$</p>
+<p>在高 overflow 区域，$\epsilon$ 更小（或等价地说，有效电荷更大），电场更强、作用范围更远。这使得 dense region 的单元能更快扩散。</p>
 <hr />
 <h2 id="5">5. 创新点二：动态步长自适应</h2>
 <h3 id="51-nesterov">5.1 Nesterov 优化中步长的重要性</h3>
-<p>Nesterov 加速梯度（NAG）方法的收敛速度<strong>高度依赖步长</strong> ( \alpha )。步长太小导致收敛缓慢（单元扩散不够快，overlap 迟迟不消除），步长太大导致震荡甚至发散（单元"跳过头"）。</p>
+<p>Nesterov 加速梯度（NAG）方法的收敛速度<strong>高度依赖步长</strong> $\alpha$。步长太小导致收敛缓慢（单元扩散不够快，overlap 迟迟不消除），步长太大导致震荡甚至发散（单元"跳过头"）。</p>
 <h3 id="52-eplace-lipschitz">5.2 ePlace 的静态 Lipschitz 估计</h3>
 <p>ePlace 使用 Lipschitz 常数的上界来估计步长：</p>
-<p>[<br />
+<p>$$<br />
 \alpha_k = \frac{1}{L}, \quad L = \sup_{\mathbf{x} \neq \mathbf{y}} \frac{|\nabla f(\mathbf{x}) - \nabla f(\mathbf{y})|}{|\mathbf{x} - \mathbf{y}|}<br />
-]</p>
+$$</p>
 <p>问题在于：<br />
-- Lipschitz 常数 ( L ) 是<strong>全局最坏情况</strong>的上界，对于大部分迭代来说过于保守<br />
+- Lipschitz 常数 $L$ 是<strong>全局最坏情况</strong>的上界，对于大部分迭代来说过于保守<br />
 - 随着优化的进行，目标函数的"有效"曲率会变化（单元从密集堆积变为均匀分布），固定步长无法适应<br />
 - 静态估计没有考虑不同坐标方向上的曲率差异（各向异性）</p>
 <h3 id="53-replace">5.3 RePlAce 的动态步长调整</h3>
 <p>RePlAce 不依赖 Lipschitz 常数的静态估计，而是在每步迭代中动态确定步长：</p>
-<p>[<br />
+<p>$$<br />
 \alpha_k = \arg\min_{\alpha} \; f\left(\mathbf{x}_k - \alpha \cdot \nabla f(\mathbf{x}_k)\right)<br />
-]</p>
+$$</p>
 <p>但精确的线搜索（line search）代价太高（每次试探需要重新计算整个目标函数和梯度）。RePlAce 使用了一种<strong>近似线搜索</strong>策略：</p>
 <p><strong>回溯法（Backtracking）</strong>：</p>
 <ol>
-<li>从较大的试探步长 ( \alpha_k^{(0)} ) 开始</li>
-<li>检查 Nesterov 收敛条件：( f(\mathbf{x}_{k+1}) \leq f(\mathbf{x}_k) - \frac{\alpha_k}{2}|\nabla f(\mathbf{x}_k)|^2 )</li>
-<li>如果不满足（说明步长太大），则缩小步长：( \alpha_k \leftarrow \tau \cdot \alpha_k )（( \tau \in (0.5, 0.9) )）</li>
+<li>从较大的试探步长 $\alpha_k^{(0)}$ 开始</li>
+<li>检查 Nesterov 收敛条件：$f(\mathbf{x}_{k+1}) \leq f(\mathbf{x}_k) - \frac{\alpha_k}{2}|\nabla f(\mathbf{x}_k)|^2$</li>
+<li>如果不满足（说明步长太大），则缩小步长：$\alpha_k \leftarrow \tau \cdot \alpha_k$（$\tau \in (0.5, 0.9)$）</li>
 <li>重复直到满足条件或达到最小步长</li>
 </ol>
 <p><strong>试探步长初始化</strong>：RePlAce 使用前一步的<strong>成功步长</strong>作为当前步的初始试探值：</p>
-<p>[<br />
+<p>$$<br />
 \alpha_k^{(0)} = \alpha_{k-1}^{\text{final}}<br />
-]</p>
+$$</p>
 <blockquote>
-<p><strong>为什么这比静态 Lipschitz 更好？</strong> 考虑布局过程：在早期阶段，单元严重重叠，Lipschitz 常数 ( L ) 很大（梯度变化剧烈），静态估计给出的步长非常小，单元几乎动不了。而 RePlAce 的回溯法从较大的试探步长开始，逐步缩小到合适的值，避免了静态估计的保守性。在后期阶段，单元分布均匀，目标函数平滑，步长自然也会增大。</p>
+<p><strong>为什么这比静态 Lipschitz 更好？</strong> 考虑布局过程：在早期阶段，单元严重重叠，Lipschitz 常数 $L$ 很大（梯度变化剧烈），静态估计给出的步长非常小，单元几乎动不了。而 RePlAce 的回溯法从较大的试探步长开始，逐步缩小到合适的值，避免了静态估计的保守性。在后期阶段，单元分布均匀，目标函数平滑，步长自然也会增大。</p>
 </blockquote>
 <h3 id="54">5.4 自适应 μ 系数控制</h3>
-<p>RePlAce 还引入了一个动态调整的 Nesterov 参数 ( \mu \in [\mu_{\min}, \mu_{\max}] )（默认 ( [0.95, 1.05] )）：</p>
-<p>[<br />
+<p>RePlAce 还引入了一个动态调整的 Nesterov 参数 $\mu \in [\mu_{\min}, \mu_{\max}]$（默认 $[0.95, 1.05]$）：</p>
+<p>$$<br />
 \mu_{k+1} = \begin{cases}<br />
 \max(\mu_k - \Delta\mu, \mu_{\min}), &amp; \text{如果 HPWL 在改善} \<br />
 \min(\mu_k + \Delta\mu, \mu_{\max}), &amp; \text{如果 HPWL 恶化}<br />
 \end{cases}<br />
-]</p>
-<p>( \mu ) 控制 λ 的更新速率（见 Day 1 的公式）。通过根据 HPWL 变化趋势动态调节 ( \mu )，RePlAce 在优化过程中自动找到了线长与密度的最优平衡点。</p>
+$$</p>
+<p>$\mu$ 控制 λ 的更新速率（见 Day 1 的公式）。通过根据 HPWL 变化趋势动态调节 $\mu$，RePlAce 在优化过程中自动找到了线长与密度的最优平衡点。</p>
 <hr />
 <h2 id="6-procrustes">6. 初始布局与 Procrustes 对齐</h2>
 <h3 id="61">6.1 为什么需要初始布局？</h3>
 <p>随机初始化的坐标会使静电模型在最初几百次迭代中耗费大量时间在"将单元大致展开"上。一个合理的初始布局可以显著减少总迭代次数。</p>
 <h3 id="62-bicgstab">6.2 二次布局初始化（BiCGSTAB 求解）</h3>
 <p>RePlAce 在 Nesterov 非线性优化之前，先求解一个<strong>二次线长最小化问题</strong>：</p>
-<p>[<br />
+<p>$$<br />
 \min_{\mathbf{x}, \mathbf{y}} \sum_{e \in \text{nets}} \sum_{i,j \in e} (x_i - x_j)^2 + (y_i - y_j)^2<br />
-]</p>
-<p>这是一个<strong>无约束凸二次规划</strong>，最优解等价于求解稀疏线性方程组 ( \mathbf{A}\mathbf{x} = \mathbf{b} )。</p>
+$$</p>
+<p>这是一个<strong>无约束凸二次规划</strong>，最优解等价于求解稀疏线性方程组 $\mathbf{A}\mathbf{x} = \mathbf{b}$。</p>
 <p>RePlAce 使用 <strong>BiCGSTAB（双共轭梯度稳定化）</strong> 迭代求解器：<br />
 - 默认最多 <strong>20 次迭代</strong><br />
 - 对 fanout &gt; 200 的超大网络跳过（避免单根线主导整个初始布局）<br />
@@ -286,31 +286,31 @@ graph TD
 </thead>
 <tbody>
 <tr>
-<td>( \gamma )（平滑参数）</td>
+<td>$\gamma$（平滑参数）</td>
 <td>从大递减</td>
 <td>控制 WA 线长的近似精度</td>
 <td>继承 ePlace</td>
 </tr>
 <tr>
-<td>( \lambda )（密度权重）</td>
+<td>$\lambda$（密度权重）</td>
 <td>自适应</td>
 <td>平衡线长与密度</td>
 <td>引入局部 overflow 反馈</td>
 </tr>
 <tr>
-<td>( \alpha )（步长）</td>
+<td>$\alpha$（步长）</td>
 <td>回溯法动态确定</td>
 <td>Nesterov 步长</td>
 <td><strong>核心创新：替代静态 Lipschitz</strong></td>
 </tr>
 <tr>
-<td>( \mu )（λ 更新系数）</td>
+<td>$\mu$（λ 更新系数）</td>
 <td>[0.95, 1.05]</td>
 <td>密度权重的变化速度</td>
 <td>HPWL 趋势感知的动态调节</td>
 </tr>
 <tr>
-<td>( \alpha_b )（局部平滑系数）</td>
+<td>$\alpha_b$（局部平滑系数）</td>
 <td>按 bin overflow 计算</td>
 <td>密度感知的平滑程度</td>
 <td><strong>核心创新：替代全局均匀平滑</strong></td>
@@ -328,9 +328,9 @@ graph TD
 <p>RePlAce 的 routability 扩展分两步：</p>
 <p><strong>步骤 1 —— 拥塞估计</strong>：使用 <strong>RUDY</strong>（Rectangular Uniform wire DensitY）快速估计每个 tile 的布线需求。RUDY 假设每根网线在其 bounding box 内均匀分布走线资源，计算速度极快但精度较低。可选使用 <strong>FastRoute</strong> 全局布线器获得更精确的拥塞图。</p>
 <p><strong>步骤 2 —— 单元膨胀</strong>：对于拥塞 tile 中的逻辑单元，人为增大其面积（称为 inflation 或 bloating）：</p>
-<p>[<br />
+<p>$$<br />
 A_i^{\text{eff}} = A_i \cdot (1 + \beta \cdot \text{congestion_ratio})<br />
-]</p>
+$$</p>
 <p>膨胀后的单元在静电模型中表现为更大的电荷，被推离拥塞区域。这个过程迭代进行，直到路由拥塞指标（RC metric）不再下降。</p>
 <div class="mermaid">
 graph LR
@@ -467,15 +467,15 @@ graph LR
 <p><strong>本质是什么</strong>：将密度感知的平滑从<strong>全局均匀操作</strong>升级为<strong>局部自适应操作</strong>。</p>
 <p><strong>为什么之前没人这样做</strong>：ePlace 的 FFT 谱方法天然适用于全局操作——DCT 变换将密度场转化为频域，在频域做修改（如低通滤波），再转回空间域。局部平滑意味着需要在空间域做 per-bin 的判断后再进频域——这打破了"纯频域操作"的优雅性，但实践证明这种混合策略是值得的。</p>
 <p><strong>类比理解</strong>：全局平滑像是用同一个模糊滤镜处理整张图片——哪怕有些区域已经足够清晰。局部平滑则像智能锐化——只在需要的地方（density hot-spot）增加平滑力度，在已经满足约束的区域保持清晰。</p>
-<p><strong>技术上的巧妙之处</strong>：局部平滑系数 ( \alpha_b ) 是基于 overflow 计算的，而 overflow 的定义本身就与密度相关。这使得整个系统形成了一个<strong>自适应的反馈回路</strong>：<br />
-- overflow 大 → ( \alpha ) 大 → 平滑强 → 排斥力大 → 单元散开 → overflow 减小 → ( \alpha ) 减小<br />
+<p><strong>技术上的巧妙之处</strong>：局部平滑系数 $\alpha_b$ 是基于 overflow 计算的，而 overflow 的定义本身就与密度相关。这使得整个系统形成了一个<strong>自适应的反馈回路</strong>：<br />
+- overflow 大 → $\alpha$ 大 → 平滑强 → 排斥力大 → 单元散开 → overflow 减小 → $\alpha$ 减小<br />
 - 这个负反馈机制自然地将优化引导到均匀的低-overflow 状态</p>
 <h3 id="102">10.2 创新点二：动态步长自适应</h3>
 <p><strong>本质是什么</strong>：将步长选择从<strong>静态全局估计</strong>变为<strong>动态局部搜索</strong>。</p>
 <p><strong>ePlace 静态估计为什么不好</strong>：</p>
-<p>Lipschitz 常数 ( L ) 的定义是目标函数梯度的最大变化率。对于布局问题：<br />
-- 早期：单元严重重叠，密度梯度变化剧烈 → ( L ) 很大 → 步长 ( 1/L ) 极小 → 收敛极慢<br />
-- 晚期：单元分布均匀，密度梯度平缓 → ( L ) 很小 → 固定小步长浪费了可以大步前进的机会</p>
+<p>Lipschitz 常数 $L$ 的定义是目标函数梯度的最大变化率。对于布局问题：<br />
+- 早期：单元严重重叠，密度梯度变化剧烈 → $L$ 很大 → 步长 $1/L$ 极小 → 收敛极慢<br />
+- 晚期：单元分布均匀，密度梯度平缓 → $L$ 很小 → 固定小步长浪费了可以大步前进的机会</p>
 <p><strong>RePlAce 回溯法的物理直觉</strong>：</p>
 <p>将 Nesterov 优化类比为在崎岖地形上下坡：<br />
 - 静态步长策略：用一个固定的"最大坡度"估算来设定步幅——在最陡峭的地方刚好不摔倒，但到了平坦的地方走得极慢<br />
@@ -485,7 +485,7 @@ graph LR
 - 步长不够大的代价是收敛慢（浪费迭代）<br />
 - 步长太大的代价是函数值可能上升（但下一次回溯就会修正）<br />
 - 布局中"太小的步长"是更常见的失败模式（ePlace 的问题）<br />
-- 回溯法试探大步长的额外开销只有 ( O(1) ) 次函数值计算，远小于收敛慢造成的迭代浪费</p>
+- 回溯法试探大步长的额外开销只有 $O(1)$ 次函数值计算，远小于收敛慢造成的迭代浪费</p>
 <h3 id="103">10.3 创新点三：可布线性感知布局</h3>
 <p><strong>本质是什么</strong>：将布局优化从<strong>代理目标</strong>（HPWL 最小化）升级为<strong>最终目标</strong>（可布线性）导向。</p>
 <p>HPWL 作为可布线性的代理有两个根本问题：<br />
