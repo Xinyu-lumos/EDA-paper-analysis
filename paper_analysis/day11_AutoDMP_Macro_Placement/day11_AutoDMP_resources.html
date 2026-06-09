@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 11: AutoDMP 参考代码资源</title>
+<style>
+body {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 40px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.8;
+  color: #1a1a2e;
+  background: #fafbfc;
+}
+h1 { color: #1a1a2e; border-bottom: 2px solid #16213e; padding-bottom: 8px; }
+h2 { color: #16213e; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; margin-top: 2em; }
+h3 { color: #0f3460; }
+a { color: #e94560; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.repo-card {
+  background: #e8eaf6;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 1em 0;
+  line-height: 1.8;
+}
+.repo-card .repo-name { font-size: 1.2em; font-weight: bold; color: #0f3460; }
+.repo-card .repo-stars { color: #f59e0b; font-weight: bold; }
+.repo-card .repo-lang { display: inline-block; background: #0f3460; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.85em; }
+.repo-card .repo-license { display: inline-block; background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.85em; margin-left: 6px; }
+.repo-card .key-dir { background: #f0f4ff; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+.repo-card .key-file { background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; color: inherit; }
+blockquote {
+  border-left: 4px solid #0f3460;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background: #f0f4ff;
+  border-radius: 0 4px 4px 0;
+}
+hr { border: none; border-top: 1px solid #e0e0e0; margin: 2em 0; }
+</style>
+</head>
+<body>
+
+<h1>Day 11: AutoDMP —— 参考代码资源</h1>
+
+<blockquote>
+本页汇总 Day 11 论文 <strong>AutoDMP: Automated DREAMPlace-based Macro Placement</strong> (ISPD 2023) 的相关代码仓库、关键模块说明和快速上手指南。
+</blockquote>
+
+<hr/>
+
+<h2>1. 官方实现</h2>
+
+<div class="repo-card">
+<div class="repo-name">📦 NVlabs/AutoDMP</div>
+<div>
+  ⭐ <span class="repo-stars">166</span> &nbsp;
+  <span class="repo-lang">C++ / Python</span> &nbsp;
+  <span class="repo-license">Apache 2.0</span>
+</div>
+<div>
+  🔗 <a href="https://github.com/NVlabs/AutoDMP">https://github.com/NVlabs/AutoDMP</a>
+</div>
+<div style="margin-top: 8px;">
+  NVIDIA 官方实现，基于 DREAMPlace + ABCDPlace，包含多目标贝叶斯优化调参器。
+</div>
+</div>
+
+<h3>1.1 关键目录与文件</h3>
+
+<table>
+<thead><tr><th>路径</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><span class="key-dir">tuner/</span></td><td>🧠 <strong>核心模块</strong>：多目标贝叶斯优化（MOBO）调参器</td></tr>
+<tr><td><span class="key-file">tuner/configspace.json</span></td><td>📋 搜索空间定义——定义了哪些超参数、范围多大，可自行修改</td></tr>
+<tr><td><span class="key-file">tuner/run_tuner.sh</span></td><td>🚀 一键运行调参脚本</td></tr>
+<tr><td><span class="key-file">tuner/tuner_train.py</span></td><td>🎯 贝叶斯优化训练主逻辑，可调整核密度估计参数</td></tr>
+<tr><td><span class="key-dir">test/</span></td><td>📊 测试 benchmark（NVDLA NanGate45 等）</td></tr>
+<tr><td><span class="key-file">test/nvdla_nangate45_51/configspace.json</span></td><td>📋 NVDLA benchmark 的参数搜索空间</td></tr>
+<tr><td><span class="key-dir">dreamplace/</span></td><td>🔧 DREAMPlace 源码（含宏单元布局增强）</td></tr>
+<tr><td><span class="key-dir">scripts/</span></td><td>📝 物理设计流程脚本（RTL → 布局 → 评估）</td></tr>
+<tr><td><span class="key-dir">hpbandster/</span></td><td>⚡ Hyperband 早期停止框架</td></tr>
+<tr><td><span class="key-file">Dockerfile</span></td><td>🐳 Docker 构建文件，一键搭建环境</td></tr>
+</tbody>
+</table>
+
+<h3>1.2 快速上手</h3>
+
+<pre><code># 1. 克隆仓库（含子模块）
+git clone --recursive https://github.com/NVlabs/AutoDMP.git
+cd AutoDMP
+
+# 2. 使用 Docker 构建（推荐）
+docker build -t autodmp .
+docker run --gpus all -it autodmp bash
+
+# 3. 运行多目标贝叶斯优化（NVDLA benchmark，20 轮，2 并行 worker）
+./tuner/run_tuner.sh 1 1 test/nvdla_nangate45_51/configspace.json \
+  test/nvdla_nangate45_51/NV_NVDLA_partition_c.aux \
+  test/nvdla_nangate45_51/nvdla_ppa.json "" 20 2 0 0 10 ./tuner \
+  test/nvdla_nangate45_51/mobohb_log</code></pre>
+
+<blockquote>
+<strong>提示</strong>：修改 <code>tuner/configspace.json</code> 可以自定义搜索空间——这是探索不同参数组合的最简单方式。
+</blockquote>
+
+<hr/>
+
+<h2>2. 衍生项目</h2>
+
+<div class="repo-card">
+<div class="repo-name">📦 ABKGroup/DG-RePlAce-AutoDMP</div>
+<div>
+  ⭐ <span class="repo-stars">3</span> &nbsp;
+  <span class="repo-lang">C++ / Python</span>
+</div>
+<div>
+  🔗 <a href="https://github.com/ABKGroup/DG-RePlAce-AutoDMP">https://github.com/ABKGroup/DG-RePlAce-AutoDMP</a>
+</div>
+<div style="margin-top: 8px;">
+  将 AutoDMP 与分布式 RePlAce（Day 2）结合，支持多 GPU 并行调参。
+</div>
+</div>
+
+<div class="repo-card">
+<div class="repo-name">📦 KevinHQChen/autoDMP</div>
+<div>
+  ⭐ <span class="repo-stars">2</span>
+</div>
+<div>
+  🔗 <a href="https://github.com/KevinHQChen/autoDMP">https://github.com/KevinHQChen/autoDMP</a>
+</div>
+<div style="margin-top: 8px;">
+  社区维护的 fork，可能包含额外的修复和改进。
+</div>
+</div>
+
+<hr/>
+
+<h2>3. 相关生态</h2>
+
+<div class="repo-card">
+<div class="repo-name">📦 limbo018/DREAMPlace</div>
+<div>
+  🔗 <a href="https://github.com/limbo018/DREAMPlace">https://github.com/limbo018/DREAMPlace</a>
+</div>
+<div style="margin-top: 8px;">
+  Day 1 论文的官方代码仓库，AutoDMP 的底层求解器。AutoDMP 基于 commit <code>b8f87eec</code>。
+</div>
+</div>
+
+<div class="repo-card">
+<div class="repo-name">📦 TILOS-AI-Institute/MacroPlacement</div>
+<div>
+  🔗 <a href="https://github.com/TILOS-AI-Institute/MacroPlacement">https://github.com/TILOS-AI-Institute/MacroPlacement</a>
+</div>
+<div style="margin-top: 8px;">
+  宏单元布局流程仓库，AutoDMP 官方 README 引用。提供 RTL、Tcl 脚本和评测基线，包含多个宏布局方法的对比。
+</div>
+</div>
+
+<div class="repo-card">
+<div class="repo-name">📦 NVlabs/ABCDPlace</div>
+<div>
+  🔗 <a href="https://github.com/NVlabs/ABCDPlace">https://github.com/NVlabs/ABCDPlace</a>
+</div>
+<div style="margin-top: 8px;">
+  Day 5 论文（并行详细布局）的官方代码，AutoDMP 使用的详细布局求解器。
+</div>
+</div>
+
+<hr/>
+
+<h2>4. 论文 PDF</h2>
+
+<div class="repo-card">
+📄 <strong>本地 PDF</strong>：<a href="AutoDMP_ISPD2023_Agnesina.pdf">AutoDMP_ISPD2023_Agnesina.pdf</a>
+<br/>
+🔗 <strong>arXiv</strong>：<a href="https://arxiv.org/abs/2303.09036">arXiv:2303.09036</a>
+<br/>
+🔗 <strong>ACM DL</strong>：<a href="https://dl.acm.org/doi/10.1145/3569052.3578923">10.1145/3569052.3578923</a>
+<br/>
+🔗 <strong>NVIDIA Blog</strong>：<a href="https://developer.nvidia.com/blog/autodmp-optimizes-macro-placement-for-chip-design-with-ai-and-gpus/">AutoDMP Optimizes Macro Placement for Chip Design with AI and GPUs</a>
+</div>
+
+<hr/>
+
+<h2>5. 关键代码解读：贝叶斯优化调参流程</h2>
+
+<h3>5.1 搜索空间定义（configspace.json）</h3>
+
+<p><code>configspace.json</code> 定义了 AutoDMP 优化的超参数及其搜索范围：</p>
+
+<pre><code>{
+  "density_weight": {"type": "float", "min": 1e-5, "max": 1e-1, "log": true},
+  "density_weight_decay": {"type": "float", "min": 1.01, "max": 1.5},
+  "macro_weight": {"type": "float", "min": 1e-2, "max": 1e2, "log": true},
+  "initial_learning_rate": {"type": "float", "min": 0.1, "max": 10.0},
+  "macro_repulsion_radius": {"type": "float", "min": 0.5, "max": 5.0}
+}</code></pre>
+
+<blockquote>
+<strong>修改建议</strong>：如果你的设计有特殊特征（如大量小宏或少量超大宏），可以缩小搜索范围以加速收敛。
+</blockquote>
+
+<h3>5.2 调参主循环（tuner_train.py 核心逻辑）</h3>
+
+<pre><code># 伪代码：AutoDMP 调参主循环
+for iteration in range(max_iterations):
+    # 1. 采集函数建议下一组参数
+    config = bo.suggest()
+
+    # 2. 运行 DREAMPlace 布局
+    result = run_dreamplace(config, benchmark)
+
+    # 3. 评估布局质量（多目标）
+    hpwl = result["hpwl"]
+    congestion = result["congestion"]
+    density_overflow = result["density_overflow"]
+
+    # 4. 更新贝叶斯优化模型
+    bo.observe(config, (hpwl, congestion, density_overflow))
+
+    # 5. 记录最优结果
+    if is_pareto_optimal(config):
+        save_best_config(config)</code></pre>
+
+<hr/>
+
+<p style="color: #888; font-size: 0.9em;">本页由 Claude Code 于 2026-06-09 生成，作为 Day 11 论文分析的参考代码索引。</p>
+
+</body>
+</html>

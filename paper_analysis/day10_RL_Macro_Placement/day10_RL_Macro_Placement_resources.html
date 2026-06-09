@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 10: Google RL Chip Placement 参考代码资源</title>
+<style>
+body {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 40px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.8;
+  color: #1a1a2e;
+  background: #fafbfc;
+}
+h1 { color: #1a1a2e; border-bottom: 2px solid #16213e; padding-bottom: 8px; }
+h2 { color: #16213e; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; margin-top: 2em; }
+h3 { color: #0f3460; }
+a { color: #e94560; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.repo-card {
+  background: #e8eaf6;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 1em 0;
+  line-height: 1.8;
+}
+.repo-card .repo-name { font-size: 1.2em; font-weight: bold; color: #0f3460; }
+.repo-card .repo-stars { color: #f59e0b; font-weight: bold; }
+.repo-card .repo-lang { display: inline-block; background: #0f3460; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.85em; }
+.repo-card .repo-license { display: inline-block; background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.85em; margin-left: 6px; }
+.repo-card .key-dir { background: #f0f4ff; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+.repo-card .key-file { background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+blockquote {
+  border-left: 4px solid #0f3460;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background: #f0f4ff;
+  border-radius: 0 4px 4px 0;
+}
+hr { border: none; border-top: 1px solid #e0e0e0; margin: 2em 0; }
+</style>
+</head>
+<body>
+
+<h1>Day 10: Google RL Chip Placement —— 参考代码资源</h1>
+
+<blockquote>
+本页汇总 Day 10 论文 <strong>A Graph Placement Methodology for Fast Chip Design</strong> (Nature 2021) 的相关代码仓库和资源。
+</blockquote>
+
+<hr/>
+
+<h2>1. 官方资源</h2>
+
+<div class="repo-card">
+<div class="repo-name">📦 google-research/circuit_training</div>
+<div>
+  🔗 <a href="https://github.com/google-research/circuit_training">https://github.com/google-research/circuit_training</a>
+</div>
+<div style="margin-top: 8px;">
+  Google 官方开源的 RL 芯片布局训练框架，基于 TF-Agents。包含 GNN 编码器、RL 策略网络和训练循环，是论文方法的开源参考实现。
+</div>
+</div>
+
+<h3>1.1 关键模块</h3>
+
+<table>
+<thead><tr><th>模块</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><span class="key-dir">circuit_training/</span></td><td>核心代码目录</td></tr>
+<tr><td><span class="key-file">circuit_training/grouping/</span></td><td>标准单元聚类（将小单元合并为虚拟节点）</td></tr>
+<tr><td><span class="key-file">circuit_training/environment/</span></td><td>RL 环境（画布状态、动作空间、奖励函数）</td></tr>
+<tr><td><span class="key-file">circuit_training/gnn/</span></td><td>🧠 图神经网络编码器（GCN 消息传递）</td></tr>
+<tr><td><span class="key-file">circuit_training/policy/</span></td><td>策略网络（输出网格位置概率分布）</td></tr>
+<tr><td><span class="key-file">circuit_training/training/</span></td><td>REINFORCE 训练循环</td></tr>
+</tbody>
+</table>
+
+<hr/>
+
+<h2>2. 社区复现与改进</h2>
+
+<div class="repo-card">
+<div class="repo-name">📦 TILOS-AI-Institute/MacroPlacement</div>
+<div>
+  🔗 <a href="https://github.com/TILOS-AI-Institute/MacroPlacement">https://github.com/TILOS-AI-Institute/MacroPlacement</a>
+</div>
+<div style="margin-top: 8px;">
+  TILOS 研究所的宏单元布局基准框架，包含 Google RL 方法的复现和多种基线对比。提供统一的评测协议和公开 benchmark。
+</div>
+</div>
+
+<div class="repo-card">
+<div class="repo-name">📦 DeepPlace (学术复现)</div>
+<div>
+  🔗 <a href="https://github.com/thu-pacman/DeepPlace">https://github.com/thu-pacman/DeepPlace</a>
+</div>
+<div style="margin-top: 8px;">
+  清华大学 PACMAN 实验室的复现工作，结合 GNN + RL 布局，与 DREAMPlace 框架集成。
+</div>
+</div>
+
+<hr/>
+
+<h2>3. 争议论文资源</h2>
+
+<div class="repo-card">
+<div class="repo-name">📄 The False Dawn (Markov, 2023)</div>
+<div>
+  🔗 <a href="https://arxiv.org/abs/2304.01267">arXiv:2304.01267</a>
+</div>
+<div style="margin-top: 8px;">
+  Igor Markov 对 Google RL 方法的系统性批判论文，讨论了基线公平性、计算成本和可复现性问题。是理解 Day 10 论文争议的重要参考。
+</div>
+</div>
+
+<hr/>
+
+<h2>4. 论文 PDF</h2>
+
+<div class="repo-card">
+📄 <strong>本地 PDF</strong>：<a href="RL_Chip_Placement_Nature2021_Mirhoseini.pdf">RL_Chip_Placement_Nature2021_Mirhoseini.pdf</a>
+<br/>
+🔗 <strong>Nature</strong>：<a href="https://www.nature.com/articles/s41586-021-03544-w">Nature 594, 207–212 (2021)</a>
+<br/>
+🔗 <strong>Google AI Blog</strong>：<a href="https://ai.googleblog.com/2021/06/graph-placement-with-deep.html">Graph Placement with Deep Reinforcement Learning</a>
+</div>
+
+<hr/>
+
+<p style="color: #888; font-size: 0.9em;">本页由 Claude Code 于 2026-06-09 生成，作为 Day 10 论文分析的参考代码索引。</p>
+
+</body>
+</html>
