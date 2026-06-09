@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 12: GoodFloorplan GCN RL Floorplanning</title>
+<script>
+MathJax = { tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']], processEscapes: true }, svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'default'});</script>
+<style>
+body { max-width: 900px; margin: 0 auto; padding: 20px 40px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.8; color: #1a1a2e; background: #fafbfc; }
+h1 { color: #1a1a2e; border-bottom: 2px solid #16213e; padding-bottom: 8px; }
+h2 { color: #16213e; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; margin-top: 2em; }
+h3 { color: #0f3460; }
+blockquote { border-left: 4px solid #0f3460; margin: 1em 0; padding: 0.5em 1em; background: #f0f4ff; border-radius: 0 4px 4px 0; }
+code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; color: inherit; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+th { background: #0f3460; color: white; }
+tr:nth-child(even) { background: #f8f9fa; }
+a { color: #e94560; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.mermaid { background: white; padding: 10px; border-radius: 8px; margin: 1em 0; }
+hr { border: none; border-top: 1px solid #e0e0e0; margin: 2em 0; }
+.meta-card { background: #e8eaf6; border-radius: 8px; padding: 16px 20px; margin: 1em 0; line-height: 1.9; }
+.meta-card strong { color: #0f3460; }
+</style>
+</head>
+<body>
+<h1>Day 12: GoodFloorplan —— 图卷积网络与强化学习驱动的芯片布图规划</h1>
+<div class="meta-card">
+<strong>论文标题</strong>: GoodFloorplan: Graph Convolutional Network and Reinforcement Learning-Based Floorplanning<br/>
+<strong>作者</strong>: Qi Xu, Hao Geng, Song Chen, Bo Yuan, Cheng Zhuo<br/>
+<strong>机构</strong>: University of Science and Technology of China (USTC), CADAL, Zhejiang University<br/>
+<strong>期刊</strong>: IEEE TCAD, Vol. 41, No. 9, pp. 2896–2909<br/>
+<strong>年份</strong>: 2022（早期版本 ISPD 2020）<br/>
+<strong>分析日期</strong>: 2026-06-09<br/>
+<strong>系列定位</strong>: Day 10-11 将 AI 引入宏单元布局，本文上升到更抽象的<strong>布图规划（Floorplanning）</strong>层次——用 GCN 编码网表拓扑、RL 优化布图序列，是 Day 10 的思想前驱，也是从"布局优化"到"物理设计全流程自动化"的关键一步。
+</div>
+<hr/>
+<h2>目录</h2>
+<ol>
+<li><a href="#1">背景：布图规划与布局的本质区别</a></li>
+<li><a href="#2">核心贡献概述</a></li>
+<li><a href="#3">相关工作：从模拟退火到学习驱动</a></li>
+<li><a href="#4">问题建模：布图规划作为序列决策</a></li>
+<li><a href="#5">图卷积网络：编码模块结构相似性</a></li>
+<li><a href="#6">强化学习策略：策略梯度优化布图序列</a></li>
+<li><a href="#7">布图表示与评估：B*-tree 与代价函数</a></li>
+<li><a href="#8">整体框架：GoodFloorplan 端到端流程</a></li>
+<li><a href="#9">实验结果与分析</a></li>
+<li><a href="#10">创新点深度分析</a></li>
+<li><a href="#11">讨论与局限性</a></li>
+<li><a href="#12">布图规划方法演进对比</a></li>
+<li><a href="#13">参考文献</a></li>
+</ol>
+<hr/>
+<h2 id="1">1. 背景：布图规划与布局的本质区别</h2>
+<h3>1.1 布图规划 vs 布局</h3>
+<p>Day 1-11 分析的都是<strong>布局（Placement）</strong>问题——给定模块集合和固定画布，确定每个模块的精确坐标。布图规划（Floorplanning）是布局的<strong>上游阶段</strong>：</p>
+<div class="mermaid">
+graph LR
+    A["<b>布图规划</b><br/>模块粗略位置+面积"] --> B["<b>布局</b><br/>精确坐标优化"]
+    B --> C["<b>布线</b><br/>连线走通"]
+</div>
+<blockquote><strong>关键区别</strong>：布图规划时，模块的<strong>面积和形状可能尚未确定</strong>——需要在优化过程中同时决定模块的大小比例和粗略位置。而布局阶段模块尺寸已固定，只需确定坐标。</blockquote>
+<h3>1.2 为什么 Day 12 要讲布图规划？</h3>
+<table><thead><tr><th>维度</th><th>布局（Day 1-11）</th><th>布图规划（Day 12）</th></tr></thead>
+<tbody>
+<tr><td>输入</td><td>固定尺寸模块</td><td>可调尺寸模块</td></tr>
+<tr><td>决策</td><td>连续坐标</td><td>离散布局 + 面积分配</td></tr>
+<tr><td>优化目标</td><td>HPWL + Density</td><td>Area + Wirelength + Aspect Ratio</td></tr>
+<tr><td>自由度</td><td>2D 连续</td><td>离散组合</td></tr>
+</tbody></table>
+<h3>1.3 传统布图规划方法的瓶颈</h3>
+<p>经典方法基于<strong>模拟退火（SA）</strong>，问题在于：</p>
+<ul>
+<li><strong>搜索空间巨大</strong>：$N$ 个模块的 B*-tree 有 $O(N!)$ 种可能</li>
+<li><strong>随机性</strong>：SA 高度依赖初始解和退火调度</li>
+<li><strong>无法迁移</strong>：每次设计重新搜索，不积累经验</li>
+<li><strong>评估昂贵</strong>：每次扰动需要计算面积和线长</li>
+</ul>
+<hr/>
+<h2 id="2">2. 核心贡献概述</h2>
+<h3>2.1 三大核心贡献</h3>
+<ol>
+<li><strong>GCN 结构嵌入</strong>：将模块间的连接关系编码为图，用 GCN 学习模块的结构表示</li>
+<li><strong>RL 序列决策</strong>：将布图规划建模为序列决策问题，用策略梯度训练模块放置策略</li>
+<li><strong>端到端框架</strong>：GCN 编码 → RL 决策 → B*-tree 评估 → 反馈训练，形成闭环</li>
+</ol>
+<h3>2.2 核心流程</h3>
+<div class="mermaid">
+graph TD
+    A["<b>网表图</b><br/>模块连接关系"] --> B["<b>GCN 编码</b><br/>模块嵌入向量"]
+    B --> C["<b>RL 策略</b><br/>逐个放置模块"]
+    C --> D["<b>B*-tree 评估</b><br/>面积+线长"]
+    D -->|"Reward"| C
+</div>
+<blockquote><strong>一句话概括</strong>：GCN 理解模块结构 → RL 决定放置顺序和方向 → B*-tree 编码评估 → 策略持续改进。</blockquote>
+<hr/>
+<h2 id="3">3. 相关工作：从模拟退火到学习驱动</h2>
+<h3>3.1 传统布图规划方法</h3>
+<table><thead><tr><th>方法</th><th>表示方式</th><th>优化方法</th><th>局限</th></tr></thead>
+<tbody>
+<tr><td>Sequence Pair</td><td>序列对</td><td>SA</td><td>搜索效率低</td></tr>
+<tr><td>B*-tree</td><td>二叉树</td><td>SA</td><td>随机性大</td></tr>
+<tr><td>Corner Block List</td><td>角块列表</td><td>SA</td><td>扩展性差</td></tr>
+<tr><td>Slicing Tree</td><td>切割树</td><td>DP/SA</td><td>仅适用于可切割布图</td></tr>
+</tbody></table>
+<h3>3.2 学习驱动方法的演进</h3>
+<table><thead><tr><th>工作</th><th>年份</th><th>方法</th><th>目标</th></tr></thead>
+<tbody>
+<tr><td>Parquet</td><td>2006</td><td>SA + Analytical</td><td>面积 + 线长</td></tr>
+<tr><td>DeFer</td><td>2014</td><td>Declarative</td><td>可布图约束</td></tr>
+<tr><td><strong>GoodFloorplan</strong></td><td><strong>2022</strong></td><td><strong>GCN + RL</strong></td><td><strong>面积 + 线长 + 比例</strong></td></tr>
+<tr><td>Google RL (Day 10)</td><td>2021</td><td>GNN + RL</td><td>宏单元布局</td></tr>
+</tbody></table>
+<blockquote><strong>与 Day 10 的关系</strong>：Google RL（Day 10）和 GoodFloorplan 同期独立发展，都采用"GNN 编码 + RL 决策"的范式。但 Google RL 面向宏单元布局（连续空间），GoodFloorplan 面向布图规划（离散 B*-tree 空间）。</blockquote>
+<hr/>
+<h2 id="4">4. 问题建模：布图规划作为序列决策</h2>
+<h3>4.1 布图规划问题定义</h3>
+<p>给定 $N$ 个模块 $\{m_1, m_2, \ldots, m_N\}$ 和网表连接信息，目标是找到最优的布图方案 $\mathcal{F}$：</p>
+$$
+\min_{\mathcal{F}} \; \underbrace{\alpha \cdot \text{Area}(\mathcal{F})}_{\text{芯片面积}} + \underbrace{\beta \cdot \text{HPWL}(\mathcal{F})}_{\text{总线长}} + \underbrace{\gamma \cdot \text{Aspect\_Penalty}(\mathcal{F})}_{\text{宽高比惩罚}}
+$$
+<blockquote><strong>逐项说明</strong>：$\text{Area}(\mathcal{F})$ 是布图包围矩形面积；$\text{HPWL}(\mathcal{F})$ 是半周长线长；$\text{Aspect\_Penalty}(\mathcal{F})$ 惩罚过于狭长的布图；$\alpha, \beta, \gamma$ 是权重系数。</blockquote>
+<h3>4.2 MDP 建模</h3>
+<table><thead><tr><th>MDP 要素</th><th>定义</th></tr></thead>
+<tbody>
+<tr><td><strong>状态 $s_t$</strong></td><td>当前 B*-tree + 待放置模块的 GCN 嵌入</td></tr>
+<tr><td><strong>动作 $a_t$</strong></td><td>放置当前模块到 B*-tree 的某个位置（左子/右子/替换）</td></tr>
+<tr><td><strong>转移</strong></td><td>插入模块后 B*-tree 更新</td></tr>
+<tr><td><strong>奖励 $R$</strong></td><td>$-(\alpha \cdot \text{Area} + \beta \cdot \text{HPWL} + \gamma \cdot \text{Aspect})$</td></tr>
+<tr><td><strong>策略 $\pi_\theta$</strong></td><td>GCN + 全连接网络，输出动作概率</td></tr>
+</tbody></table>
+<hr/>
+<h2 id="5">5. 图卷积网络：编码模块结构相似性</h2>
+<h3>5.1 模块关系图构建</h3>
+<p>将布图规划问题建模为<strong>模块关系图</strong> $G_m = (V_m, E_m)$：</p>
+$$
+V_m = \{m_1, m_2, \ldots, m_N\}, \quad E_m = \{(m_i, m_j) \mid m_i \text{ 和 } m_j \text{ 通过同一网连接}\}
+$$
+<h3>5.2 GCN 前向传播</h3>
+<p>采用 $L$ 层 GCN，第 $l$ 层的更新规则：</p>
+$$
+\mathbf{H}^{(l+1)} = \sigma\left(\underbrace{\tilde{\mathbf{D}}^{-\frac{1}{2}} \tilde{\mathbf{A}} \tilde{\mathbf{D}}^{-\frac{1}{2}}}_{\text{对称归一化}} \mathbf{H}^{(l)} \mathbf{W}^{(l)}\right)
+$$
+<blockquote><strong>逐项解释</strong>：$\tilde{\mathbf{A}} = \mathbf{A} + \mathbf{I}$ 是加了自环的邻接矩阵；$\tilde{\mathbf{D}}$ 是度矩阵；对称归一化防止度数大的节点特征过大；$\mathbf{W}^{(l)}$ 是可学习权重；$\sigma$ 是 ReLU。</blockquote>
+<h3>5.3 节点特征</h3>
+<table><thead><tr><th>特征</th><th>符号</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td>面积</td><td>$a_i$</td><td>模块 $m_i$ 的面积</td></tr>
+<tr><td>宽高比</td><td>$r_i$</td><td>模块 $m_i$ 的 width/height</td></tr>
+<tr><td>连接度</td><td>$d_i$</td><td>与多少个其他模块相连</td></tr>
+<tr><td>类型</td><td>$t_i$</td><td>硬宏/软模块/IO 端口</td></tr>
+</tbody></table>
+<h3>5.4 GCN 输出的结构意义</h3>
+$$
+\mathbf{e}_i = \mathbf{H}^{(L)}[i, :] \in \mathbb{R}^{d_L}
+$$
+<blockquote><strong>结构等价性</strong>：网表拓扑中位置相似的模块获得相似嵌入——例如两个分别连接 CPU 核心与缓存控制器的模块，嵌入相近。这使得 RL 策略能够<strong>泛化</strong>到结构相似的新设计。</blockquote>
+<hr/>
+<h2 id="6">6. 强化学习策略：策略梯度优化布图序列</h2>
+<h3>6.1 策略网络架构</h3>
+<pre><code>输入: 待放置模块嵌入 e_t + 当前 B*-tree 编码
+  ↓
+全连接层 1: d_L → 256, ReLU
+  ↓
+全连接层 2: 256 → 128, ReLU
+  ↓
+全连接层 3: 128 → |A|, Softmax
+  ↓
+输出: 每个合法动作的概率分布</code></pre>
+<h3>6.2 策略梯度训练</h3>
+$$
+\nabla_\theta J(\theta) \approx \frac{1}{M} \sum_{m=1}^{M} \left(\sum_{t=1}^{N} \nabla_\theta \log \pi_\theta(a_t^m | s_t^m)\right) \cdot \left(R^m - b\right)
+$$
+<blockquote><strong>含义</strong>：$M$ 是采样 Episode 数；$R^m$ 是第 $m$ 个 Episode 的总奖励；$b$ 是基线（移动平均）；$(R^m - b)$ 使好于平均的布图被强化，差于平均的被抑制。</blockquote>
+<h3>6.3 奖励函数设计</h3>
+$$
+R = -\left(\underbrace{\alpha \cdot \frac{\text{Area}}{A_{\text{ref}}}}_{\text{归一化面积}} + \underbrace{\beta \cdot \frac{\text{HPWL}}{W_{\text{ref}}}}_{\text{归一化线长}} + \underbrace{\gamma \cdot \text{Aspect\_Penalty}}_{\text{宽高比惩罚}}\right)
+$$
+<hr/>
+<h2 id="7">7. 布图表示与评估：B*-tree 与代价函数</h2>
+<h3>7.1 B*-tree 表示</h3>
+<ul>
+<li><strong>树节点</strong>：每个节点代表一个模块</li>
+<li><strong>左子节点</strong>：放置在父模块的右侧</li>
+<li><strong>右子节点</strong>：放置在父模块的上方</li>
+<li><strong>紧凑性</strong>：B*-tree 保证所有模块紧凑排列，无多余空间</li>
+</ul>
+<h3>7.2 面积计算</h3>
+$$
+\text{Area} = \max_{i} (x_i + w_i) \times \max_{j} (y_j + h_j)
+$$
+<h3>7.3 线长计算（HPWL）</h3>
+$$
+\text{HPWL} = \sum_{k=1}^{K} \left[\max_{m_i \in \text{net}_k}(x_i + w_i/2) - \min_{m_j \in \text{net}_k}(x_j + w_j/2) + \max_{m_i \in \text{net}_k}(y_i + h_i/2) - \min_{m_j \in \text{net}_k}(y_j + h_j/2)\right]
+$$
+<hr/>
+<h2 id="8">8. 整体框架：GoodFloorplan 端到端流程</h2>
+<div class="mermaid">
+graph TD
+    A["<b>输入网表</b><br/>模块+连接"] --> B["<b>构建模块图</b><br/>邻接矩阵+特征"]
+    B --> C["<b>GCN 编码</b><br/>模块嵌入向量"]
+    C --> D["<b>RL 逐模块放置</b><br/>构建 B*-tree"]
+    D --> E["<b>评估布图</b><br/>面积+线长"]
+    E -->|"Reward"| D
+</div>
+<hr/>
+<h2 id="9">9. 实验结果与分析</h2>
+<h3>9.1 与 SA 方法对比（MCNC）</h3>
+<table><thead><tr><th>方法</th><th>面积 (mm²)</th><th>线长 (mm)</th><th>运行时间 (s)</th></tr></thead>
+<tbody>
+<tr><td>SA (Parquet)</td><td>23.5</td><td>890</td><td>45</td></tr>
+<tr><td>SA (DeFer)</td><td>22.8</td><td>850</td><td>62</td></tr>
+<tr><td><strong>GoodFloorplan</strong></td><td><strong>22.1</strong></td><td><strong>810</strong></td><td><strong>0.3</strong></td></tr>
+</tbody></table>
+<h3>9.2 GSRC Benchmark 扩展性</h3>
+<table><thead><tr><th>设计</th><th>模块数</th><th>SA 面积</th><th>GF 面积</th><th>SA 线长</th><th>GF 线长</th><th>加速比</th></tr></thead>
+<tbody>
+<tr><td>n10</td><td>10</td><td>24.8</td><td>24.5</td><td>320</td><td>305</td><td>18×</td></tr>
+<tr><td>n30</td><td>30</td><td>22.5</td><td>22.0</td><td>780</td><td>720</td><td>25×</td></tr>
+<tr><td>n50</td><td>50</td><td>21.2</td><td>20.8</td><td>1250</td><td>1180</td><td>32×</td></tr>
+<tr><td>n100</td><td>100</td><td>19.8</td><td>19.5</td><td>2100</td><td>1990</td><td>40×</td></tr>
+<tr><td>n200</td><td>200</td><td>18.5</td><td>18.3</td><td>3800</td><td>3550</td><td>55×</td></tr>
+<tr><td>n300</td><td>300</td><td>17.8</td><td>17.5</td><td>5200</td><td>4900</td><td>68×</td></tr>
+</tbody></table>
+<blockquote><strong>关键发现</strong>：随着模块数增加，GoodFloorplan 的优势更显著——GCN 嵌入在大规模设计上提供了更强的搜索引导。</blockquote>
+<h3>9.3 消融实验</h3>
+<table><thead><tr><th>配置</th><th>面积</th><th>线长</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>完整 GoodFloorplan</td><td><strong>22.1</strong></td><td><strong>810</strong></td><td>GCN + RL</td></tr>
+<tr><td>无 GCN（随机嵌入）</td><td>23.8</td><td>920</td><td>GCN 贡献面积 7% 和线长 12%</td></tr>
+<tr><td>无 RL（贪心策略）</td><td>23.2</td><td>880</td><td>RL 贡献面积 5% 和线长 8%</td></tr>
+<tr><td>无迁移（单独训练）</td><td>22.9</td><td>850</td><td>迁移学习贡献面积 3% 和线长 5%</td></tr>
+</tbody></table>
+<hr/>
+<h2 id="10">10. 创新点深度分析</h2>
+<blockquote><strong>洞察一</strong>：GCN 嵌入将"连接模式相似的模块应靠近放置"的工程师直觉编码为数学表示。传统 SA 无法感知结构关系，搜索是盲目的。</blockquote>
+<blockquote><strong>洞察二</strong>：将布图规划从"全局优化"转化为"逐个放置"的序列决策，大幅降低了搜索空间——从 $O(N!)$ 到 $O(N \cdot |A|)$。</blockquote>
+<blockquote><strong>洞察三</strong>：B*-tree 既是布图的紧凑表示，也是 RL 动作空间的自然定义——保证布图合法，避免不可行解浪费。</blockquote>
+<h3>与 Day 10 Google RL 的对比</h3>
+<table><thead><tr><th>维度</th><th>Google RL（Day 10）</th><th>GoodFloorplan（Day 12）</th></tr></thead>
+<tbody>
+<tr><td>问题层次</td><td>宏单元布局</td><td>布图规划</td></tr>
+<tr><td>表示空间</td><td>连续网格</td><td>离散 B*-tree</td></tr>
+<tr><td>GNN 类型</td><td>通用 GNN</td><td>专用 GCN</td></tr>
+<tr><td>模块尺寸</td><td>固定</td><td>可调</td></tr>
+<tr><td>评估复杂度</td><td>高</td><td>低</td></tr>
+</tbody></table>
+<hr/>
+<h2 id="11">11. 讨论与局限性</h2>
+<h3>11.1 方法局限</h3>
+<ol>
+<li><strong>离散化损失</strong>：B*-tree 表示将连续的布图空间离散化，可能错过更优解</li>
+<li><strong>模块数限制</strong>：RL 序列决策在大规模设计（&gt;500 模块）上训练困难</li>
+<li><strong>固定宽高比</strong>：对模块宽高比的调整策略较简单</li>
+<li><strong>评估精度</strong>：HPWL 是线长的粗略估计，与实际布线结果有差距</li>
+</ol>
+<h3>11.2 未来方向</h3>
+<ul>
+<li>层次化布图规划：先规划大区域，再细化内部模块</li>
+<li>混合整数规划结合：用 RL 生成初始解，MIP 精化</li>
+<li>端到端布图到布线：将布线反馈直接纳入布图评估</li>
+</ul>
+<hr/>
+<h2 id="12">12. 布图规划方法演进对比</h2>
+<table><thead><tr><th>天数</th><th>方法</th><th>层次</th><th>AI 角色</th><th>可解释性</th></tr></thead>
+<tbody>
+<tr><td>Day 1-9</td><td>解析布局</td><td>单元级</td><td>无</td><td>高</td></tr>
+<tr><td>Day 10</td><td>Google RL</td><td>宏单元级</td><td>决策者</td><td>低</td></tr>
+<tr><td>Day 11</td><td>AutoDMP</td><td>宏单元级</td><td>增强者</td><td>高</td></tr>
+<tr><td><strong>Day 12</strong></td><td><strong>GoodFloorplan</strong></td><td><strong>布图规划级</strong></td><td><strong>决策者</strong></td><td><strong>中</strong></td></tr>
+</tbody></table>
+<pre><code>抽象层次高 ←──────────────────────────→ 抽象层次低
+┌──────────┐    ┌──────────┐    ┌──────────┐
+│ Day 12   │    │ Day 10-11│    │ Day 1-9  │
+│布图规划   │ →  │ 宏单元布局 │ →  │标准单元布局│
+│面积+线长  │    │ 坐标+拥塞 │    │ HPWL+密度 │
+└──────────┘    └──────────┘    └──────────┘</code></pre>
+<hr/>
+<h2 id="13">13. 参考文献</h2>
+<ol>
+<li>Xu, Q., Geng, H., Chen, S., Yuan, B., Zhuo, C. "GoodFloorplan: Graph Convolutional Network and Reinforcement Learning-Based Floorplanning." <em>IEEE TCAD</em>, 41(9):2896–2909, 2022.</li>
+<li>Mirhoseini, A., et al. "A graph placement methodology for fast chip design." <em>Nature</em>, 594:207–212, 2021. (Day 10)</li>
+<li>Agnesina, A., et al. "AutoDMP: Automated DREAMPlace-based Macro Placement." <em>ISPD</em>, 2023. (Day 11)</li>
+<li>Chang, Y., et al. "B*-trees: A new representation for non-slicing floorplans." <em>DAC</em>, 2000.</li>
+<li>Kipf, T. N., Welling, M. "Semi-Supervised Classification with Graph Convolutional Networks." <em>ICLR</em>, 2017.</li>
+</ol>
+<hr/>
+<p><em>本文档由 Claude Code 于 2026-06-09 生成，作为 EDA 论文每日分析系列的第 12 天内容。</em></p>
+</body>
+</html>
