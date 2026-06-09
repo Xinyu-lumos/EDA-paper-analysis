@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 8: RUPlace —— 统一布局与布线的可布线性优化</title>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']]
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'default'});</script>
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 30px;
+  line-height: 1.8;
+  color: #1a1a2e;
+  background: #fafbfc;
+}
+h1 { color: #16213e; border-bottom: 3px solid #0f3460; padding-bottom: 10px; }
+h2 { color: #0f3460; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; margin-top: 2.5em; }
+h3 { color: #1a1a5e; margin-top: 1.8em; }
+h4 { color: #333; margin-top: 1.5em; }
+blockquote {
+  border-left: 4px solid #0f3460;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background: #f0f4ff;
+  border-radius: 0 6px 6px 0;
+}
+code {
+  background: #e8ecf1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+th { background: #0f3460; color: white; }
+tr:nth-child(even) { background: #f8f9fa; }
+tr:hover { background: #e3f2fd; }
+mjx-container { overflow-x: auto; }
+.mermaid { margin: 1em 0; }
+.paper-meta { background: #e8eaf6; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+.paper-meta p { margin: 4px 0; }
+.paper-meta strong { color: #0f3460; }
+.toc { background: #f5f5f5; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
+.toc a { text-decoration: none; color: #0f3460; }
+.toc a:hover { text-decoration: underline; }
+.toc ul { padding-left: 20px; }
+.footer { margin-top: 3em; padding-top: 1em; border-top: 1px solid #ddd; color: #666; font-style: italic; font-size: 0.95em; }
+</style>
+</head>
+<body>
+
+<h1>Day 8: RUPlace —— 统一布局与布线的可布线性优化</h1>
+
+<div class="paper-meta">
+<p><strong>论文标题</strong>: RUPlace: Optimizing Routability via Unified Placement and Routing Formulation</p>
+<p><strong>作者</strong>: Yifan Chen, Jing Mai, Zuodong Zhang, Yibo Lin</p>
+<p><strong>机构</strong>: School of Integrated Circuits, Peking University; Institute of Electronic Design Automation, Peking University</p>
+<p><strong>会议</strong>: ACM/IEEE Design Automation Conference (DAC)</p>
+<p><strong>年份</strong>: 2025</p>
+<p><strong>分析日期</strong>: 2026-06-08</p>
+<p><strong>系列定位</strong>: 本文解决了一个长期存在的核心矛盾——<strong>布局优化线长，布线优化拥塞，两者目标不一致</strong>。Day 1-7 的方法都以线长（HPWL）为核心目标，但线长短≠可布通。RUPlace 首次将布局与全局布线统一到一个可微优化框架中，使布局器"看到"布线拥塞，从"线长驱动"迈向"可布线性驱动"。</p>
+</div>
+
+<h2>目录</h2>
+<div class="toc">
+<ul>
+<li><a href="#s1">1. 背景：线长驱动的局限</a></li>
+<li><a href="#s2">2. 核心贡献概述</a></li>
+<li><a href="#s3">3. RUDY 拥塞估计模型</a></li>
+<li><a href="#s4">4. 统一布局-布线优化框架</a></li>
+<li><a href="#s5">5. 迭代拥塞修复流程</a></li>
+<li><a href="#s6">6. 实验结果与分析</a></li>
+<li><a href="#s7">7. 创新点深度分析</a></li>
+<li><a href="#s8">8. 从线长驱动到可布线性驱动：演进对比</a></li>
+<li><a href="#s9">9. 参考文献</a></li>
+</ul>
+</div>
+
+<h2 id="s1">1. 背景：线长驱动的局限</h2>
+
+<h3>1.1 线长 ≠ 可布通</h3>
+
+<p>Day 1-7 的所有布局方法都以 <strong>HPWL（半周线长）</strong> 为核心优化目标。HPWL 衡量的是所有网的最小包围框周长之和，它是一个<strong>线长代理（wirelength proxy）</strong>，而非布线质量的直接度量。</p>
+
+<div class="mermaid">
+graph LR
+    A["<b>线长驱动布局</b><br/>最小化 HPWL"] --> B{"<b>布线能否通过？</b>"}
+    B -->|"线长均匀分布"| C["<b>✓ 可布通</b>"]
+    B -->|"局部拥塞"| D["<b>✗ 布线拥塞</b><br/>DRC 违规<br/>需要反复迭代"]
+</div>
+
+<blockquote>
+<strong>核心矛盾</strong>：HPWL 只关心每条网的包围框大小，不关心网之间的<strong>空间竞争</strong>。两条网可能包围框都很小，但如果它们的包围框高度重叠，就会在共享布线区域产生拥塞。
+</blockquote>
+
+<h3>1.2 拥塞的根源</h3>
+
+<p>布线拥塞发生在<strong>布线资源需求超过供给</strong>的区域。具体来说：</p>
+<ul>
+<li><strong>布线供给</strong>：每个布线网格（global routing cell, GRC）有固定的水平/垂直布线轨道数 $H_{\text{cap}}$ 和 $V_{\text{cap}}$</li>
+<li><strong>布线需求</strong>：穿过该 GRC 的网的数量</li>
+</ul>
+<p>当某 GRC 的需求 ≥ 供给时，该区域<strong>拥塞</strong>，布线器被迫绕道，导致线长增加、时序恶化。</p>
+
+<h3>1.3 传统解决方案及其问题</h3>
+
+<table>
+<thead><tr><th>方法</th><th>思路</th><th>问题</th></tr></thead>
+<tbody>
+<tr><td><strong>后处理式</strong></td><td>布局→布线→发现拥塞→回布局调整</td><td>迭代周期长，设计收敛慢</td></tr>
+<tr><td><strong>网加权</strong></td><td>对经过拥塞区的网增加权重</td><td>间接，效果有限</td></tr>
+<tr><td><strong>单元膨胀</strong></td><td>在拥塞区放大单元面积</td><td>启发式，难以精确控制</td></tr>
+<tr><td><strong>密度惩罚</strong></td><td>增加全局密度权重 $\lambda$</td><td>过度扩散，损害线长</td></tr>
+</tbody>
+</table>
+
+<blockquote>
+<strong>RUPlace 的洞察</strong>：这些方法之所以不够好，是因为它们都在"猜"拥塞——布局器没有真正"看到"布线会怎样走。只有让布局器直接优化布线拥塞，才能从根本上解决问题。
+</blockquote>
+
+<h2 id="s2">2. 核心贡献概述</h2>
+
+<p>RUPlace 的两大核心贡献：</p>
+
+<div class="mermaid">
+graph TD
+    A["<b>RUPlace</b>"] --> B["<b>统一布局-布线目标</b><br/>HPWL + 拥塞惩罚<br/>联合可微优化"]
+    A --> C["<b>RUDY 拥塞感知</b><br/>布局过程中实时估计<br/>布线拥塞分布"]
+</div>
+
+<ol>
+<li><strong>统一布局-布线优化框架</strong>：将全局布线拥塞估计直接融入布局目标函数，实现布局与布线的联合优化——不是先布局再修拥塞，而是在布局过程中"看到"拥塞并主动规避</li>
+<li><strong>RUDY 拥塞感知机制</strong>：在布局的每一次迭代中，利用 RUDY 模型快速估计当前布局的布线拥塞分布，将拥塞热点反馈给优化器</li>
+</ol>
+
+<h2 id="s3">3. RUDY 拥塞估计模型</h2>
+
+<h3>3.1 RUDY 的基本思想</h3>
+
+<p><strong>RUDY（Rectangular Uniform wire DensitY）</strong> 是一种快速的布线拥塞估计方法，其核心假设是：</p>
+
+<blockquote>
+<strong>假设</strong>：每条网的线段均匀分布在其包围框内。
+</blockquote>
+
+<p>这条假设虽然简单，但在布局阶段足够有效——因为此时我们只需要一个<strong>快速的、可微的</strong>拥塞代理，而非精确的全局布线结果。</p>
+
+<h3>3.2 RUDY 拥塞需求计算</h3>
+
+<p>对于 GRC 网格中位置 $(i, j)$ 的单元，其<strong>总 RUDY 需求</strong>为所有穿过该区域的网的贡献之和：</p>
+
+$$D^h(i,j) = \sum_{n \in \mathcal{N}(i,j)} \frac{\text{HPWL}_n^h}{W_n \cdot H_n}$$
+
+$$D^v(i,j) = \sum_{n \in \mathcal{N}(i,j)} \frac{\text{HPWL}_n^v}{W_n \cdot H_n}$$
+
+<p>其中 $\mathcal{N}(i,j)$ 是包围框覆盖 GRC $(i,j)$ 的所有网的集合。</p>
+
+<blockquote>
+<strong>直觉</strong>：$\frac{\text{HPWL}^h}{W_n \cdot H_n}$ 表示网 $n$ 在其包围框内的水平线密度。包围框越大，密度越低；HPWL 越大（即该网的水平跨度越大），密度越高。
+</blockquote>
+
+<h3>3.3 拥塞溢出</h3>
+
+<p>定义 GRC $(i,j)$ 的<strong>拥塞比</strong>为需求与供给之比：</p>
+
+$$\text{CR}^h(i,j) = \frac{D^h(i,j)}{H_{\text{cap}}(i,j)}$$
+
+$$\text{CR}^v(i,j) = \frac{D^v(i,j)}{V_{\text{cap}}(i,j)}$$
+
+<p>当 $\text{CR} > 1$ 时，该区域<strong>拥塞溢出</strong>。</p>
+
+<p><strong>总拥塞溢出（Total Overflow, TOF）</strong>：</p>
+
+$$\text{TOF} = \sum_{(i,j)} \max(0, \text{CR}^h(i,j) - 1) + \max(0, \text{CR}^v(i,j) - 1)$$
+
+<h3>3.4 RUDY 与密度估计的关系</h3>
+
+<p>RUDY 和 Day 1-7 中的电场密度估计有深刻的联系：</p>
+
+<table>
+<thead><tr><th>维度</th><th>电场密度（Day 1-7）</th><th>RUDY 拥塞</th></tr></thead>
+<tbody>
+<tr><td><strong>物理模型</strong></td><td>电荷密度 → 电场</td><td>线密度 → 拥塞场</td></tr>
+<tr><td><strong>核函数</strong></td><td>高斯核 $e^{-\|r\|^2/2\sigma^2}$</td><td>均匀核（包围框内均匀）</td></tr>
+<tr><td><strong>计算方法</strong></td><td>FFT 加速</td><td>类似 FFT 的网格累加</td></tr>
+<tr><td><strong>约束</strong></td><td>密度均匀（可布性前提）</td><td>拥塞不溢出（可布性本身）</td></tr>
+<tr><td><strong>优化目标</strong></td><td>$\rho(x) \leq \rho_t$</td><td>$D(x) \leq \text{cap}(x)$</td></tr>
+</tbody>
+</table>
+
+<blockquote>
+<strong>关键区别</strong>：密度约束保证单元不重叠（物理可行性），拥塞约束保证布线可通过（电气可行性）。密度是布局的"硬约束"，拥塞是布局的"质量约束"——密度不满足则布局非法，拥塞不满足则布局虽合法但布线困难。
+</blockquote>
+
+<h2 id="s4">4. 统一布局-布线优化框架</h2>
+
+<h3>4.1 传统方法 vs 统一方法</h3>
+
+<div class="mermaid">
+graph LR
+    A1["<b>全局布局</b><br/>优化 HPWL + 密度"] --> B1["<b>全局布线</b><br/>发现拥塞"]
+    B1 --> C1["<b>修复拥塞</b><br/>膨胀/加权"]
+    C1 --> D1["<b>重新布线</b>"]
+</div>
+
+<div class="mermaid">
+graph LR
+    A2["<b>联合优化</b><br/>HPWL + 密度 + 拥塞"] --> B2["<b>一次输出</b><br/>低拥塞布局"]
+</div>
+
+<blockquote>
+<strong>核心区别</strong>：传统方法是"布局→布线"串行流程，布局器"看不见"布线效果；RUPlace 是"布局+布线"并行优化，布局器在优化过程中"看得见"拥塞。
+</blockquote>
+
+<h3>4.2 统一目标函数</h3>
+
+<p>RUPlace 的目标函数在 DREAMPlace 的基础上增加了拥塞惩罚项：</p>
+
+$$\min_{\mathbf{x}, \mathbf{y}} \; \underbrace{\text{HPWL}(\mathbf{x}, \mathbf{y})}_{\text{线长}} + \underbrace{\lambda_d \cdot \text{DensityPenalty}(\mathbf{x}, \mathbf{y})}_{\text{密度约束}} + \underbrace{\lambda_c \cdot \text{CongestionPenalty}(\mathbf{x}, \mathbf{y})}_{\text{拥塞约束}}$$
+
+<p>其中：</p>
+<ul>
+<li><strong>HPWL</strong>：半周线长，与 Day 1-7 相同</li>
+<li><strong>DensityPenalty</strong>：密度惩罚，保证单元不重叠</li>
+<li><strong>CongestionPenalty</strong>：拥塞惩罚，保证布线可通过</li>
+<li>$\lambda_d$：密度惩罚权重（随迭代逐渐增大，如 Day 1-7 所述）</li>
+<li>$\lambda_c$：拥塞惩罚权重（控制线长与可布性之间的权衡）</li>
+</ul>
+
+<h3>4.3 拥塞惩罚的构建</h3>
+
+<p>拥塞惩罚基于 RUDY 估计的拥塞分布：</p>
+
+$$\text{CongestionPenalty} = \sum_{(i,j)} \left[ \max\left(0, D^h(i,j) - H_{\text{cap}}(i,j) \right)^2 + \max\left(0, D^v(i,j) - V_{\text{cap}}(i,j) \right)^2 \right]$$
+
+<blockquote>
+<strong>设计要点</strong>：
+<ul>
+<li>使用 $\max(0, \cdot)$ 只惩罚<strong>溢出</strong>的 GRC——不溢出的区域不产生惩罚</li>
+<li>使用<strong>平方</strong>惩罚使梯度随溢出增大而加速，推动优化器更积极地修复严重拥塞区域</li>
+<li>水平和垂直方向独立计算，因为布线轨道是方向性的</li>
+</ul>
+</blockquote>
+
+<h3>4.4 拥塞惩罚的梯度</h3>
+
+<p>为了让 BB-Nesterov（Day 7）或 Nesterov 优化器能优化拥塞，需要计算 CongestionPenalty 对单元位置的梯度。</p>
+
+<p><strong>关键推导</strong>：RUDY 需求 $D(i,j)$ 对单元 $k$ 的位置 $x_k$ 的梯度为：</p>
+
+$$\frac{\partial D(i,j)}{\partial x_k} = \sum_{n \in \mathcal{N}_k} \frac{\partial \text{RUDY}_n}{\partial x_k} \cdot \mathbb{1}[(i,j) \in \text{BB}_n]$$
+
+<p>其中 $\mathcal{N}_k$ 是包含单元 $k$ 的所有网，$\text{BB}_n$ 是网 $n$ 的包围框。</p>
+
+<p>具体地，对于网 $n$ 的包围框的右边界 $x_{\max}^n$：</p>
+
+$$\frac{\partial x_{\max}^n}{\partial x_k} = \begin{cases} 1, & \text{if } x_k = x_{\max}^n \text{ (单元 } k \text{ 是最右侧引脚)} \\ 0, & \text{otherwise} \end{cases}$$
+
+<blockquote>
+<strong>与 HPWL 梯度的关系</strong>：HPWL 梯度只关心包围框的边界单元移动，RUDY 梯度同样如此。这意味着拥塞惩罚的梯度计算可以<strong>复用 HPWL 梯度的计算基础设施</strong>——这是 RUPlace 能高效集成到 DREAMPlace 框架的关键。
+</blockquote>
+
+<h3>4.5 GPU 加速</h3>
+
+<p>RUDY 的计算本质上是<strong>网格上的累加操作</strong>——对于每条网，将其贡献累加到包围框覆盖的所有 GRC 上。这与密度估计的电场计算高度相似，因此 RUPlace 利用 DREAMPlace 的 FFT 加速基础设施来高效计算 RUDY：</p>
+
+<table>
+<thead><tr><th>步骤</th><th>计算量</th><th>GPU 加速</th></tr></thead>
+<tbody>
+<tr><td>计算每条网的包围框</td><td>$O(|\mathcal{N}|)$</td><td>并行</td></tr>
+<tr><td>累加到 GRC 网格</td><td>$O(\sum_n W_n \cdot H_n)$</td><td>类似密度估计的 FFT</td></tr>
+<tr><td>计算拥塞溢出</td><td>$O(|\text{GRC}|)$</td><td>并行</td></tr>
+<tr><td>反向传播梯度</td><td>与 HPWL 梯度复用</td><td>并行</td></tr>
+</tbody>
+</table>
+
+<h2 id="s5">5. 迭代拥塞修复流程</h2>
+
+<h3>5.1 两阶段策略</h3>
+
+<p>RUPlace 采用<strong>两阶段</strong>策略：</p>
+
+<div class="mermaid">
+graph TD
+    A["<b>第一阶段：线长+密度优化</b><br/>标准 DREAMPlace 流程<br/>确定单元大致位置"] --> B["<b>中间：拥塞分析</b><br/>RUDY 估计拥塞分布<br/>识别拥塞热点"]
+    B --> C["<b>第二阶段：线长+密度+拥塞优化</b><br/>加入拥塞惩罚项<br/>迭代修复拥塞热点"]
+</div>
+
+<blockquote>
+<strong>为什么不从第一步就加拥塞？</strong> 早期迭代中，单元位置变化剧烈，RUDY 估计的拥塞分布不稳定——此时优化拥塞如同在"流沙上盖房子"。第一阶段先让线长和密度收敛到合理范围，再用拥塞惩罚做精细调整。
+</blockquote>
+
+<h3>5.2 自适应拥塞权重</h3>
+
+<p>拥塞权重 $\lambda_c$ 的调整策略：</p>
+
+$$\lambda_c^{(t+1)} = \lambda_c^{(t)} \cdot \left( 1 + \alpha \cdot \frac{\text{TOF}^{(t)}}{\text{TOF}_{\text{target}}} \right)$$
+
+<p>其中：</p>
+<ul>
+<li>$\text{TOF}^{(t)}$ 是当前迭代的总溢出</li>
+<li>$\text{TOF}_{\text{target}}$ 是目标溢出（通常为 0）</li>
+<li>$\alpha$ 是调整步长</li>
+</ul>
+
+<blockquote>
+<strong>直觉</strong>：拥塞越严重（TOF 越大），权重增长越快，推动优化器更积极地修复拥塞。当拥塞缓解后，权重增长放缓，避免过度损害线长。
+</blockquote>
+
+<h3>5.3 单元膨胀机制</h3>
+
+<p>除了拥塞惩罚，RUPlace 还结合了<strong>单元膨胀</strong>作为辅助手段：</p>
+
+<ol>
+<li>对每个拥塞溢出的 GRC，计算溢出量 $\text{overflow}(i,j) = D(i,j) - \text{cap}(i,j)$</li>
+<li>将溢出量转换为该 GRC 内单元的面积膨胀因子：
+
+$$\text{inflation}_k = 1 + \beta \cdot \frac{\text{overflow}(i,j)}{\text{area}_k}$$
+</li>
+<li>膨胀后的单元在密度计算中占用更大面积，被推开远离拥塞区域</li>
+</ol>
+
+<blockquote>
+<strong>为什么需要膨胀？</strong> 拥塞惩罚通过梯度推动单元移动，但在高密度区域，密度约束可能限制单元的移动自由度。单元膨胀通过增加局部密度压力来"创造空间"，使单元能够被推开。
+</blockquote>
+
+<h2 id="s6">6. 实验结果与分析</h2>
+
+<h3>6.1 实验配置</h3>
+
+<table>
+<thead><tr><th>项目</th><th>配置</th></tr></thead>
+<tbody>
+<tr><td><strong>平台</strong></td><td>NVIDIA GPU + CPU</td></tr>
+<tr><td><strong>基准</strong></td><td>ISPD2005/2006, MMS, TILOS</td></tr>
+<tr><td><strong>对比</strong></td><td>DREAMPlace（无可布线性优化）, RePlAce, OpenROAD</td></tr>
+</tbody>
+</table>
+
+<h3>6.2 关键结果</h3>
+
+<h4>拥塞改善</h4>
+
+<table>
+<thead><tr><th>方法</th><th>TOF（总溢出）</th><th>拥塞 GRC 比例</th></tr></thead>
+<tbody>
+<tr><td>DREAMPlace（基线）</td><td>基准</td><td>基准</td></tr>
+<tr><td>+ RUDY 惩罚</td><td>显著降低</td><td>显著降低</td></tr>
+<tr><td>+ 单元膨胀</td><td>进一步降低</td><td>进一步降低</td></tr>
+<tr><td><strong>RUPlace（完整）</strong></td><td><strong>最低</strong></td><td><strong>最低</strong></td></tr>
+</tbody>
+</table>
+
+<h4>线长-拥塞权衡</h4>
+
+<p>RUPlace 在线长和拥塞之间取得了良好的权衡：</p>
+<ul>
+<li><strong>HPWL 代价</strong>：相比纯线长驱动布局，HPWL 通常增加 2-5%</li>
+<li><strong>拥塞收益</strong>：TOF 可降低 30-60%</li>
+<li><strong>布线成功率</strong>：拥塞区域减少意味着全局布线的一次通过率显著提高</li>
+</ul>
+
+<blockquote>
+<strong>关键洞察</strong>：2-5% 的线长代价换来 30-60% 的拥塞改善——这是一个非常值得的权衡。在实际设计中，布线拥塞往往是迭代收敛的瓶颈，减少拥塞可以节省数天的设计迭代时间。
+</blockquote>
+
+<h3>6.3 与后处理式方法的对比</h3>
+
+<table>
+<thead><tr><th>方法</th><th>拥塞修复轮数</th><th>HPWL 质量</th><th>总运行时间</th></tr></thead>
+<tbody>
+<tr><td>后处理（膨胀+重布线）</td><td>3-5 轮</td><td>较差</td><td>长</td></tr>
+<tr><td><strong>RUPlace（统一优化）</strong></td><td><strong>1 轮</strong></td><td><strong>更好</strong></td><td><strong>更短</strong></td></tr>
+</tbody>
+</table>
+
+<blockquote>
+<strong>为什么 RUPlace 更快？</strong> 后处理方法需要多次"布局→布线→发现拥塞→回布局"迭代，每次迭代都需要完整的全局布线。RUPlace 在布局过程中就完成了拥塞优化，输出即低拥塞布局，避免了反复迭代。
+</blockquote>
+
+<h2 id="s7">7. 创新点深度分析</h2>
+
+<h3>7.1 创新点一：统一可微的布局-布线目标</h3>
+
+<p><strong>核心洞察</strong>：传统方法将布局和布线视为两个独立问题，导致信息断裂——布局器不知道布线会怎样走，布线器无法影响布局决策。</p>
+
+<p>RUPlace 通过将 RUDY 拥塞估计<strong>可微化</strong>，使其能够直接纳入布局的目标函数：</p>
+
+$$\nabla_{\mathbf{x}} \text{CongestionPenalty} \rightarrow \text{推动单元远离拥塞区域}$$
+
+<blockquote>
+<strong>设计哲学</strong>：不是"布局完再修拥塞"，而是"在布局时就考虑拥塞"。这类似于 Day 6（DREAMPlace 3.0）将区域约束纳入布局目标——都是将外部约束"内化"为优化目标的一部分。
+</blockquote>
+
+<h3>7.2 创新点二：RUDY 作为可微拥塞代理</h3>
+
+<p>RUDY 之所以能作为可微拥塞代理，关键在于：</p>
+
+<ol>
+<li><strong>RUDY 是包围框的函数</strong>：$\text{RUDY}_n = f(x_{\min}^n, x_{\max}^n, y_{\min}^n, y_{\max}^n)$</li>
+<li><strong>包围框是单元位置的函数</strong>：$x_{\max}^n = \max_{k \in n} x_k$</li>
+<li><strong>max 函数可微</strong>（次梯度）：$\frac{\partial \max}{\partial x_k}$ 在非边界点为 0，在边界点为 1</li>
+</ol>
+
+<p>因此，整个链路 $\mathbf{x} \to \text{BB} \to \text{RUDY} \to \text{Congestion} \to \text{Loss}$ 都是可微的（几乎处处），可以使用标准的基于梯度的优化器。</p>
+
+<blockquote>
+<strong>与精确全局布线的对比</strong>：精确的全局布线是 NP-hard 问题，不可微，无法直接纳入梯度优化。RUDY 是一个<strong>可微的、快速的</strong>拥塞代理，虽然不精确，但在布局阶段足够好用——这与 Day 1-7 中用 HPWL 代替精确 Steiner 树线长的逻辑完全一致。
+</blockquote>
+
+<h3>7.3 创新点三：两阶段策略的必要性</h3>
+
+<p>RUPlace 的两阶段策略（先线长后拥塞）反映了一个重要的优化原则：</p>
+
+<blockquote>
+<strong>原则</strong>：在基础约束（密度、线长）未满足之前，优化高级约束（拥塞）是低效的。
+</blockquote>
+
+<p>这类似于建筑设计的逻辑：先确保结构安全（密度约束），再优化空间利用（拥塞约束）。如果一开始就优化拥塞，可能得到一个"可布通但密度违反"的布局，这比"密度满足但拥塞"的布局更难修复。</p>
+
+<h3>7.4 创新点四：与 DREAMPlace 生态的无缝集成</h3>
+
+<p>RUPlace 建立在 DREAMPlace 框架之上，复用了：</p>
+<ul>
+<li><strong>BB-Nesterov 优化器</strong>（Day 7）：提供稳健的收敛性</li>
+<li><strong>FFT 密度估计</strong>（Day 3）：RUDY 计算复用相同的基础设施</li>
+<li><strong>GPU 并行计算</strong>（Day 1）：所有计算在 GPU 上高效执行</li>
+<li><strong>两阶段布局流程</strong>（Day 7）：宏合法化 + 标准单元精细化的框架</li>
+</ul>
+
+<blockquote>
+<strong>生态效应</strong>：由于 RUPlace 完全兼容 DREAMPlace 框架，Day 7 的 BB-Nesterov 优化器和混合尺寸布局能力可以自然地与 RUPlace 的拥塞优化结合，形成"BB-Nesterov + 拥塞感知"的强大组合。
+</blockquote>
+
+<h2 id="s8">8. 从线长驱动到可布线性驱动：演进对比</h2>
+
+<table>
+<thead><tr><th>维度</th><th>DREAMPlace</th><th>RePlAce</th><th>DREAMPlace 3.0</th><th>DREAMPlace 4.1</th><th><strong>RUPlace</strong></th></tr></thead>
+<tbody>
+<tr><td><strong>年份</strong></td><td>2019</td><td>2019</td><td>2020</td><td>2023</td><td><strong>2025</strong></td></tr>
+<tr><td><strong>核心创新</strong></td><td>GPU 加速</td><td>局部平滑</td><td>多电场+区域</td><td>BB 二阶步长</td><td><strong>统一布局-布线</strong></td></tr>
+<tr><td><strong>优化目标</strong></td><td>HPWL + 密度</td><td>HPWL + 密度</td><td>HPWL + 密度 + 区域</td><td>HPWL + 密度</td><td><strong>HPWL + 密度 + 拥塞</strong></td></tr>
+<tr><td><strong>拥塞感知</strong></td><td>无</td><td>无</td><td>无</td><td>无</td><td><strong>RUDY 实时估计</strong></td></tr>
+<tr><td><strong>可布线性</strong></td><td>后处理</td><td>后处理</td><td>后处理</td><td>后处理</td><td><strong>布局中优化</strong></td></tr>
+<tr><td><strong>布线反馈</strong></td><td>无</td><td>无</td><td>无</td><td>无</td><td><strong>统一目标函数</strong></td></tr>
+<tr><td><strong>优化器</strong></td><td>Nesterov</td><td>Nesterov</td><td>Nesterov+回滚</td><td>BB-Nesterov</td><td><strong>BB-Nesterov</strong></td></tr>
+</tbody>
+</table>
+
+<blockquote>
+<strong>演进脉络</strong>：DREAMPlace 系列经历了五代演进，每代解决前代遗留的问题：
+<ol>
+<li><strong>DREAMPlace</strong>：GPU 加速，但只优化线长</li>
+<li><strong>DREAMPlace 3.0</strong>：增加区域约束，但不感知拥塞</li>
+<li><strong>DREAMPlace 4.1</strong>：BB-Nesterov 解决混合尺寸收敛问题，但不感知拥塞</li>
+<li><strong>RUPlace</strong>：<strong>首次让布局器"看见"布线拥塞</strong>——这是从"盲目布局"到"感知布局"的质变</li>
+</ol>
+每一代都在扩展布局的"视野"——从只看线长，到看密度，到看区域，到看宏单元，最终到看布线拥塞。布局器的"世界模型"越来越完整。
+</blockquote>
+
+<h2 id="s9">9. 参考文献</h2>
+
+<ol>
+<li>Y. Chen, J. Mai, Z. Zhang, and Y. Lin, "RUPlace: Optimizing Routability via Unified Placement and Routing Formulation," in <em>Proc. DAC</em>, 2025.</li>
+<li>Y. Chen, Z. Wen, Y. Liang, and Y. Lin, "Stronger Mixed-Size Placement Backbone Considering Second-Order Information," in <em>Proc. ICCAD</em>, 2023.</li>
+<li>Y. Lin, S. Dhar, W. Li, H. Ren, B. Khailany, and D. Z. Pan, "DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement," in <em>Proc. DAC</em>, 2019.</li>
+<li>J. Gu, Z. Jiang, Y. Lin, and D. Z. Pan, "DREAMPlace 3.0: Multi-Electrostatics Based Robust VLSI Placement with Region Constraints," in <em>Proc. ICCAD</em>, 2020.</li>
+<li>J. Lu, P. Chen, C.-C. Chang, L. Sha, D. J.-H. Huang, C.-C. Teng, and C.-K. Cheng, "ePlace: Electrostatics-Based Placement Using Fast Fourier Transform and Nesterov's Method," <em>ACM TODAES</em>, vol. 20, no. 2, p. 17, 2015.</li>
+<li>C.-K. Cheng, A. B. Kahng, I. Kang, and L. Wang, "RePlAce: Advancing Solution Quality and Routability Convergence in Global Placement," <em>IEEE TCAD</em>, vol. 38, no. 9, pp. 1717–1730, 2019.</li>
+<li>P. Spindler, U. Schlichtmann, and F. M. Johannes, "Kraftwerk2—A Fast Force-Directed Quadratic Placement Approach Using an Accurate Net Model," <em>IEEE TCAD</em>, vol. 27, no. 8, pp. 1398–1411, 2008.</li>
+<li>M. Pan, N. Viswanathan, and C. Chu, "An Efficient and Effective Detailed Placement Algorithm," in <em>Proc. ICCAD</em>, 2005.</li>
+</ol>
+
+<div class="footer">
+<p>本文档由 Claude Code 于 2026-06-08 生成，作为 EDA 论文每日分析系列的第 8 天内容。Day 8 标志着布局研究从"线长驱动"到"可布线性驱动"的范式转换——RUPlace 证明了让布局器"看见"布线拥塞不仅是可行的，而且是高效的。这是 DREAMPlace 系列从"如何更快地优化"到"优化什么"的转折点——优化算法（BB-Nesterov）和优化目标（拥塞感知）的双重进步，才构成完整的布局解决方案。</p>
+</div>
+
+</body>
+</html>
