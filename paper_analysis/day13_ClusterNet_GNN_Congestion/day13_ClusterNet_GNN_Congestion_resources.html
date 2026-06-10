@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 13: ClusterNet 参考代码与资源</title>
+<style>
+body { max-width: 900px; margin: 0 auto; padding: 20px 40px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.8; color: #1a1a2e; background: #fafbfc; }
+h1 { color: #1a1a2e; border-bottom: 2px solid #16213e; padding-bottom: 8px; }
+h2 { color: #16213e; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; margin-top: 2em; }
+h3 { color: #0f3460; }
+code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; color: inherit; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+th { background: #0f3460; color: white; }
+tr:nth-child(even) { background: #f8f9fa; }
+a { color: #e94560; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.repo-card { background: #e8eaf6; border-radius: 8px; padding: 16px 20px; margin: 1em 0; border-left: 4px solid #0f3460; }
+.repo-card h3 { margin-top: 0; }
+.key-dir { background: #e3f2fd; padding: 2px 8px; border-radius: 3px; font-weight: bold; font-size: 0.9em; }
+.key-file { background: #fff3e0; padding: 2px 8px; border-radius: 3px; font-weight: bold; font-size: 0.9em; }
+hr { border: none; border-top: 1px solid #e0e0e0; margin: 2em 0; }
+.meta-card { background: #e8eaf6; border-radius: 8px; padding: 16px 20px; margin: 1em 0; line-height: 1.9; }
+.meta-card strong { color: #0f3460; }
+.note { background: #fff3e0; border-left: 4px solid #ff9800; padding: 0.5em 1em; margin: 1em 0; border-radius: 0 4px 4px 0; }
+</style>
+</head>
+<body>
+<h1>Day 13: ClusterNet 参考代码与资源</h1>
+<div class="meta-card">
+<strong>论文</strong>: ClusterNet: Routing Congestion Prediction and Optimization Using Netlist Clustering and Graph Neural Networks<br/>
+<strong>会议</strong>: IEEE/ACM ICCAD 2023<br/>
+<strong>作者</strong>: Kyungjun Min, Seongbin Kwon, Sung-Yun Lee, Dohun Kim, Sunghye Park, Seokhyeong Kang<br/>
+<strong>机构</strong>: UNIST (Ulsan National Institute of Science and Technology)<br/>
+<strong>DOI</strong>: <a href="https://doi.org/10.1109/ICCAD57390.2023.10323942">10.1109/ICCAD57390.2023.10323942</a>
+</div>
+
+<h2>1. 论文 PDF 链接</h2>
+<div class="note">
+<strong>⚠️ 注意</strong>：本论文为 IEEE 付费论文，无免费 PDF 可下载。以下是在线阅读链接：
+</div>
+<table>
+<thead><tr><th>来源</th><th>链接</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>IEEE Xplore</td><td><a href="https://ieeexplore.ieee.org/document/10323942">IEEE Xplore 在线阅读</a></td><td>官方出版版本（需订阅）</td></tr>
+<tr><td>Semantic Scholar</td><td><a href="https://www.semanticscholar.org/paper/ClusterNet-Routing-Congestion-Prediction-and-Using-Min-Kwon/dbdb76c798d5ec246e1674748e53be66ca3ba968">Semantic Scholar 页面</a></td><td>可查看摘要和引用</td></tr>
+<tr><td>DBLP</td><td><a href="https://dblp.org/rec/conf/iccad/MinKLKPK23">DBLP 条目</a></td><td>文献索引信息</td></tr>
+</tbody>
+</table>
+
+<h2>2. 官方代码仓库</h2>
+<div class="note">
+<strong>⚠️ 截至 2026 年 6 月</strong>：ClusterNet 作者尚未公开代码仓库。以下是基于论文方法推测的实现指南和相关生态。
+</div>
+
+<h3>2.1 核心组件与实现指南</h3>
+<table>
+<thead><tr><th>模块</th><th>功能</th><th>推荐工具/库</th></tr></thead>
+<tbody>
+<tr><td><span class="key-dir">网表解析</span></td><td>读取 DEF/LEF/Verilog，构建网表图</td><td>OpenROAD Python API, libdef</td></tr>
+<tr><td><span class="key-dir">Leiden 聚类</span></td><td>网表社区检测</td><td><a href="https://github.com/vtraag/leidenalg">leidenalg</a> (Python)</td></tr>
+<tr><td><span class="key-dir">GAT 模型</span></td><td>图注意力网络编码</td><td>PyTorch Geometric (PyG)</td></tr>
+<tr><td><span class="key-dir">CNN 细化</span></td><td>空间拥塞扩散</td><td>PyTorch Conv2d</td></tr>
+<tr><td><span class="key-dir">布局优化</span></td><td>聚类填充 + 详细布局</td><td>OpenROAD</td></tr>
+</tbody>
+</table>
+
+<h3>2.2 关键依赖</h3>
+<table>
+<thead><tr><th>依赖</th><th>版本</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>Python</td><td>≥ 3.8</td><td>主语言</td></tr>
+<tr><td>PyTorch</td><td>≥ 1.12</td><td>深度学习框架</td></tr>
+<tr><td>PyTorch Geometric</td><td>≥ 2.1</td><td>GNN 实现</td></tr>
+<tr><td>leidenalg</td><td>≥ 0.9</td><td>Leiden 聚类算法</td></tr>
+<tr><td>igraph</td><td>≥ 0.10</td><td>图数据结构（leidenalg 依赖）</td></tr>
+<tr><td>networkx</td><td>≥ 2.8</td><td>图操作和分析</td></tr>
+<tr><td>numpy / scipy</td><td>最新</td><td>数值计算</td></tr>
+<tr><td>OpenROAD</td><td>最新</td><td>物理设计 EDA 工具</td></tr>
+</tbody>
+</table>
+
+<h2>3. 快速上手指南（复现路线）</h2>
+<h3>3.1 环境搭建</h3>
+<pre><code># 创建 conda 环境
+conda create -n clusternet python=3.9
+conda activate clusternet
+
+# 安装 PyTorch (CUDA 版本)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# 安装 PyTorch Geometric
+pip install torch-scatter torch-sparse torch-cluster torch-spline-conv -f https://data.pyg.org/whl/torch-2.0.0+cu118.html
+pip install torch-geometric
+
+# 安装 Leiden 算法
+pip install leidenalg igraph
+
+# 安装 OpenROAD (需要编译或使用 Docker)
+# 参考: https://github.com/The-OpenROAD-Project/OpenROAD
+</code></pre>
+
+<h3>3.2 数据准备</h3>
+<pre><code># 1. 使用 OpenROAD 运行布局+布线，生成训练数据
+# 输入: DEF/LEF/Verilog 文件
+# 输出: 拥塞图 (congestion map) + 布局坐标
+
+# 2. 从 DEF 文件提取网表图
+python extract_netlist_graph.py --def_path design.def --lef_path tech.lef
+
+# 3. 运行 Leiden 聚类
+python run_leiden.py --graph netlist_graph.pkl --resolution 1.0
+
+# 4. 生成簇级特征
+python gen_cluster_features.py --graph netlist_graph.pkl --clusters clusters.pkl --placement placement.pkl
+</code></pre>
+
+<h3>3.3 模型训练</h3>
+<pre><code># 训练 ClusterNet 模型
+python train.py \
+    --data_dir ./data/ \
+    --epochs 200 \
+    --batch_size 32 \
+    --lr 0.001 \
+    --gat_layers 2 \
+    --gat_heads 4 \
+    --hidden_dim 128
+</code></pre>
+
+<h3>3.4 推理与优化</h3>
+<pre><code># 预测拥塞
+python predict.py --model best_model.pth --design new_design/
+
+# 聚类填充优化
+python cluster_padding.py \
+    --congestion predicted_congestion.pkl \
+    --clusters clusters.pkl \
+    --threshold 0.8 \
+    --lambda 0.5
+
+# 重新运行详细布局
+openroad -python detailed_placement.py --design optimized_design/
+</code></pre>
+
+<h2>4. 相关开源项目</h2>
+
+<div class="repo-card">
+<h3>leidenalg — Leiden 算法 Python 实现</h3>
+<p><strong>仓库</strong>: <a href="https://github.com/vtraag/leidenalg">github.com/vtraag/leidenalg</a></p>
+<p><strong>作者</strong>: V.A. Traag (Leiden 算法论文作者)</p>
+<p><strong>语言</strong>: Python / C++</p>
+<p><strong>星标</strong>: ~800+</p>
+<p><strong>许可证</strong>: BSD-3-Clause</p>
+<p><strong>说明</strong>: ClusterNet 核心依赖。实现了 Leiden 社区检测算法，支持 modularity / CPM 等多种质量函数。</p>
+</div>
+
+<div class="repo-card">
+<h3>PyTorch Geometric (PyG)</h3>
+<p><strong>仓库</strong>: <a href="https://github.com/pyg-team/pytorch_geometric">github.com/pyg-team/pytorch_geometric</a></p>
+<p><strong>语言</strong>: Python</p>
+<p><strong>星标</strong>: ~20k+</p>
+<p><strong>许可证</strong>: MIT</p>
+<p><strong>说明</strong>: 图神经网络框架，提供 GAT / GCN / GraphSAGE 等层的实现。ClusterNet 的 GAT 部分可直接使用 <code>GATConv</code>。</p>
+</div>
+
+<div class="repo-card">
+<h3>OpenROAD — 开源物理设计平台</h3>
+<p><strong>仓库</strong>: <a href="https://github.com/The-OpenROAD-Project/OpenROAD">github.com/The-OpenROAD-Project/OpenROAD</a></p>
+<p><strong>语言</strong>: C++ / Python / Tcl</p>
+<p><strong>星标</strong>: ~1.5k+</p>
+<p><strong>许可证</strong>: BSD-3-Clause</p>
+<p><strong>说明</strong>: 提供完整的物理设计流程（布局、布线、时序分析）。用于生成训练数据和执行优化后的详细布局。</p>
+</div>
+
+<div class="repo-card">
+<h3>CongestionNet — 前驱工作</h3>
+<p><strong>论文</strong>: <a href="https://doi.org/10.1109/VLSI-SOC.2019.8920342">VLSI-SoC 2019</a></p>
+<p><strong>说明</strong>: 首次将深度 GNN 用于拥塞预测。ClusterNet 的直接前驱，但代码未公开。</p>
+</div>
+
+<div class="repo-card">
+<h3>DREAMPlace — GPU 加速布局器</h3>
+<p><strong>仓库</strong>: <a href="https://github.com/limbo018/DREAMPlace">github.com/limbo018/DREAMPlace</a></p>
+<p><strong>说明</strong>: Day 1 分析的论文对应代码。可作为布局引擎替代 OpenROAD，GPU 加速的解析布局器。</p>
+</div>
+
+<h2>5. 基准测试数据集</h2>
+<table>
+<thead><tr><th>数据集</th><th>来源</th><th>规模</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>ISPD 2015</td><td><a href="https://www.ispd.cc/contests/15/">ISPD Contest</a></td><td>8 个基准</td><td>可布线性竞赛基准</td></tr>
+<tr><td>ISPD 2018</td><td><a href="https://www.ispd.cc/contests/18/">ISPD Contest</a></td><td>8 个基准</td><td>初始布局竞赛基准</td></tr>
+<tr><td>OpenROAD 测试用例</td><td><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts">OpenROAD-flow</a></td><td>多个设计</td><td>NanGate45 / ASAP7 工艺</td></tr>
+</tbody>
+</table>
+
+<h2>6. 相关论文代码</h2>
+<table>
+<thead><tr><th>论文</th><th>代码</th><th>相关性</th></tr></thead>
+<tbody>
+<tr><td>CongestionNet (VLSI-SoC 2019)</td><td>未公开</td><td>前驱工作，全图 GNN 拥塞预测</td></tr>
+<tr><td>DRC Hotspot (ICCAD 2022)</td><td>未公开</td><td>GNN + U-Net DRC 预测</td></tr>
+<tr><td>GoodFloorplan (TCAD 2022)</td><td>未公开</td><td>Day 12: GCN + RL 布图规划</td></tr>
+<tr><td>DREAMPlace (DAC 2019)</td><td><a href="https://github.com/limbo018/DREAMPlace">GitHub</a></td><td>Day 1: GPU 布局器</td></tr>
+<tr><td>Graph Attention Networks (ICLR 2018)</td><td><a href="https://github.com/Diego999/pyGAT">GitHub</a></td><td>GAT 原始实现</td></tr>
+</tbody>
+</table>
+
+<h2>7. 延伸阅读</h2>
+<table>
+<thead><tr><th>方向</th><th>推荐论文</th><th>年份</th></tr></thead>
+<tbody>
+<tr><td>GNN 拥塞预测</td><td>CongestionNet (VLSI-SoC)</td><td>2019</td></tr>
+<tr><td>DRC 热点预测</td><td>Pin Accessibility + Congestion DRC (ICCAD)</td><td>2022</td></tr>
+<tr><td>社区检测</td><td>From Louvain to Leiden (Scientific Reports)</td><td>2019</td></tr>
+<tr><td>图注意力</td><td>Graph Attention Networks (ICLR)</td><td>2018</td></tr>
+<tr><td>学习驱动 P&R 综述</td><td>A Survey on Learning-Based PnR Optimization (IEEE Access)</td><td>2025</td></tr>
+<tr><td>FPGA 拥塞预测</td><td>Enhancing FPGA Routing with GNN (HEART)</td><td>2025</td></tr>
+</tbody>
+</table>
+
+</body>
+</html>

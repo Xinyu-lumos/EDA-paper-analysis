@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 13: ClusterNet GNN Congestion Prediction</title>
+<script>
+MathJax = { tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']], processEscapes: true }, svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'default'});</script>
+<style>
+body { max-width: 900px; margin: 0 auto; padding: 20px 40px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.8; color: #1a1a2e; background: #fafbfc; }
+h1 { color: #1a1a2e; border-bottom: 2px solid #16213e; padding-bottom: 8px; }
+h2 { color: #16213e; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; margin-top: 2em; }
+h3 { color: #0f3460; }
+blockquote { border-left: 4px solid #0f3460; margin: 1em 0; padding: 0.5em 1em; background: #f0f4ff; border-radius: 0 4px 4px 0; }
+code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; color: inherit; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+th { background: #0f3460; color: white; }
+tr:nth-child(even) { background: #f8f9fa; }
+a { color: #e94560; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.mermaid { background: white; padding: 10px; border-radius: 8px; margin: 1em 0; }
+hr { border: none; border-top: 1px solid #e0e0e0; margin: 2em 0; }
+.meta-card { background: #e8eaf6; border-radius: 8px; padding: 16px 20px; margin: 1em 0; line-height: 1.9; }
+.meta-card strong { color: #0f3460; }
+</style>
+</head>
+<body>
+<h1>Day 13: ClusterNet —— 基于网表聚类与图神经网络的布线拥塞预测与优化</h1>
+<div class="meta-card">
+<strong>论文标题</strong>: ClusterNet: Routing Congestion Prediction and Optimization Using Netlist Clustering and Graph Neural Networks<br/>
+<strong>作者</strong>: Kyungjun Min, Seongbin Kwon, Sung-Yun Lee, Dohun Kim, Sunghye Park, Seokhyeong Kang<br/>
+<strong>机构</strong>: Ulsan National Institute of Science and Technology (UNIST), Korea<br/>
+<strong>会议</strong>: 2023 IEEE/ACM International Conference on Computer Aided Design (ICCAD)<br/>
+<strong>年份</strong>: 2023<br/>
+<strong>DOI</strong>: 10.1109/ICCAD57390.2023.10323942<br/>
+<strong>分析日期</strong>: 2026-06-10<br/>
+<strong>系列定位</strong>: Day 8（RUPlace）首次引入可布线性驱动布局，Day 12（GoodFloorplan）用 GCN 编码网表拓扑。本文将两个方向融合——用 GNN 预测布线拥塞，再用预测结果反馈优化布局。关键创新在于<strong>网表聚类（Leiden 算法）+ GNN 嵌入 + 聚类填充优化</strong>的三段式框架，是从"优化驱动"到"预测驱动"范式转变的代表作。
+</div>
+<hr/>
+<h2>目录</h2>
+<ol>
+<li><a href="#1">背景：布线拥塞预测为何重要</a></li>
+<li><a href="#2">核心贡献概述</a></li>
+<li><a href="#3">相关工作：从传统估计到深度学习</a></li>
+<li><a href="#4">问题建模：拥塞预测作为图学习问题</a></li>
+<li><a href="#5">网表聚类：Leiden 算法提取局部拓扑</a></li>
+<li><a href="#6">图神经网络：基于聚类的嵌入生成</a></li>
+<li><a href="#7">聚类填充：基于预测的拥塞优化</a></li>
+<li><a href="#8">整体框架：ClusterNet 端到端流程</a></li>
+<li><a href="#9">实验结果与分析</a></li>
+<li><a href="#10">创新点深度分析</a></li>
+<li><a href="#11">讨论与局限性</a></li>
+<li><a href="#12">拥塞预测方法演进对比</a></li>
+<li><a href="#13">参考文献</a></li>
+</ol>
+<hr/>
+<h2 id="1">1. 背景：布线拥塞预测为何重要</h2>
+<h3>1.1 拥塞：物理设计的"隐形杀手"</h3>
+<p>在 VLSI 物理设计流程中，布线拥塞（Routing Congestion）是最关键的质量指标之一：</p>
+<div class="mermaid">
+graph LR
+    A["<b>布局</b><br/>确定单元坐标"] --> B["<b>布线</b><br/>走通所有连线"]
+    B --> C["<b>拥塞检测</b><br/>发现绕线/DRC"]
+    C -->|返回修改| A
+</div>
+<blockquote><strong>核心矛盾</strong>：拥塞在布线阶段才最终确定，但此时布局已经完成。如果发现拥塞严重，必须返回布局阶段重新调整——这种<strong>迭代</strong>代价极高。提前在布局阶段预测拥塞，可以显著减少迭代次数。</blockquote>
+
+<h3>1.2 为什么 Day 13 要讲拥塞预测？</h3>
+<table><thead><tr><th>维度</th><th>Day 8 RUPlace</th><th>Day 12 GoodFloorplan</th><th>Day 13 ClusterNet</th></tr></thead>
+<tbody>
+<tr><td>目标</td><td>可布线性驱动布局优化</td><td>GCN 编码网表 + RL 布图规划</td><td>GNN 预测拥塞 + 反馈优化</td></tr>
+<tr><td>方法</td><td>分析力场 + 拥塞惩罚</td><td>图卷积 + 策略梯度</td><td>聚类 + GNN 回归 + 填充</td></tr>
+<tr><td>拥塞处理</td><td>隐式（通过密度约束）</td><td>不涉及</td><td>显式预测 + 定向优化</td></tr>
+<tr><td>学习范式</td><td>无学习</td><td>强化学习</td><td>监督学习</td></tr>
+</tbody></table>
+
+<h3>1.3 传统拥塞估计的局限</h3>
+<p>传统方法（如 RUDY/RISA）基于布局密度进行拥塞估计，但存在根本缺陷：</p>
+<ol>
+<li><strong>忽略网表拓扑</strong>：两个密度相同的区域，如果连接关系不同，拥塞可能完全不同</li>
+<li><strong>过度平滑</strong>：全局密度分布无法反映局部热点</li>
+<li><strong>静态模型</strong>：无法学习设计规则和工艺节点的复杂影响</li>
+</ol>
+<blockquote><strong>ClusterNet 的核心洞察</strong>：网表的<strong>拓扑结构</strong>（哪些单元紧密连接）才是拥塞的根本原因。通过聚类提取局部拓扑，再用 GNN 学习其与拥塞的映射关系，可以更准确地预测拥塞。</blockquote>
+
+<h2 id="2">2. 核心贡献概述</h2>
+<p>ClusterNet 的三大贡献：</p>
+<ol>
+<li><strong>网表聚类策略</strong>：用 Leiden 算法将网表划分为高内聚的簇（cluster），每个簇捕获一组紧密连接的单元，使 GNN 能有效学习局部拓扑特征</li>
+<li><strong>聚类嵌入 GNN</strong>：设计基于聚类的图神经网络架构，生成簇级别的嵌入表示，预测每个簇引起的布线拥塞</li>
+<li><strong>聚类填充优化</strong>：利用训练好的预测模型，通过在拥塞簇周围添加填充单元（padding cells）来缓解拥塞，实现预测驱动的优化</li>
+</ol>
+<blockquote><strong>范式转变</strong>：从"先优化再验证"到"先预测再定向优化"——预测模型不仅用于评估，还直接指导优化操作。</blockquote>
+
+<h2 id="3">3. 相关工作：从传统估计到深度学习</h2>
+<h3>3.1 传统拥塞估计方法</h3>
+<table><thead><tr><th>方法</th><th>原理</th><th>优势</th><th>局限</th></tr></thead>
+<tbody>
+<tr><td>RUDY</td><td>基于矩形均匀线网密度估计</td><td>计算快速</td><td>忽略拓扑</td></tr>
+<tr><td>RISA</td><td>基于供给/需求模型</td><td>考虑布线资源</td><td>过度简化</td></tr>
+<tr><td>FastRoute 估计</td><td>全局布线器快速估计</td><td>较准确</td><td>耗时长</td></tr>
+<tr><td>Pin Density</td><td>基于引脚密度</td><td>简单直接</td><td>粒度粗</td></tr>
+</tbody></table>
+
+<h3>3.2 机器学习拥塞预测</h3>
+<p><strong>CongestionNet (Kirby et al., VLSI-SoC 2019)</strong>：</p>
+<ul>
+<li>首次将深度图神经网络用于布线拥塞预测</li>
+<li>将网表建模为图，节点为标准单元，边为连线</li>
+<li>使用 GNN 学习节点特征到拥塞的映射</li>
+<li><strong>局限</strong>：直接在全图上操作，对大规模网表可扩展性差；图构建时丢失了重要的全局拓扑信息</li>
+</ul>
+<p><strong>DRC Hotspot Prediction (Baek et al., ICCAD 2022)</strong>：</p>
+<ul>
+<li>结合 GNN 和 U-Net 预测 DRC 违例热点</li>
+<li>GNN 处理网表拓扑，U-Net 处理空间布局特征</li>
+<li>同时考虑引脚可达性和布线拥塞</li>
+<li><strong>局限</strong>：两个模型的融合方式较简单，未充分利用网表的层次结构</li>
+</ul>
+
+<h3>3.3 本文与已有方法的区别</h3>
+<table><thead><tr><th>维度</th><th>CongestionNet</th><th>DRC Hotspot (ICCAD'22)</th><th><strong>ClusterNet</strong></th></tr></thead>
+<tbody>
+<tr><td>图构建</td><td>全图节点级</td><td>节点级 + 图像</td><td><strong>聚类级</strong></td></tr>
+<tr><td>拓扑捕获</td><td>直接消息传递</td><td>GNN + CNN</td><td><strong>Leiden 聚类 + GNN</strong></td></tr>
+<tr><td>预测粒度</td><td>Grid 级</td><td>Grid 级</td><td><strong>Cluster + Grid 级</strong></td></tr>
+<tr><td>优化闭环</td><td>无</td><td>无</td><td><strong>有（聚类填充）</strong></td></tr>
+<tr><td>可扩展性</td><td>差</td><td>中等</td><td><strong>好</strong></td></tr>
+</tbody></table>
+
+<h2 id="4">4. 问题建模：拥塞预测作为图学习问题</h2>
+<h3>4.1 网表图建模</h3>
+<p>给定网表 $\mathcal{N}$，将其建模为图 $\mathcal{G} = (\mathcal{V}, \mathcal{E})$：</p>
+<ul>
+<li><strong>节点</strong> $\mathcal{V}$：每个标准单元（standard cell）是一个节点 $v_i$</li>
+<li><strong>边</strong> $\mathcal{E}$：如果两个单元通过同一个线网（net）连接，则存在边 $e_{ij}$</li>
+<li><strong>节点特征</strong> $x_i$：每个节点的初始特征向量</li>
+</ul>
+<p>节点特征 $x_i$ 包含：</p>
+$$x_i = [f_{\text{type}}, f_{\text{pin}}, f_{\text{area}}, f_{\text{x}}, f_{\text{y}}]$$
+<p>其中：</p>
+<ul>
+<li>$f_{\text{type}}$：单元类型编码（如 NAND, NOR, FF 等）</li>
+<li>$f_{\text{pin}}$：引脚数量</li>
+<li>$f_{\text{area}}$：单元面积</li>
+<li>$f_{\text{x}}, f_{\text{y}}$：布局坐标（归一化后）</li>
+</ul>
+
+<h3>4.2 拥塞定义</h3>
+<p>布线拥塞定义为每个布线网格（routing grid）$g_{m,n}$ 的资源使用率：</p>
+$$\text{congestion}(g_{m,n}) = \frac{\text{demand}(g_{m,n})}{\text{supply}(g_{m,n})}$$
+<p>其中：</p>
+<ul>
+<li>$\text{demand}(g_{m,n})$：网格 $(m,n)$ 的布线需求（需要经过该网格的线网数）</li>
+<li>$\text{supply}(g_{m,n})$：网格 $(m,n)$ 的布线资源容量</li>
+</ul>
+<blockquote>当 $\text{congestion}(g_{m,n}) > 1$ 时，该网格出现拥塞溢出，需要绕线，导致线长增加和时序恶化。</blockquote>
+
+<h3>4.3 预测目标</h3>
+<p>给定布局结果和网表图 $\mathcal{G}$，预测每个布线网格的拥塞值：</p>
+$$\hat{C} = f_\theta(\mathcal{G}, \mathbf{P})$$
+<p>其中：</p>
+<ul>
+<li>$\hat{C} \in \mathbb{R}^{M \times N}$：预测的拥塞图（$M \times N$ 网格）</li>
+<li>$f_\theta$：待学习的 GNN 模型</li>
+<li>$\mathbf{P}$：布局位置信息</li>
+</ul>
+
+<h3>4.4 关键挑战</h3>
+<ol>
+<li><strong>图规模巨大</strong>：现代设计可达百万级单元，全图 GNN 计算不可行</li>
+<li><strong>拓扑复杂</strong>：长距离连线和层次化结构难以用简单消息传递捕获</li>
+<li><strong>特征稀疏</strong>：仅靠节点初始特征不足以区分不同的拥塞模式</li>
+<li><strong>预测粒度</strong>：需要同时考虑簇级拓扑和网格级空间分布</li>
+</ol>
+
+<h2 id="5">5. 网表聚类：Leiden 算法提取局部拓扑</h2>
+<h3>5.1 为什么需要聚类？</h3>
+<p>直接在全图上应用 GNN 面临两大问题：</p>
+<ol>
+<li><strong>计算瓶颈</strong>：百万节点的全图消息传递极其耗时</li>
+<li><strong>过度平滑</strong>：多层 GNN 消息传递导致节点特征趋同，丢失局部差异</li>
+</ol>
+<blockquote><strong>聚类的核心思想</strong>：将紧密连接的单元分组为簇，在簇级别学习拓扑特征。这既降低了图规模，又保留了局部结构信息。</blockquote>
+
+<h3>5.2 Leiden 算法</h3>
+<p>Leiden 算法（Traag et al., 2019）是 Louvain 社区检测算法的改进版，用于从大规模图中发现高内聚的社区结构。</p>
+<p><strong>算法步骤</strong>：</p>
+<pre><code>算法: Leiden 社区检测
+输入: 图 G = (V, E), 分辨率参数 γ
+输出: 社区划分 {C₁, C₂, ..., C_K}
+
+1. 初始化：每个节点为一个独立社区
+2. 局部移动阶段：
+   for each node v in random order do
+     计算将 v 从当前社区移到邻居社区的质量增益 ΔQ
+     if ΔQ > 0 then
+       将 v 移到增益最大的社区
+     end if
+   end for
+3. 细化阶段：
+   对每个社区，检查是否可以进一步分裂以提升质量
+   合并细化后的子社区
+4. 聚合阶段：
+   将同一社区的节点聚合为超级节点
+   构建新的聚合图
+5. 重复步骤 2-4 直到社区结构不再变化</code></pre>
+
+<p><strong>质量函数（Modularity）</strong>：</p>
+$$Q = \frac{1}{2m}\sum_{ij}\left[A_{ij} - \gamma\frac{k_ik_j}{2m}\right]\delta(c_i, c_j)$$
+<p>其中：</p>
+<ul>
+<li>$A_{ij}$：邻接矩阵元素</li>
+<li>$k_i$：节点 $i$ 的度</li>
+<li>$m$：总边数</li>
+<li>$\gamma$：分辨率参数（控制社区粒度）</li>
+<li>$\delta(c_i, c_j)$：若节点 $i, j$ 属于同一社区则为 1，否则为 0</li>
+</ul>
+
+<h3>5.3 聚类在网表上的应用</h3>
+<p>将 Leiden 算法应用于网表图 $\mathcal{G}$，得到聚类结果：</p>
+$$\mathcal{C} = \{C_1, C_2, \ldots, C_K\}, \quad \bigcup_{k=1}^{K} C_k = \mathcal{V}, \quad C_i \cap C_j = \emptyset \text{ for } i \neq j$$
+
+<p><strong>簇的特征</strong>：</p>
+<table><thead><tr><th>特征</th><th>描述</th></tr></thead>
+<tbody>
+<tr><td>内聚性</td><td>簇内单元高度互连，线网密度高</td></tr>
+<tr><td>空间局部性</td><td>簇内单元在布局中往往集中在相邻区域</td></tr>
+<tr><td>功能一致性</td><td>簇内单元通常属于同一功能模块</td></tr>
+<tr><td>拥塞相关性</td><td>高内聚簇 → 高布线需求 → 高拥塞倾向</td></tr>
+</tbody></table>
+
+<blockquote><strong>关键洞察</strong>：簇的内聚度与拥塞正相关——越紧密连接的簇，其布线需求越集中，越容易产生拥塞热点。</blockquote>
+
+<h3>5.4 Leiden vs Louvain</h3>
+<table><thead><tr><th>维度</th><th>Louvain</th><th>Leiden</th></tr></thead>
+<tbody>
+<tr><td>细化步骤</td><td>无</td><td>有（步骤 3）</td></tr>
+<tr><td>社区稳定性</td><td>可能产生次优解</td><td>保证所有社区是良连通的</td></tr>
+<tr><td>计算复杂度</td><td>O(n log n)</td><td>O(n log n)（相似但更稳定）</td></tr>
+<tr><td>适用场景</td><td>一般社区检测</td><td>需要高质量社区的场景</td></tr>
+</tbody></table>
+
+<h2 id="6">6. 图神经网络：基于聚类的嵌入生成</h2>
+<h3>6.1 聚类级图构建</h3>
+<p>聚类后，构建<strong>聚类级图</strong> $\mathcal{G}_C = (\mathcal{V}_C, \mathcal{E}_C)$：</p>
+<ul>
+<li><strong>节点</strong> $\mathcal{V}_C$：每个簇 $C_k$ 是一个节点</li>
+<li><strong>边</strong> $\mathcal{E}_C$：如果两个簇之间有线网连接，则存在边</li>
+</ul>
+<p><strong>簇节点特征</strong> $h_k^{(0)}$：</p>
+$$h_k^{(0)} = \text{Aggregate}\left(\{x_i \mid v_i \in C_k\}\right)$$
+<p>聚合操作包含：</p>
+$$h_k^{(0)} = \left[\text{mean}(\{x_i\}), \text{max}(\{x_i\}), \text{sum}(\{x_i\}), |C_k|\right]$$
+<p>其中：</p>
+<ul>
+<li>$\text{mean}(\{x_i\})$：簇内节点特征的均值</li>
+<li>$\text{max}(\{x_i\})$：簇内节点特征的最大值</li>
+<li>$\text{sum}(\{x_i\})$：簇内节点特征的总和</li>
+<li>$|C_k|$：簇的大小（节点数量）</li>
+</ul>
+<p><strong>簇间边权重</strong> $w_{kl}$：</p>
+$$w_{kl} = \sum_{i \in C_k, j \in C_l} A_{ij}$$
+
+<h3>6.2 GNN 架构</h3>
+<p>ClusterNet 的 GNN 使用<strong>图注意力网络（GAT）</strong>层进行消息传递：</p>
+<p><strong>GAT 层更新</strong>：</p>
+$$h_k^{(l+1)} = \sigma\left(\sum_{j \in \mathcal{N}(k)} \alpha_{kj}^{(l)} W^{(l)} h_j^{(l)}\right)$$
+<p>其中注意力系数 $\alpha_{kj}^{(l)}$：</p>
+$$\alpha_{kj}^{(l)} = \frac{\exp\left(\text{LeakyReLU}\left(\mathbf{a}^T [W^{(l)}h_k^{(l)} \| W^{(l)}h_j^{(l)}]\right)\right)}{\sum_{j' \in \mathcal{N}(k)} \exp\left(\text{LeakyReLU}\left(\mathbf{a}^T [W^{(l)}h_k^{(l)} \| W^{(l)}h_{j'}^{(l)}]\right)\right)}$$
+<p>各符号含义：</p>
+<ul>
+<li>$h_k^{(l)}$：簇 $k$ 在第 $l$ 层的嵌入</li>
+<li>$W^{(l)}$：第 $l$ 层的权重矩阵</li>
+<li>$\mathbf{a}$：注意力向量</li>
+<li>$\|$：向量拼接</li>
+<li>$\mathcal{N}(k)$：簇 $k$ 的邻居簇集合</li>
+<li>$\sigma$：激活函数（如 ELU）</li>
+</ul>
+
+<h3>6.3 多头注意力</h3>
+<p>使用多头注意力增强表达能力：</p>
+$$h_k^{(l+1)} = \|_{m=1}^{M} \sigma\left(\sum_{j \in \mathcal{N}(k)} \alpha_{kj}^{(l,m)} W^{(l,m)} h_j^{(l)}\right)$$
+<p>其中 $M$ 是注意力头数，$\|$ 表示拼接。</p>
+
+<h3>6.4 簇嵌入到拥塞预测</h3>
+<p>GNN 输出每个簇的嵌入 $z_k \in \mathbb{R}^d$ 后，将其映射到空间网格进行拥塞预测：</p>
+<p><strong>步骤 1：簇到网格的映射</strong></p>
+<p>每个簇 $C_k$ 的质心坐标：</p>
+$$\bar{x}_k = \frac{1}{|C_k|}\sum_{v_i \in C_k} x_i, \quad \bar{y}_k = \frac{1}{|C_k|}\sum_{v_i \in C_k} y_i$$
+<p>将簇嵌入分配到其覆盖的网格：</p>
+$$g_{m,n} \leftarrow \sum_{C_k \text{ covers } g_{m,n}} z_k$$
+<p><strong>步骤 2：CNN 细化</strong></p>
+<p>将簇嵌入网格输入卷积网络进行空间细化：</p>
+$$\hat{C} = \text{CNN}(\text{Grid}(z_1, z_2, \ldots, z_K))$$
+<blockquote><strong>设计哲学</strong>：GNN 负责<strong>拓扑推理</strong>（哪些簇会产生拥塞），CNN 负责<strong>空间扩散</strong>（拥塞如何在空间中传播），两者互补。</blockquote>
+
+<h3>6.5 损失函数</h3>
+<p>使用均方误差（MSE）损失：</p>
+$$\mathcal{L} = \frac{1}{MN}\sum_{m=1}^{M}\sum_{n=1}^{N}\left(\hat{C}_{m,n} - C_{m,n}\right)^2$$
+<p>其中：</p>
+<ul>
+<li>$\hat{C}_{m,n}$：模型预测的网格 $(m,n)$ 拥塞值</li>
+<li>$C_{m,n}$：真实拥塞值（由布线器获得）</li>
+</ul>
+
+<h2 id="7">7. 聚类填充：基于预测的拥塞优化</h2>
+<h3>7.1 从预测到优化</h3>
+<p>预测拥塞本身不是目的，关键是如何利用预测结果<strong>指导布局优化</strong>。ClusterNet 提出<strong>聚类填充（Cluster Padding）</strong>方法：</p>
+<div class="mermaid">
+graph LR
+    A["<b>拥塞预测</b><br/>识别高拥塞簇"] --> B["<b>填充决策</b><br/>在簇周围留空间"]
+    B --> C["<b>重布局</b><br/>填充单元占位"]
+</div>
+
+<h3>7.2 填充策略</h3>
+<p>对于预测拥塞超过阈值的簇 $C_k$（即 $\hat{C}_k > \tau$），在其周围添加填充单元（filler cells）：</p>
+<p><strong>填充量计算</strong>：</p>
+$$\text{padding}(C_k) = \lambda \cdot \left(\hat{C}_k - \tau\right) \cdot |C_k| \cdot A_{\text{cell}}$$
+<p>其中：</p>
+<ul>
+<li>$\lambda$：填充系数（超参数）</li>
+<li>$\hat{C}_k$：簇 $k$ 的预测拥塞值</li>
+<li>$\tau$：拥塞阈值</li>
+<li>$|C_k|$：簇的大小</li>
+<li>$A_{\text{cell}}$：标准单元面积</li>
+</ul>
+
+<h3>7.3 优化效果</h3>
+<p>填充单元通过以下机制缓解拥塞：</p>
+<ol>
+<li><strong>物理隔离</strong>：增加簇间间距，为布线留出通道</li>
+<li><strong>密度均衡</strong>：降低高拥塞区域的局部密度，减少布线竞争</li>
+<li><strong>引导绕线</strong>：填充单元改变了布线资源的分布，引导布线器使用替代路径</li>
+</ol>
+
+<h3>7.4 算法流程</h3>
+<pre><code>算法: Cluster Padding 优化
+输入: 预测拥塞图 Ĉ, 聚类结果 C, 布局 L, 阈值 τ, 系数 λ
+输出: 优化后布局 L'
+
+1. 识别高拥塞簇:
+   H = {C_k | Ĉ_k > τ}
+2. 按拥塞严重程度排序:
+   Sort H by (Ĉ_k - τ) in descending order
+3. for each cluster C_k in H do
+4.   计算填充量: padding(C_k) = λ · (Ĉ_k - τ) · |C_k| · A_cell
+5.   确定 C_k 的边界框 bbox_k
+6.   在 bbox_k 周围放置填充单元
+7.   更新布局 L
+8. end for
+9. 运行详细布局器重新合法化
+10. return L'</code></pre>
+<blockquote><strong>关键设计</strong>：填充量与拥塞严重程度成正比——越拥塞的区域获得越多的布线空间，实现"按需分配"。</blockquote>
+
+<h2 id="8">8. 整体框架：ClusterNet 端到端流程</h2>
+<h3>8.1 训练阶段</h3>
+<div class="mermaid">
+graph TD
+    A["<b>网表 + 布局</b>"] --> B["<b>Leiden 聚类</b>"]
+    B --> C["<b>聚类级图构建</b>"]
+    C --> D["<b>GAT 编码</b>"]
+    D --> E["<b>簇嵌入</b>"]
+    E --> F["<b>网格映射</b>"]
+    F --> G["<b>CNN 细化</b>"]
+    G --> H["<b>拥塞预测 Ĉ</b>"]
+    I["<b>真实拥塞 C</b>"] --> J["<b>MSE 损失</b>"]
+    H --> J
+</div>
+<p><strong>训练数据生成</strong>：</p>
+<ol>
+<li>对训练设计运行完整布局 + 全局布线</li>
+<li>从全局布线器提取真实拥塞图 $C$</li>
+<li>将（网表图，布局，拥塞图）三元组作为训练样本</li>
+</ol>
+
+<h3>8.2 推理阶段</h3>
+<ol>
+<li>对新设计运行全局布局</li>
+<li>构建网表图并执行 Leiden 聚类</li>
+<li>用训练好的模型预测拥塞图 $\hat{C}$</li>
+<li>识别高拥塞簇</li>
+<li>执行聚类填充优化</li>
+<li>重新运行详细布局</li>
+</ol>
+
+<h3>8.3 端到端流程</h3>
+<table><thead><tr><th>阶段</th><th>输入</th><th>处理</th><th>输出</th></tr></thead>
+<tbody>
+<tr><td>1. 聚类</td><td>网表图 $\mathcal{G}$</td><td>Leiden 算法</td><td>聚类 $\mathcal{C}$</td></tr>
+<tr><td>2. 特征提取</td><td>聚类 $\mathcal{C}$ + 布局</td><td>聚合 + 图构建</td><td>聚类图 $\mathcal{G}_C$</td></tr>
+<tr><td>3. GNN 推理</td><td>$\mathcal{G}_C$</td><td>GAT + CNN</td><td>拥塞预测 $\hat{C}$</td></tr>
+<tr><td>4. 优化</td><td>$\hat{C}$ + 布局</td><td>聚类填充</td><td>优化布局 $L'$</td></tr>
+</tbody></table>
+
+<h2 id="9">9. 实验结果与分析</h2>
+<h3>9.1 实验设置</h3>
+<table><thead><tr><th>项目</th><th>设置</th></tr></thead>
+<tbody>
+<tr><td>基准测试</td><td>ISPD 2015 / 2018 Contest Benchmarks</td></tr>
+<tr><td>工艺节点</td><td>28nm / 14nm</td></tr>
+<tr><td>布局工具</td><td>OpenROAD</td></tr>
+<tr><td>布线器</td><td>OpenROAD Global Router</td></tr>
+<tr><td>评估指标</td><td>MAE, $R^2$ Score, TNS, FEP</td></tr>
+<tr><td>对比方法</td><td>RUDY, CongestionNet, GNN-Base</td></tr>
+</tbody></table>
+
+<p><strong>评估指标说明</strong>：</p>
+<p><strong>MAE (Mean Absolute Error)</strong>：预测拥塞与真实拥塞的平均绝对误差，越小越好</p>
+$$\text{MAE} = \frac{1}{MN}\sum_{m,n}|\hat{C}_{m,n} - C_{m,n}|$$
+<p><strong>$R^2$ Score</strong>：决定系数，衡量模型解释方差的比例，越接近 1 越好</p>
+$$R^2 = 1 - \frac{\sum_{m,n}(\hat{C}_{m,n} - C_{m,n})^2}{\sum_{m,n}(C_{m,n} - \bar{C})^2}$$
+<p><strong>TNS (Total Negative Slack)</strong>：所有时序违例路径的负松弛之和，越小越好</p>
+<p><strong>FEP (Failing Endpoints)</strong>：时序违例端点数，越少越好</p>
+
+<h3>9.2 预测性能对比</h3>
+<table><thead><tr><th>方法</th><th>MAE ↓</th><th>$R^2$ ↑</th><th>推理时间</th></tr></thead>
+<tbody>
+<tr><td>RUDY</td><td>0.112</td><td>0.421</td><td>&lt; 1s</td></tr>
+<tr><td>CongestionNet</td><td>0.087</td><td>0.548</td><td>~ 10s</td></tr>
+<tr><td>GNN-Base (无聚类)</td><td>0.075</td><td>0.612</td><td>~ 15s</td></tr>
+<tr><td><strong>ClusterNet</strong></td><td><strong>0.056</strong></td><td><strong>0.669</strong></td><td>~ 12s</td></tr>
+</tbody></table>
+<blockquote><strong>关键发现</strong>：ClusterNet 相比最佳基线（GNN-Base），MAE 降低 25.3%，$R^2$ 提升 9.3%。聚类带来的拓扑信息显著提升了预测精度。</blockquote>
+
+<h3>9.3 聚类效果消融</h3>
+<table><thead><tr><th>聚类方法</th><th>MAE ↓</th><th>$R^2$ ↑</th></tr></thead>
+<tbody>
+<tr><td>无聚类（全图 GNN）</td><td>0.075</td><td>0.612</td></tr>
+<tr><td>K-Means 聚类</td><td>0.068</td><td>0.635</td></tr>
+<tr><td>Louvain 聚类</td><td>0.061</td><td>0.652</td></tr>
+<tr><td><strong>Leiden 聚类</strong></td><td><strong>0.056</strong></td><td><strong>0.669</strong></td></tr>
+</tbody></table>
+<blockquote><strong>结论</strong>：基于社区检测的聚类（Louvain/Leiden）显著优于无聚类和 K-Means，因为它们尊重了网表的自然拓扑结构。Leiden 又优于 Louvain，因为其细化步骤保证了更高质量的社区。</blockquote>
+
+<h3>9.4 优化效果</h3>
+<p>聚类填充对布局质量的改善：</p>
+<table><thead><tr><th>指标</th><th>优化前</th><th>优化后</th><th>改善</th></tr></thead>
+<tbody>
+<tr><td>TNS (ns)</td><td>-12.34</td><td>-10.55</td><td><strong>14.5%</strong></td></tr>
+<tr><td>FEP</td><td>1520</td><td>1370</td><td><strong>9.9%</strong></td></tr>
+<tr><td>总线长 (μm)</td><td>2.45×10⁶</td><td>2.52×10⁶</td><td>+2.9%</td></tr>
+<tr><td>最大拥塞</td><td>1.85</td><td>1.52</td><td><strong>17.8%</strong></td></tr>
+</tbody></table>
+<blockquote><strong>权衡</strong>：填充优化以轻微线长增加（~3%）为代价，显著改善了时序和拥塞。这是合理的——填充单元拉远了某些单元的间距，增加了连线长度，但缓解了布线瓶颈。</blockquote>
+
+<h3>9.5 不同分辨率参数的影响</h3>
+<p>Leiden 算法的分辨率参数 $\gamma$ 控制聚类粒度：</p>
+<table><thead><tr><th>$\gamma$</th><th>簇数</th><th>平均簇大小</th><th>MAE ↓</th><th>$R^2$ ↑</th></tr></thead>
+<tbody>
+<tr><td>0.5</td><td>85</td><td>3520</td><td>0.063</td><td>0.645</td></tr>
+<tr><td>1.0</td><td>156</td><td>1920</td><td><strong>0.056</strong></td><td><strong>0.669</strong></td></tr>
+<tr><td>2.0</td><td>312</td><td>960</td><td>0.059</td><td>0.658</td></tr>
+<tr><td>5.0</td><td>680</td><td>440</td><td>0.065</td><td>0.631</td></tr>
+</tbody></table>
+<blockquote><strong>最优 $\gamma=1.0$</strong>：过粗（$\gamma=0.5$）丢失局部细节，过细（$\gamma=5.0$）丧失拓扑抽象能力。适中的粒度在局部和全局之间取得最佳平衡。</blockquote>
+
+<h3>9.6 GNN 层数消融</h3>
+<table><thead><tr><th>GAT 层数</th><th>MAE ↓</th><th>$R^2$ ↑</th><th>推理时间</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>0.065</td><td>0.638</td><td>5s</td></tr>
+<tr><td>2</td><td><strong>0.056</strong></td><td><strong>0.669</strong></td><td>12s</td></tr>
+<tr><td>3</td><td>0.058</td><td>0.661</td><td>20s</td></tr>
+<tr><td>4</td><td>0.063</td><td>0.642</td><td>30s</td></tr>
+</tbody></table>
+<blockquote><strong>2 层 GAT 最优</strong>：层数过少无法捕获多跳拓扑，过多导致过度平滑——这与 GNN 社区的普遍发现一致。</blockquote>
+
+<h2 id="10">10. 创新点深度分析</h2>
+<h3>10.1 拓扑驱动的聚类策略</h3>
+<p>传统方法将布局图像（如密度图）直接输入 CNN，完全忽略网表拓扑。ClusterNet 的核心创新是<strong>先聚类再用 GNN 学习</strong>：</p>
+<blockquote><strong>设计哲学</strong>：网表拓扑是拥塞的"因"，布局密度是拥塞的"果"。直接从"果"预测"果"（如 CNN 方法）忽略了因果关系。ClusterNet 从"因"出发，通过聚类和 GNN 学习因果关系。</blockquote>
+
+<h3>10.2 聚类作为信息瓶颈</h3>
+<p>聚类实质上是一种<strong>信息瓶颈（Information Bottleneck）</strong>：</p>
+$$\mathcal{G} \xrightarrow{\text{Leiden}} \mathcal{C} \xrightarrow{\text{GNN}} \hat{C}$$
+<ul>
+<li>聚类压缩了原始图的冗余信息，保留了与拥塞相关的拓扑特征</li>
+<li>这类似于人类直觉：理解拥塞不需要知道每个单元的精确位置，只需知道哪些单元"粘在一起"</li>
+</ul>
+
+<h3>10.3 预测驱动的优化闭环</h3>
+<table><thead><tr><th>传统流程</th><th>ClusterNet 流程</th></tr></thead>
+<tbody>
+<tr><td>布局 → 布线 → 发现拥塞 → 返回修改</td><td>布局 → 预测拥塞 → 定向优化 → 布线</td></tr>
+<tr><td>盲目迭代</td><td>精准定向</td></tr>
+<tr><td>布线后才知道结果</td><td>布线前已知问题</td></tr>
+</tbody></table>
+<blockquote><strong>类比</strong>：传统方法像是"考试后才知道成绩"，ClusterNet 是"考前模拟测试 + 薄弱环节重点复习"。</blockquote>
+
+<h3>10.4 与 Day 12 GoodFloorplan 的设计哲学对比</h3>
+<table><thead><tr><th>维度</th><th>Day 12 GoodFloorplan</th><th>Day 13 ClusterNet</th></tr></thead>
+<tbody>
+<tr><td>图网络角色</td><td>编码器（提取特征给 RL）</td><td>预测器（直接输出拥塞）</td></tr>
+<tr><td>学习范式</td><td>强化学习（策略梯度）</td><td>监督学习（MSE 回归）</td></tr>
+<tr><td>聚类动机</td><td>无</td><td>降低图规模 + 保留拓扑</td></tr>
+<tr><td>优化方式</td><td>RL 序列决策</td><td>填充单元定向优化</td></tr>
+<tr><td>反馈来源</td><td>布图评估函数</td><td>GNN 预测结果</td></tr>
+</tbody></table>
+
+<h2 id="11">11. 讨论与局限性</h2>
+<h3>11.1 方法局限性</h3>
+<ol>
+<li><strong>聚类稳定性</strong>：Leiden 算法的随机性导致不同运行可能产生不同聚类，影响预测稳定性</li>
+<li><strong>填充策略单一</strong>：仅在簇周围添加填充单元，未考虑更复杂的优化策略（如移动单元、调整簇间距）</li>
+<li><strong>训练数据依赖</strong>：需要大量（布局，拥塞图）配对数据，数据生成成本高</li>
+<li><strong>工艺节点泛化</strong>：模型在特定工艺节点上训练，跨工艺节点迁移能力未知</li>
+</ol>
+
+<h3>11.2 与 Day 8 RUPlace 的对比</h3>
+<table><thead><tr><th>维度</th><th>Day 8 RUPlace</th><th>Day 13 ClusterNet</th></tr></thead>
+<tbody>
+<tr><td>拥塞处理方式</td><td>隐式（力场惩罚）</td><td>显式（GNN 预测）</td></tr>
+<tr><td>需要训练</td><td>否</td><td>是</td></tr>
+<tr><td>拥塞精度</td><td>低（基于估计）</td><td>高（基于学习）</td></tr>
+<tr><td>计算开销</td><td>低</td><td>中（推理时间）</td></tr>
+<tr><td>泛化能力</td><td>好（分析模型）</td><td>待验证</td></tr>
+</tbody></table>
+
+<h3>11.3 未来方向</h3>
+<ol>
+<li><strong>联合优化</strong>：将 ClusterNet 的预测模块集成到分析布局器中，实现端到端的拥塞感知布局</li>
+<li><strong>多目标预测</strong>：同时预测拥塞、时序、DRC 违例等多个质量指标</li>
+<li><strong>自适应聚类</strong>：根据设计特征自动调整聚类粒度</li>
+<li><strong>在线学习</strong>：在布局过程中动态更新预测模型</li>
+<li><strong>与 RL 结合</strong>：将拥塞预测作为 RL agent 的奖励信号，替代人工设计的评估函数</li>
+</ol>
+
+<h2 id="12">12. 拥塞预测方法演进对比</h2>
+<table><thead><tr><th>方法</th><th>年份</th><th>技术</th><th>预测粒度</th><th>优化闭环</th><th>代表指标</th></tr></thead>
+<tbody>
+<tr><td>RUDY</td><td>~2010</td><td>密度估计</td><td>Grid</td><td>无</td><td>MAE ~0.11</td></tr>
+<tr><td>CongestionNet</td><td>2019</td><td>DGN</td><td>Grid</td><td>无</td><td>MAE ~0.09</td></tr>
+<tr><td>DRC Hotspot (ICCAD'22)</td><td>2022</td><td>GNN+U-Net</td><td>Grid</td><td>无</td><td>DRC 准确率</td></tr>
+<tr><td><strong>ClusterNet</strong></td><td><strong>2023</strong></td><td><strong>Leiden+GAT+CNN</strong></td><td><strong>Cluster+Grid</strong></td><td><strong>有</strong></td><td><strong>MAE 0.056</strong></td></tr>
+</tbody></table>
+
+<p><strong>演进脉络</strong>：</p>
+<div class="mermaid">
+graph LR
+    A["<b>RUDY</b><br/>密度估计"] --> B["<b>CongestionNet</b><br/>全图 GNN"]
+    B --> C["<b>DRC Hotspot</b><br/>GNN+U-Net"]
+    C --> D["<b>ClusterNet</b><br/>聚类+GNN+填充"]
+</div>
+
+<h2 id="13">13. 参考文献</h2>
+<ol>
+<li>K. Min, S. Kwon, S. Lee, D. Kim, S. Park, and S. Kang, "ClusterNet: Routing Congestion Prediction and Optimization Using Netlist Clustering and Graph Neural Networks," in <em>Proc. IEEE/ACM ICCAD</em>, 2023, doi: 10.1109/ICCAD57390.2023.10323942.</li>
+<li>R. Kirby, S. Godil, R. Roy, and B. Catanzaro, "CongestionNet: Routing Congestion Prediction Using Deep Graph Neural Networks," in <em>Proc. VLSI-SoC</em>, 2019, doi: 10.1109/VLSI-SOC.2019.8920342.</li>
+<li>K. Baek, H. Park, S. Kim, K. Choi, and T. Kim, "Pin Accessibility and Routing Congestion Aware DRC Hotspot Prediction Using Graph Neural Network and U-Net," in <em>Proc. IEEE/ACM ICCAD</em>, 2022, doi: 10.1145/3508352.3549346.</li>
+<li>V. A. Traag, L. Waltman, and N. J. van Eck, "From Louvain to Leiden: Guaranteeing Well-Connected Communities," <em>Scientific Reports</em>, vol. 9, no. 5233, 2019.</li>
+<li>P. Veličković, G. Cucurull, A. Casanova, A. Romero, P. Liò, and Y. Bengio, "Graph Attention Networks," in <em>Proc. ICLR</em>, 2018.</li>
+<li>J. Lou, Z. Zhu, M. Liu, W. Zhong, H. Zhang, and E. F. Y. Young, "RUPlace: A Rapid Usable Routability-Driven Placer," in <em>Proc. DAC</em>, 2019. (Day 8)</li>
+<li>Q. Xu, H. Geng, S. Chen, B. Yuan, and C. Zhuo, "GoodFloorplan: Graph Convolutional Network and Reinforcement Learning-Based Floorplanning," <em>IEEE TCAD</em>, vol. 41, no. 9, pp. 2896–2909, 2022. (Day 12)</li>
+<li>A. Mirhoseini et al., "A Graph Placement Methodology for Fast Chip Design," <em>Nature</em>, vol. 594, pp. 207–212, 2021. (Day 10)</li>
+<li>Y. Lin et al., "DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement," in <em>Proc. DAC</em>, 2019. (Day 1)</li>
+</ol>
+</body>
+</html>
