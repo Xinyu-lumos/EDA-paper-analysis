@@ -1,0 +1,1255 @@
+The False Dawn: Reevaluating Google’s Reinforcement Learning
+for Chip Macro Placement
+Igor L. Markov, igor.markov@gmail.com
+Abstract 1 Introduction
+As AI applications demand greater compute power, effi-
+Reinforcement learning (RL) for physical design of sil- ciencymaybeimprovedviabetterchipdesign. TheNa-
+icon chips in a Google 2021 Nature paper stirred con- ture paper [1] by Google researchers, published in June
+troversy due to poorly documented claims that raised 2021, wasadvertisedasachip-designbreakthroughusin
+eyebrows and drew critical media coverage. The paper Machine Learning (ML) [3]. It addressed a challenging
+withheld critical methodology steps along with most in- problemtooptimizelocationsofcircuitcomponentsona
+puts needed to reproduce results. Our meta-analysis chipanddescribedapplicationstofiveTensorProcessing
+shows how two separate evaluations filled in the gaps Unit (TPU) chip blocks, implying that no better meth-
+and demonstrated that Google RL lags behind (i) hu- ods were available at the time in academia or industry.
+man chip designers, (ii) a well-known algorithm (Simu- The paper broadened the claims beyond chip design to
+lated Annealing), and (iii) generally-available commer- suggestthatReinforcementLearning(RL)extendsstate
+cial software, while being slower; and in a 2023 open of the art in combinatorial optimization [46].
+research contest, RL methods weren’t in top 5. Cross- “Extraordinary claims require extraordinary evi-
+checked data indicate that the integrity of the Nature dence” [10, 9], but [1] showed no results on public
+paperissubstantiallyunderminedowingtoerrorsincon- test examples (benchmarks [21]) and did not share the
+duct, analysis and reporting. Before publishing, Google proprietary TPU chip blocks used. Source code, re-
+rebuffed internal allegations of fraud. We note policy leased 7 months after publication [4] to support [1] af-
+implications and conclusions for chip design. ter initial controversy [55, 56, 57, 61, 63], was miss-
+ing key parts needed to reproduce the methods and re-
+About the Author: Dr. Igor L. Markov worked
+sults (as explained in [8, 66]). Over a dozen researchers
+on Physical Design of Integrated Circuits for over 25
+[55, 56, 63, 66] from Google and academia questioned
+years [19, 21, 35, 40], coauthored dozens of highly-cited
+theclaimsof[1],performedexperimentsandraisedcon-
+peer-reviewed papers in the field, as well as a Physical
+cerns [6, 8] about [1].
+Design textbook [53]. During his tenure at the Univ. of
+Confusingly, the then-head of Google Brain, Dr.
+Michigan, he supervised 3 Ph.D. dissertations on chip
+Zoubin Ghahramani, a Google VP, tweeted on April 7,
+floorplanning and circuit placement. Dr. Markov coau-
+2022 [54] “Google stands by this work published in Na-
+thored algorithms and software packages for chip floor-
+ture on ML for Chip Design, which has been indepen-
+planningandcircuitplacementthatwereusedtodesign
+dently replicated, open-sourced, and used in production
+many commercial chips. He served as an editor of top
+at Google,” apparently referring to reproduction by an-
+EDAjournalsandofthetwo-volumeHandbookofEDA
+other Google team (Sergio Guadarrama’s), and without
+[43]. He is an IEEE Fellow and an ACM Distinguished
+specifying what aspects were reproduced. Google engi-
+Scientist, a Nature author and reviewer. Dr. Markov
+neers updated their open source [4] many times since,
+previously worked on Search at Google and ML plat-
+filling in some missing pieces but not all [8]. A single
+forms at Meta, and taught chip design at Stanford. He
+open-source chip-design example was added to [4], but
+is a Distinguished Architect in AI & Innovation at Syn-
+results on it were neither sufficient nor clearly support-
+opsysandadirectoratthehumanitarianreliefnonprofit
+iveofGoogle’sRLcode[8]. Apparently,theonlyopenly
+Nova Ukraine.
+claimed independent (of Google) reproduction of tech-
+niques in [1] was developed in Fall 2022 by UCSD re-
+ThisworkstartedwhenDr.Markovwasaffiliatedwith
+searchers [8].1 They reverse-engineered key components
+the Univ. of Michigan, but opinions given here are the
+author’s and do not represent his employers.
+1EffortsbyProf. AndrewB.KahngatUCSDwerepraisedby
+Dr. Jeff Dean (the most senior author of the Nature paper [1]
+For a successful technology, reality must take precedence
+and then a Google SVP) in his recorded Dec 2, 2022 workshop
+over public relations, for Nature cannot be fooled. —
+keynote [59]. When UCSD efforts were starting, Prof. Kahng
+Richard Feynman, the Challenger Accident Report publiclystated[67]thathewasReviewer#3of[1]. Inthe1990s,
+1
+4202
+peS
+82
+]GL.sc[
+01v33690.6032:viXra
+
+missingfrom[4]andcompletelyreimplementedtheSim- longroutesareundesirable. Themacro placementprob-
+ulated Annealing (SA) baseline [8] absent in [4]. Google lem addressed in [1] seeks (x,y) locations for large cir-
+released no proprietary TPU chip design blocks used in cuitcomponents(macros)sothattheirrectanglesdonot
+[1] (nor sanitized equivalents), ruling out full external overlap and the remaining components can be placed
+reproduction of results. So, the UCSD team shared [7] well to optimize the chip layout [30, 40, 50].
+their experiments on modern public chip designs: SA Circuit placement as an optimization task. After
+andcommercialEDAtoolsoutperformedtheGoogleRL (x,y) locations of all components are known, wires that
+code [4]. connect components’ I/O pins are routed. Routes im-
+ReportersfromtheNewYorkTimesandReuterscov- pact chip metrics (for power, timing/speed, etc). The
+ered this controversy in 2022 [55, 56] and found that, optimizationof(x,y)locationsstartswithsimplifiedes-
+well before the Nature submission, several Google re- timatesofwirelengthwithoutwireroutes. Pinlocations
+searchersdisputedtheclaimstheyhadbeentaskedwith (x ,y )and(x ,y )maybeconnectedbyhorizontaland
+1 1 2 2
+checking. Two lead authors of [1] complained of per- vertical wire segments in many ways, but the shortest
+sistent allegations of fraud in their research [57]. In route length is |x −x |+|y −y |. For multiple pin
+1 2 1 2
+2022 Google fired an internal whistleblower [55, 56] and locations {(x ,y )} , this estimate generalizes to
+i i i
+denied publication approval for a paper [6] written by
+HPWL=(maxx −minx )+(maxy −miny ) (1)
+Google researchers critical of [1]. The whistleblower i i i i i i i i
+HPWL stands for half-perimeter wirelength, where
+sued Google for wrongful termination under Califor-
+the perimeter is taken of the bounding box of points
+niawhistleblower-protectionlaws: courtdocuments[61],
+{(x ,y )} [30, 40, 53]. It is easy to compute and sum
+filedunderpenaltyofperjury,detailallegationsoffraud i i i
+over many nets. This sum correlates with total routed
+and scientific misconduct related to research in [1]. The
+wirelength reasonably well. When (x,y) locations are
+lawsuit moved ahead in Aug ‘23 [68, 70, 76]. Within
+scaled by a factor γ > 0, HPWL also scales by γ. This
+months of the 2022 media investigations and the law-
+makesHPWLoptimizationscale-invariantandappropri-
+suit,thetwoleadauthorsof[1]andaseniorcoauthorleft
+ateforallsemiconductortechnologynodes.2 Algorithms
+Google [58]. Spring 2023 media coverage noted alleged
+that optimize HPWL extend to more precisely optimize
+misrepresentationsbyGoogletopotentialcloud-services
+routed wirelength and technology-dependent chip met-
+customers [63], questioned reproducibility of results in
+rics, so HPWL optimization is a precursor [19, 24, 31,
+the Nature paper [66], and covered UCSD research try-
+34, 36, 37, 38, 39, 40, 42, 44, 45, 50]:
+ing to settle the dispute [67]. The 2021 Nature News
+& Views article introducing [1] in the same issue urged • totestnewplacementmethods;onceHPWLresults
+replication of results of [1]. Given the obstacles to and
+are close to the best known, more accurate metrics
+the results of replication attempts [8], the author of the
+are used for evaluation; or
+article retracted it.
+• followed by optimizations of sophisticated objec-
+In this work, Section 2 reviews background and the
+tives that include HPWL (such as the proxy cost
+chip-design task solved in [1, 4], then introduces sec-
+function used by RL in [1]).
+ondary sources used [5, 6, 7, 8]. Section 3 lists initial
+suspicionsabout[1]. Section4showsthatmanyofthem Widely adopted optimizations for placement do not
+were confirmed later. Section 5 checks if [1] improved use ML [30, 31, 40, 53, 50] and can be classified as: (i)
+theStateoftheArt(SOTA).Section6outlineshowau- Simulated Annealing (SA), (ii) partitioning-driven, and
+thors of [1] responded to critiques. Section 7 discusses (iii) analytical. SA, developed in the 1980s [11, 13, 14]
+possible uses of the work in [1] in practice. Section 8 and dominant through the mid-1990s [15, 16, 17], starts
+draws conclusions and notes policy implications. with an initial layout (e.g., random) and alters it by
+a sequence of actions, such as component moves and
+swaps, of prescribed length. To improve the end re-
+2 Background
+sult, some actions may sacrifice quality to escape lo-
+Components of integrated circuits include small gates cal minima. SA excels on smaller layouts (up to 100K
+and standard cells, as well as memory arrays and components) but takes a long time for large layouts.
+reusable subcircuits. In physical design [43, 53], they Partitioning-driven methods [19, 25, 26, 28, 27] view
+are modeled by rectangles within the chip canvas (Fig- the circuit connectivity (the netlist) as a hypergraph
+ure 1). Connections between components are modeled and use established software packages to subdivide it
+by the circuit netlist before wire routes are known: a into partitions with more connections within the parti-
+netlist is an unordered set of nets, each naming com- tions(notbetween). ThesemethodsrunfasterthanSA,
+ponents that should be connected. The length of a net capture global netlist structures, and were dominant for
+depends on components’ locations and on wire routes;
+2With semiconductor technology scaling, some macros may
+Prof. Kahngsupervisedthedoctoraldissertationoftheauthorof scale differently from logic circuits, but placement algorithms
+thismeta-analysisonlarge-scaleVLSIplacementatUCLA. shouldhandleavarietyofmacrosizes.
+2
+
+Google Team 1 Google Team 2 UCSD Team
+(Nature authors + coauthors) + external coauthors
+Circuit Training (CT) repo & FAQ [4] Stronger Baselines [6] MacroPlacement repo & FAQ [7]
+ISPD 2022 paper [5] ISPD 2023 paper [8]
+4 proprietary TPU blocks 20 proprietary TPU blocks All with numerous macros:
+([1, Figure 3]) 17 public IBM circuits [23] 17 public IBM circuits [23]
+ariane (public) [4] — 2× ariane (public) [7, 8]
+all with numerous macros all with numerous macros 2× MemPool (public) [7, 8]
+2× BlackParrot (public) [7, 8]
+Table 1: Secondary sources published by the teams and chip designs for which they report results. The IBM
+circuits [23] are ICCAD 2004 benchmarks. [8] built 3 designs with 2 semiconductor technologies each.
+some 10 years. Yet, the mismatch between partition- perience crosstalk and which signal paths become slow
+ing and placement objectives (Equation 1) leaves room [43, 53]. Because of this estimation difficulty, optimiza-
+for improvement [27]. Analytical methods approximate tionmethodswithclosed-formobjectivesarefundamen-
+Equation 1 by closed-form functions amenable to estab- tallylimitedinwhattheycanachieve,andcircuitimple-
+lished optimization methods. Force-directed placement mentation may need to be redone when routing cannot
+[12] from the 1980s models nets by springs and finds be completed or timing constraints cannot be satisfied
+component locations to balance out spring forces [53]. [43, 50].
+In the 2000s, advanced analytical placement techniques Key sources. To solve mixed-size placement, the Na-
+attained superiority [30, 40, 45, 50] on all large modern ture paper [1] first places macros and then places small
+publicbenchmarksets,includingthosewithmacrosand components with commercial software. It places macros
+routing data [29, 32, 33, 34, 36, 45]. RePlAce [45] from using a Reinforcement Learning (RL) action policy that
+UCSDismuchfasterthanSAandpartitioningmethods, isiterativelyimproved(fine-tuned)atthesametime. The
+but lags in quality on small netlists. RL policy can be pre-trained on prior circuits or initial-
+The Nature paper [1] focuses on large circuit com- ized “from scratch”. The iterative process runs for a set
+ponents (macros) among numerous small components. time (or until no improvement) and optimizes a fixed
+The fixed-outline macro-placement problem was formu- (not learned) proxy cost function that blends HPWL,
+lated in the early 2000s [18, 20, 22]; it places all compo- component density, and routing congestion. To evalu-
+nents onto a fixed-size canvas (prior formulations could ate this function, the small components are placed with
+stretch the canvas). it is now viewed as part of mixed- force-directedplacement. [1]claimsbetterresultsforRL
+size placement [25, 27] where all components are placed than3baselines: (i)macroplacementbyhumanchipde-
+on a fixed-size canvas. A 2004 benchmark suite [23] for signers,(ii)parallelSimulatedAnnealing,(iii)RePlAce
+testing mixed-size placement algorithms evaluates the software from UCSD, which uses no RL.
+HPWL objective (Equation 1) which, as noted above, Among secondary sources discussed in the context of
+is apt for all semiconductor technology nodes. The [1] (Table 1), we prefer scholarly papers [5, 6, 8] and
+suite has enjoyed significant use in the literature, e.g., draw on open-source repositories and FAQs as needed
+[24, 25, 26, 27, 45]. [4, 7]. Here all benchmark sets have hundreds of macros
+Commercial and academic software for placement is per design, compared to only a handful in sets such as
+developedtorunonmodesthardwarewithinreasonable ISPD 2015. We crosscheck claims from three nonover-
+runtime. Themethodsandsoftwarein[1]consumemuch lapping groups of researchers: those associated with [1],
+greater resources, but at least with Simulated Anneal- the Stronger Baselines paper [6] and the UCSD pa-
+ing (during comparisons) it is straightforward to obtain per [8]. Consistent claims from different groups are
+progressivelybetterresultswithgreaterruntimebudget. evenmoretrustworthywhenbackedbynumerousbench-
+marks. Both Google Team 2 and the UCSD team in-
+Circuit metrics for evaluating optimization results in-
+cluded highly-cited experts on floorplanning and place-
+clude circuit timing and dynamic power. Unlike power,
+ment with extensive publication records and several key
+timingmetricsaresensitivetolong/slowpathstakenby
+referencescitedin[1](suchas[33,40,45]andothers),as
+signal transitions in a circuit and are difficult to predict
+well as experience developing academic and commercial
+before detailed placement and wire routing. Accurate
+floorplanning and placement tools beyond Google.
+early estimation of circuit metrics is a popular topic in
+the research literature, but remains an unsolved chal-
+lenge in physical design because metric values depend 3 Initial doubts
+on the actual decisions by optimizers. For example, de-
+cisions on which wires take shortest routes and which While the Nature paper [1] was sophisticated and im-
+ones get detoured determine which pairs of wires ex- pressive, its research plan had notable shortfalls. For
+3
+
+one, the proposed reinforcement learning (RL) was pre- common (Table 1).
+sented as being capable of broader combinatorial op- U5. [1] was silent on the qualifications and the level
+timization (a field that includes puzzle-like tasks such of effort of the human chip designer(s) outperformed by
+as the Traveling Salesperson Problem, Vertex Cover, RL.Reproducibilityaside,thoseresultscouldbeeasyto
+Bin Packing). But instead of illustrating this with key improve (as shown in [8] later).
+problem formulations and easy-to-configure test exam- U6. [1, Abstract] claimed improved “area”, but chip
+ples [49], it solved a specialty task (macro placement areaandmacroareadidnotchangein[1],andstandard-
+for chip design) for proprietary Google TPU circuit de- cell area did not change during placement (also see the
+sign blocks, giving results on 5 blocks out of many more 0.00 correlation in Table 2).
+available. The RL formulation did not track chip met- U7. For iterative optimization algorithms that improve
+rics and optimized a simplified proxy function that in- resultsovertime,faircomparisonsshowper testcase: (i)
+cludedHPWL(seeSection2),butwasnotevaluatedfor better quality metrics with equal runtime, (ii) better
+pure HPWL optimization on open circuit examples, as runtime with equal quality or (iii) wins for both. [1]
+is routine in the literature [19, 21, 24, 25, 26, 27, 31, offered no such evidence. In particular, if ML-based op-
+30, 36, 40, 45, 50]. New ideas in placement are usu- timizationisusedwithextraordinarycomputeresources,
+ally evaluated in research contests on industry chip de- then so should be optimization by Simulated Annealing
+signs released as public benchmarks [50, Section 6.1], in its most competitive form.
+e.g., [30, 37, 38, 39, 40, 42]. but [1] neglected these con-
+test benchmarks.
+3.2 A flawed optimization proxy
+Some aspectsof [1]looked suspicious, asit (i) did not
+substantiate several claims and withheld key aspects of The chip design methodology in [1] uses physical syn-
+experiments,(ii)claimedimprovementsinnoisymetrics thesis to generate circuits for further layout optimiza-
+thattheproposedtechniquedidnotoptimize,(iii)relied tion (physical design). The proposed RL technique
+on techniques with known handicaps that undermined places macros of those circuits to optimize a simplified
+performanceinsimilarcircumstances,and(iv)mayhave proxy cost function. Then, a commercial EDA tool is
+misconfigured and underreported its baselines. We spell invoked to place the remaining components (standard
+these out in Sections 3.1-3.4 — confirming even a frac- cells). The remaining operations (including power-grid
+tion of specific concerns would put the top-line claims design, clock-tree synthesis and timing closure [31, 53])
+and conclusions of [1] in serious doubt. areoutsourcedtoanunknownthirdparty[1,2]. Results
+are evaluated with respect to routed wirelength, area,
+3.1 Unsubstantiated claims and power,andtwocircuit-timingmetrics: TNSandWNS.3
+Per [1], the proxy cost function did not perform circuit
+insufficient reporting
+timinganalysis[53]neededtoevaluateTNSandWNS.4
+Severalsignificantomissionscanbeunderstoodbyread- Therefore,itwasmisleadingtoclaimin[1]thatthepro-
+ers without background in chip design. posed RL method led to TNS and WNS improvements
+U1. With “fast chip design”in the title [1], the authors on five TPU design blocks without performing variance-
+only described improvement in design-process time as based statistical significance tests (TNS and WNS were
+“days or weeks” to “hours” without giving per-design optimized at later steps unrelated to RL [1]).
+time or breaking it down into stages. It was unclear if
+“daysorweeks”forthebaselinedesignprocessincluded
+3.3 Use of handicapped techniques
+thetimeforfunctionaldesignchanges,idletime,inferior
+To experts, the proposed methodology looked handi-
+EDA tools, etc.
+capped: using outdated methods made it harder to im-
+U2. TheclaimofRLruntimesper testcase[1,Abstract]
+prove State of the Art (SOTA).
+being under six hours (for each of 5 TPU blocks) ex-
+H1. The proposed RL used exorbitant CPU/GPU re-
+cludedRLpre-trainingon20blocks(notamortizedover
+sources compared to SOTA. Hence, claimed “fast chip
+many uses, as in some AI applications). Pausing the
+design” (presumably, due to fewer unsuccessful design
+clock for pre-training (not used by prior methods) was
+attempts) required careful substantiation.
+misleading. Also, RL runtimes only cover macro place-
+H2. Placing macros one by one (a type of construc-
+ment, but RePlAce and industry tools place all circuit
+tivefloorplanning[53])isoneofthesimplestapproaches.
+components.
+U3. [1] focused on placing macros, but did not give
+3TNS = Total Negative Slack, WNS = Worst Negative Slack.
+the number, sizes or shapes of macros in each TPU chip These metrics measure violations of timing constraints (negative
+block used, nor area utilization, etc. slack represents violations) by adding violations along all critical
+U4. [1] gave results on only five TPU blocks, with un- pathsorusingtheworstviolations. Thesemetricsarenoisysince
+chip timing is often determined by a handful of paths, and small
+clear statistical significance, but high-variance metrics
+changestomacrolocationsmaychangetimingalot.
+producenoisyresults(Table2). Usingmoreexamplesis 4ProxyvaluescorrelatepoorlywithTNSandWNS[8].
+4
+
+Figure 1: Layouts from [6, Figure 2] with macros in red and standard cells in green, locations produced by RL
+(left) and RePlAce (right) for the ibm10 benchmark from [23]. Limiting macro locations to a coarse grid (left)
+leadstospreadingofsmallmacros(redsquaresonthegrid)andelongatesconnectingwires: from27.5units(right)
+to 44.1 units (left) for ibm10 [6, Table 1]). Higher area utilization and many macros of different sizes make the
+ICCAD 2004 benchmarks [23] challenging compared to benchmarks in [1] and [2, page 43].
+Simulated Annealing can swap and shift macros, and the impact of SA on chip metrics.
+make other incremental changes. Analytical methods B3. RePlAce [45] was used as a baseline in [1] in a
+move many components at once. One-by-one placement way inconsistent with its intended use. As Section 2 ex-
+looked handicapped even when driven by Deep Rein- plains, analytical methods do well on circuits with mil-
+forcement Learning. lions of movable components, but RePlAce was not in-
+H3. [1] used circuit-partitioning (clustering) methods tended for clustered netlists with a reduced number of
+similar to partitioning-based methods from 20+ years components — it should be used directly sans cluster-
+ago [19, 26, 28, 27, 31, 53]. Those techniques are ing (for details, see [45, 6, 8]). Clustering can worsen
+known to diverge from interconnect optimization objec- results due to a mismatch between placement and par-
+tives[27,53]. Byplacingmacrosusingaclusterednetlist titioning objectives [27], and by unnecessarily creating
+withoutgraduallayoutrefinement,RLrunsintothesame large clusters that are hard to pack without overlaps.
+problem. B4. [1]didnotdescribehowmacrolocationsinSAwere
+H4. [1] limited macro locations to a coarse grid, but initialized, hinting that the naive approach in [1] could
+SOTA methods [45] do not impose such a constraint. beimproved. Later, [6]identifiedmorehandicapsinthe
+Figure 1 illustrates the difference. Even if RL can run SA baseline in [1], and [8] confirmed them (Section 4).
+without gridding, it might not scale to large enough cir-
+cuits without coarse gridding. 4 Additional evidence
+H5. Theuseofforce-directedplacementfromthe1980s
+[12] in [1] left much room for improvement.5
+Months after the Nature publication [1], more data be-
+cameavailablein[2,4,5,6],followedbythefirstwaveof
+3.4 Questionable baselines
+controversialmediacoverage[55,56,57]. Natureeditors
+TheNaturepaper[1]usedseveralbaselinestoclaimthe releasedthepeerreviewfilefor[1]includingauthors’re-
+superiority of proposed techniques. We already men- buttals: inthelengthyback-and-forthwithreviewers[2]
+tioned in Section 3.1 that the human baseline was un- theauthorsassuredreviewersthatmacrolocationswere
+documented and not reproducible. not modified after placement by RL, confirming coarse-
+B1. Keyresultsof[1]reportin[1, Table1]chipmetrics gridplacementofmacros. Amongseveralcontributions,
+for five TPU design blocks. But comparisons to SA do [6] implemented the request of Nature Reviewer #3 [2]
+not report those chip metrics. and benchmarked Google’s technique on 17 public chip-
+B2. [1] mentions that SA was used to postprocess the design examples [23]: prior methods decisively outper-
+results of RL, but gives no ablation studies to evaluate formed Google RL. Professors Patrick Madden (SUNY
+Binghamton)andJensLienig(TUDresden)publiclyex-
+5In[52],GoogleTeam1usedamodernmethod(DREAMPlace
+pressed doubts about the Nature paper [55, 56]. As
+[51]derivedfromRePlAce)insteadofforce-directedplacementbut
+claimedimprovementonlyinproxycosts,notchipmetrics. researchers noted gaps in the Google open-source re-
+5
+
+lease [4], such as the grouping (clustering) flow, Google sions”improvedqualitysomewhat. Pre-trainingRLand
+engineers released more code (but not all), prompting evaluating it on similar designs [80] might be a serious
+more questions (see below). Another year passed, and flaw in methodology of [1].6 As Google did not release
+[7, 8] expanded on the initial suspicions in several ways. proprietaryTPUdesignsorper-designstatistics,wecan-
+They demonstrated that not limiting macro placement not compare training and test data.
+allowshumandesignersandcommercialEDAtools(sep- A middling Simulated Annealing baseline. The
+arately) to outperform results produced by Google code Stronger Baselines paper [6] from Google Team 2 im-
+[4]. [8, Table 2] estimated rank correlation of the proxy proved the parallel SA used by Google Team 1 in [1] by
+cost function optimized by RL to chip metrics used in adding “move” and “shuffle” actions to “swap”, “shift”
+[1, Table 1], and [8, Table 3] estimated the mean and and “mirror” actions. This improved SA typically pro-
+standard deviation for chip metrics after RL-based op- ducesbetterresultsthanRLinashorteramountoftime
+timization. We give a summary in Table 2, where rank when optimizing the same objective function. [8] repro-
+correlations are low for all chip metrics, while TNS and duced the conclusions of [6] with an independent im-
+WNS are noisy. Hence, the optimization of TNS and plementation of SA and found that SA results had less
+WNSin[1]reliedonaflawedproxyandproducedresults variance than RL results. Additionally, [6] suggested
+in [1, Table 1] of dubious statistical significance. We a simple and fast macro-initialization heuristic for SA
+note that σ/|µ|>0.5 for TNS on Ariane-NG45 (also on and equalized compute times when comparing RL to
+BlackParrot-NG45 in [8, Table 3]). In the second round SA. Given that SA was widely used in the 1980s and
+of critical media coverage, [1] was questioned by Profs. 1990s, not implementing a strong enough SA baseline
+William Swartz (UT Dallas), Patrick Madden (SUNY contributed to wrong conclusions about the superiority
+Binghamton), and Moshe Vardi (Rice) [63, 66]. of the new RL technique.
+4.2 Results
+4.1 Methods
+Undisclosed use of (x,y) locations from commer- Inconsistenciesinclaimedruntimes. [1]claimsrun-
+cial tools. StrongevidenceandconfirmationbyGoogle times under six hours, but papers and presentations
+engineers are mentioned in the UCSD paper [8] that by Google Team 1 [47, 48] reuse the blurred green-
+[1] withheld a critical detail. When clustering the in- blue-white chip image in [1, Extended Data Figure 5]
+put netlist, CT merge code in [4] read in a placement with 12-24 hour runtimes and identical total wirelength
+to restructure clusters based on locations. To produce (55.42m).
+(x,y)locationsofmacros,[1]usedinitial(x,y)locations An inconclusive testcase. Google’s RL code [4] lost
+of all circuit components (including macros!) produced to prior methods on most chip-design examples in [6,
+by commercial EDA tools from Synopsys [4, Issue #25]. 8] except for Ariane — the only example released in
+The lead authors of [1] confirmed using this step, claim- supportof[1]. ButwhenmacrosofArianewereshuffled
+ingitwasunimportant[62]. Butitimprovedkeymetrics [8],chipmetricsmovedverylittle. Thus,Arianewasnot
+by 7-10% in [8]. So, the results in [1] needed algorith- a challenging testcase.
+mic steps absent in [1], e.g., obtaining (x,y) data from
+commercial software. 4.3 Likely imitations
+More undocumented techniques were itemized in
+[8], which mentioned discrepancies between the Nature [1] did not disclose major limitations of its methods but
+paper [1], their source code [4] and the actual code used promisedsuccessinbroadercombinatorialoptimization.
+for chip design at Google. These discrepancies included TheArianedesignimagein[1,ExtendedDataFigure4]
+specific weights of terms in the proxy cost function, a shows macro blocks of identical sizes: a potential lim-
+different construction of the adjacency matrix from the itation. Yet, [1] does not report basic statistics per
+circuit, and several “blackbox” elements of [4] available TPU block: the number of macros and their shapes,
+as binaries with no source code or full description in [1]. designareautilization,andthefractionofareatakenby
+[6] and [7, 8] offer missing descriptions. Moreover, the macros. Based on [2, page 43] and the guidance from
+results in [1] did not match the methods in [1] because Google engineers to the authors of [8], it appears TPU
+key components were missing. And neither results nor blocks had area utilization on the order of 60%. Com-
+methods were reproducible from descriptions alone. mercial chips are often denser, and can use macros of
+different sizes. Poor performance of Google RL on chal-
+Data leakage between training and test data? Per
+lenging public benchmarks from [23] used in [6, 8] (il-
+[1], “as we expose the policy network to a greater vari-
+lustrated in Figure 1) suggests undisclosed limitations.
+etyofchipdesigns,itbecomeslesspronetooverfitting.”
+Anotherpossiblelimitationispoorhandlingofpreplaced
+But Google Team 1 showed later in [5, Figure 7] that
+pre-training on “diverse TPU blocks” did not improve 6Suchamethodologycouldhelpchipdesignersiterateondesign
+quality of results. Pre-training on “previous netlist ver- changesfaster,butthatwasnotdescribedin[1].
+6
+
+Chip metrics → area routed wirelength power WNS TNS
+Rank correlation to RL proxy cost 0.00 0.28 0.05 0.20 0.05
+Mean µ 247.1K 834.8 4,978 -100 -65
+Standard deviation σ 1.652K 4.1 272 28 36.9
+σ/|µ| 0.01 0.00 0.05 0.28 0.57
+Table 2: Evaluating the soundness of the proxy cost used with RL in [1] and the noisiness of reported chip
+metrics after RL-based optimization. We summarize data from [8, Table 2] on the Kendall rank correlation of
+chip metrics to the RL proxy cost and from [8, Tables 3 and 4] on statistics for chip metrics (only Ariane-NG45
+designdataareshown,butdataforBlackParrot-NG45showssimilartrends). Asexpected,purely-additivemetrics
+(standard-cell area, routed wirelength and chip power) exhibit low variance, but the TNS and WNS metrics, that
+measure timing-constraint violations, have high variance.
+(fixed) macros, common in industry layouts, but not • The UCSD Team [7, 8] lacked access to Google
+discussed in [1]. By interfering with preplaced macros, trainingdataandcodebutfollowedGoogleinstruc-
+gridding(seeH4)canimpactusabilityinpractice. Poor tions in [4] for obtaining results similar to those in
+performance on public benchmarks may also be due to [1] without pre-training. They also reimplemented
+overfitting to proprietary TPU designs. SA following instructions in [6] and introduced sev-
+eral new chip-design examples (Table 1).
+5 Did [1] improve SOTA? • The UCSD Team [7, 8] but not Google Team 2 [6]
+performed comparisons using chip metrics and us-
+The Nature editorial [3] discussing [1] speculated that
+ingacommercialEDAtool(CadenceCMP),where
+“this is an important achievement and will be a huge
+CadenceCMPoutperfomedGoogleRL.Whenrun-
+help in speeding up the supply chain.” But today, af-
+ning RePlAce in this context, [8] used only macro
+ter evaluations and reproduction attempts at multiple
+locationsproducedbyRePlAceandplacedstandard
+chip-design and EDA companies, it is safe to conclude
+cells with the same commercial software used after
+that no important achievement occurred because prior
+Google CT/RL [1, 4] (more details below).
+chip-design software, particularly from Cadence Design
+• TheUCSDTeam[7,8]repeatedSAvs. RLcompar-
+Systems, produced better layouts faster [7, 8]. If this
+isons for several configurations (those in [1], those
+were known to the reviewers of [1] or to the public, the
+in [4], and additional ones suggested by Google en-
+claimsofimprovingTPUdesignsin[1]wouldbenonsen-
+gineers). The results were consistent.
+sical. [1] claimed that humans produced better results
+thancommercialEDAtools,butgavenosubstantiation. • The UCSD Team [7, 8] demonstrated that a chip
+When license terms complicate publishing comparisons designer from IBM outperformed Google RL [4],
+to commercial EDA tools,7 one compares to academic whereasGoogleTeam2[6]didnotusehumanbase-
+software and to other prior methods, with the proviso lines.
+that small improvements are not compelling.
+For comparisons that can be crosschecked, the two
+5.1 Reproduction attempts teams report (in[6] and[7, 8])qualitatively similarcon-
+clusions.
+GoogleTeam2[6]andtheUCSDTeam[7,8]tookdiffer- As pointed out in [6], RePlAce was used in [1] in a
+ent approaches to comparing methods from [1] to base- way inconsistent with its intended use. As a mixed-size
+lines, but cumulatively reported comparisons to com- placer, RePlAce expects a circuit netlist with macros
+mercial EDA tools, to human designers, to prior univer- and standard cells, as a large number of separate com-
+sitysoftware,andtotwoindependentcustomimplemen- ponents. Instead, the comparisons in [1] suppressed the
+tations of Simulated Annealing. advantage of RePlAce by clustering standard cells into
+• GoogleTeam2in[6]followedthedescriptionsin[1] a few large chunks.9 With proper use of RePlAce, [6]
+and, independently, [8] obtain strong results with Re-
+and did not supply initial placement information.
+PlAceonwell-knownpublicICCAD2004benchmarks.10
+The UCSD Team in [7, 8] sought to replicate what
+Google actually used to produce results (without
+Team1—trainingondiversedesignsdoesnotimprovequalityof
+description in [1]). results, and improvements are seen only when training on earlier
+versions of the same design. In December 2022 Dr. Jeff Dean, a
+• Google Team 2 had access to TPU design blocks
+thenGoogleSVPandthemostseniorauthorof[1],alsoconfirmed
+andevaluatedtheimpactofpre-trainingin[6]. The thatRLdidwellwithoutpre-training[59].
+impact was small at best.8 9PerSection2,analyticalplacerslikeRePlAce[45]beatother
+methods on circuits with millions of components. With <100K
+7Thelawsuit[61,68]allegesthatGoogleobtainedbetterresults components,earliermethodscanbecompetitive.
+withcommercialtoolsbeforeNaturesubmission. 10Comparing HPWL results to those in [25, 27], Google
+8Aconsistentconclusionwasreportedin[5,Figure7]byGoogle CT/RL[4]underperformsFengShui[26]circa2005.
+7
+
+↓ Designs / Tools → Google CT/RL Cadence CMP UCSD SA
+Ariane-NG45 32.31 0.05 12.50
+BlackParrot-NG45 50.51 0.33 12.50
+MemPool-NG45 81.23 1.97 12.50
+Table 3: Runtimes in hours for three mixed-size placement tools and methodologies on three large chip modern
+designs reported in the arXiv version of [8]. Google CT - Circuit Training code supporting RL in the Nature
+paper,usedwithoutpre-training. CadenceCMP-ConcurrentMacroPlacer(commercialEDAtool). SA-parallel
+SimulatedAnnealingimplementedatUCSDfollowing[6]given12.5hoursofruntimeineachcase. CTandSAare
+used only to place macros, the remaining components are placed by a commercial EDA tool whose runtime is not
+included. CadenceCMPplacesallcircuitcomponents. Byqualityofresultsin[8](notshownhere),CadenceCMP
+leads, followed by Simulated Annealing, followed by Google CT. [7] additionally evaluated Cadence CMP versions
+by year and concluded that performance and runtime on these examples did not appreciably change between the
+versions since 2019.
+In comparisons on recent designs [7, 8] RePlAce also methods and codes, and to perform fair comparisons.
+attains better chip metrics, but still loses to Google A recent contest is relevant to our meta-analysis. In
+CT/RL because its placements are harder to route (the 2023, the IEEE/ACM Workshop on Machine Learn-
+losses are much smaller than those reported in [1]). No- ing in Computer-Aided Design (MLCAD) held an open
+tably, [6, 7, 8] used RePlAce in a fast mode and not research contest for macro placement for FPGAs and
+high-qualitymode. Congestion-drivenmodeinRePlAce ASICs (https://mlcad-workshop.org/1st-mlcad
+[45] was not used. In contrast, [1] used routability- -contest/). The contest followed the playbook estab-
+improvement techniques, such as cell bloating, without lished at other CAD conferences such as DAC, ICCAD,
+disclosing them (according to [8]). Such techniques can and ISPD, and particularly successful in evaluating al-
+be combined with RePlAce to ensure fair comparisons. gorithmic techniques for physical design since the ISPD
+Other techniques [24, 31, 36, 40] can be used too. 2005 placement contest [30, 37, 38, 39, 40, 42]:
+As explained in [6], the implementation of Simulated • a challenge problem is announced along with chip
+Annealing used in [1] was handicapped. Removing the
+design examples and metrics;
+handicaps (in the same source code base) improved re- • several months after sign-up, final submissions are
+sults. When properly implemented, SA produces bet-
+collectedandevaluatedby the organizersonhidden
+tersolutionsthanGoogleCT/RL[4]usinglessruntime,
+design examples (benchmarks); the same compute
+whenbotharegiventhesameproxycostfunction. This
+resources are available to all contestants (fairness);
+is shown consistently in [6, 8] on 17 widely used ICCAD
+• after evaluation, all benchmarks and winning solu-
+2004 benchmarks [23] and in [8] on several modern de-
+tions are released in public;
+sign benchmarks. Compared to Google CT/RL [4], SA
+• to facilitate industry participants, source code re-
+consistentlyimproveswirelengthandpowermetrics. For
+lease is typically not required to win, but rather
+circuit timing metrics TNS and WNS, SA produces less
+encouraged by additional prize money.
+noisy results that are otherwise comparable to RL’s re-
+sults [8]. Recall that the proxy function optimized by TheMLCADcontestfocusedonthemacroplacement
+SA and RL does not include timing metrics [1], making task “inspired by recent deep reinforcement learning
+any claims of improvement in these metrics due to SA (RL) approaches (e.g. [1]),” aiming “to improve upon
+or RL dubious. the current state-of-the-art macro placement tools.”
+Improving upon SOTA requires improving upon all Compared to [1], macro placements had to satisfy ad-
+prior baselines. Google CT/RL failed to improve by ditional constraints. The objective function minimized
+quality upon (i) human baselines, (ii) commercial EDA duringthecontestdidnotincludecircuit-timingevalua-
+tools, and (iii) SA. It did not improve SOTA by run- tion,justastheRLapproachin[1]didnot. Numerically,
+timeeither(Table3),and[1]didnotdiscloseper-design theobjectivemultipliedpenaltytermsfortheruntimeof
+data or design-process time. RePlAce and SA gave macroplacement,theruntimeofdownstreamplace-and-
+stronger baselines than described in [1], when config- route tasks and the resulting routing congestion evalu-
+ured/implemented well. atedonagrid.11 Completing macroplacement inunder
+11Theinclusionofruntimeintheobjectivefunction(commonto
+5.2 Open contest at MLCAD 2023 contests in physical design) was likely the most significant differ-
+encefromevaluationin[1], wherelargeamountsofparallelcom-
+TheEDAindustryandresearchcommunityregularlyor- putational resources were used in comparison to prior methods
+that used smaller computational resources. In industry practice,
+ganize open research contests to keep track of SOTA on
+design-processtimeisimportant,andtheauthorsof[1]advertised
+industry-produced chip designs, to evaluate published design-processspeedinthetitle.
+8
+
+10 minutes led to no penalty for runtime, and this was move remaining obstacles to reproducibility [66] of the
+the case for many teams on many benchmarks. At the methods and results in [1]. The UCSD team’s engineer-
+same time, poor macro placements tend to lead to high ing effort overcame those obstacles, and they followed
+routing congestion and long place-and-route runtimes. up on the work of Google Team 2 [6] that criticized [1],
+Results from multiple design examples were combined then analyzed many issues listed in Sections 3 and 4.
+usingthegeometricmean. Theorganizersfirstprovided Google Team 2 had access to Google TPU designs and
+a public benchmark dataset of 140 designs with numer- the source code used in [1] before the CT GitHub repo
+ousmacrosandvaryinglevelsofdifficulty,andthenused [4] appeared. The UCSD authors of [7, 8] had access to
+aseparatesetof198“hidden”designsforevaluation(cf. Circuit Training (CT) [4] and benefited from a lengthy
+resultsononlyfivedesignblocksin[1]). Alldesignswere involvementofGoogleTeam1engineers,buthadnoac-
+released after the contest results were announced. cesstoSAcodeusedin[1,6]orotherkeypiecesofcode
+Despitetechnicaldifferencesfrominfrastructurein[1], missing from [4]. Yet, the results in [6] and [7, 8] cor-
+the contest offered a great opportunity for Google and roborate each other, and their qualitative conclusions
+the authors of [1] to showcase the versatility and qual- are consistent. UCSD results for Ariane-NG45 closely
+ity of their RL technique.12 The contest attracted 19 matchthosebyGoogleTeam1engineers,and[8,Figure
+participants, ofthem8finalists—academicteamsfrom 4]showsthatCTtrainingcurvesofAriane-NG45gener-
+Taiwan,HongKong,China,CanadaandtheUS(several ated at UCSD match those produced by Google Team 1
+students per team). Google did not take part.13 engineers. Google Team 1 engineers carefully reviewed
+Contest results were announced on September 13, thepaper[8]andtheworkinFall2022andWinter2023,
+2023. According to the participants’ own descriptions, raising no objections [7, FAQ].
+top six teams used traditional analytical optimization Thetwoleadauthorsof[1]leftGoogleinAugust2022,
+methods sans ML — based on either DREAMPlace [51] butinMarch2023objectedtoresultsof[8]withoutrem-
+(derived from RePlAce) or SimPL [35]. The absence of edying the deficiencies of [1] (Section 3). Those objec-
+RL solutions was noteworthy, given that Google “open- tions were addressed promptly in [7, FAQ], e.g., in #6,
+sourced” the methods of [1] in [4]. Evaluation scores on #11, #13, #15. One issue was the lack of pre-training
+hidden benchmarks generally mirrored the trends seen in experiments in [8].
+onpublicbenchmarks,whichisnotsurprisingintheab- Pre-training. [8] performed training using code and
+senceofMLmethods(thatsometimesoverfittotraining instructions in Google’s Circuit Training (CT) repo [4],
+data). Overall contest results were consistent with the which states (June 2023): “The results below are re-
+conclusions in [6, 8] that traditional optimization meth- ported for training from scratch, since the pre-trained
+ods in circuit placement produced better macro place- model cannot be shared at this time.”
+ment results than RL from [1] did, and finished faster. • Per MP FAQ in [7], [8] did not use pre-training be-
+The results in [8] complete the overall picture by evalu-
+cause, per Google’s CT FAQ [4], pre-training was
+ating chip metrics used in [1]: power, circuit delay, and
+notneededtoreproduceresultsof[1]. Also,Google
+the total area of standard cells. Industry chips are typ-
+did not release pre-training data.
+ically evaluated using the PPA triad (Power, delay Per-
+• Google Team 2 [6] evaluated pre-training using
+formance,andchipArea),butmacroplacementmethod-
+Google-internal code and saw no impact on com-
+ologies considered do not alter chip area.
+parisons to SA or RePlAce.
+• Google Team 1 showed [5, Figure 7] that pre-
+6 Rebuttals to critiques of [1]
+training on “diverse TPU blocks” did not improve
+results, only runtime. Pre-training on “previous
+Despitecriticalmediacoverage[55,56,63,67]andtech- netlist versions” gave small improvement. No such
+nical questions raised, the authors of [1, 4] failed to re- previous versions were discussed, disclosed or re-
+leased in [1, 4].
+12RLwaspitchedin[1]asageneraltechniqueforcombinatorial
+optimization,somusthandlevariousmacro-placementtasks. • Dr. Jeff Dean’s presentation [59] gave strong RL
+13Google did not skip a similar research contest at the Intl. results “from scratch” (w/o pre-training).
+WorkshoponLogicSynthesis(IWLS2023). Thatcontest(https:
+//github.com/alanminko/iwls2023-ls-contest) focused on In other words, the lead authors of [1] want others to
+chip logic design rather than physical design (two nearby fields). use pre-training while they did not describe it in detail
+Google won the first place using long-running parallel Simulated sufficient for reproduction, did not release code or data
+Annealing (but during the IWLS 2024 Contest another team
+for it, and have themselves shown that it does not im-
+outperformed Google results without using ML or DNNs, per
+https://github.com/alanminko/iwls2023-ls-contest). The prove results in the context of [1]. Pre-training can also
+winning team overlapped with Google Team 1 working on macro be abused [80].
+placement: Sergio Guadarrama (quoted in [69]), the senior staff Old benchmarks. Another objection [67] is that pub-
+software engineer co-authored the ISPD 2022 paper [5] with the
+lic benchmarks [23] used in [6, 8] allegedly use outdated
+lead authors of [1] and then tweeted on 5/3/22 that he and his
+teamatGoogle“independentlyreplicated”theworkin[1]. infrastructure. But those circuits have been evaluated
+9
+
+with the HPWL objective, which scales accurately un- the Google-internal implementation of SA from [6] (or
+der geometric 2D scaling of chip designs and remains the public one from [8, 7]) could serve as a drop-in re-
+appropriate for all technology nodes (Section 2). Per placement of RL in [1, 4]. Without inside knowledge,
+[2], ICCAD benchmarks were requested [2] by Peer Re- we speculate how to reconcile the claimed use in TPUs
+viewer #3 of [1]. When [6, 8] implemented this ask, with Google CT/RL lagging behind SOTA (per [6, 8]).
+Google RL ran into trouble before routing became rel-
+• Giventhehighvarianceofchip-timingmetricsTNS
+evant: RL lost by 20% or so in HPWL optimization
+andWNSinRLresults(duetolowcorrelationwith
+(HPWL is the simplest yet most important term of the
+the proxy metric), trying many independent ran-
+proxy cost optimized by CT/RL [1, 4]).
+domizedattemptswithvariantproxycostfunctions
+Not training until convergence in experiments in
+andhyperparametersettingsmayimprovebest-seen
+[8]. This concern was promptly addressed in FAQ #15
+results [61], with much greater runtimes. But SA
+in [7]: “ ‘training until convergence’ is not described
+can also be used this way.
+in any of the guidelines provided by the CT GitHub
+repo for reproducing the results in the Nature paper.” • Using in-house methods, even if inferior, is a com-
+The authors of [8] followed Google’s guidelines in the mon methodology in industry practice called dog-
+CT repo [4]. Later, their additional experiments in- fooding (“eat your own dogfood”). Blocks that are
+dicated that “training until convergence worsens some not critical (do not affect chip speed) are good can-
+key chip metrics while improving others, highlighting didates for dogfooding. This can explain selective
+the poor correlation between proxy cost and chip met- “production use” and reporting.
+rics. Overall, training until convergence does not quali- • Per [1], the results of RL were postprocessed by SA
+tatively change comparisons to results of Simulated An-
+but the CT FAQ [4] disclaimed this postprocessing
+nealing and human macro placements reported in the
+— postprocessing was used in the TPU design flow
+ISPD 2023 paper.” RL-vs.-SA experiments in [6] pre-
+but not when comparing RL to SA. But since full-
+dated [4], so trained until convergence per the six-hour
+fledged SA consistently beats RL [6, 8], SA could
+protocol from [1].
+substituteforRL(initiallocationscanbeusedwith
+Computational resourcesusedin[1]wereverylarge, adaptive temperature scheduling in SA).
+costly, and difficult to replicate. Since both RL and SA
+• Google Team 1’s follow-up [5] shows (in Figure 7)
+algorithmsproducevalidsolutionsearlyandthengradu-
+that pre-training improves results only when pre-
+ally improve the proxy function, the best-effort compar-
+training on essentially the same design. Google
+isons in [8] used smaller computational resources than
+could be using RL when performing multiple re-
+in [1], with parity between RL and SA. The result: SA
+visions to IC designs — a valid context, but not
+beatRL.[6]comparedRLtoSAusingthesameamount
+covered in [1]. Besides, commercial EDA tools are
+of computational resources as in [1]. Their results were
+orders of magnitude faster (running from scratch)
+consistent with [6]. If given greater resources, SA and
+thanRL(Table3),sopre-trainingRLdoesnotclose
+RL are unlikely to further improve chip metrics due to
+the gap with [1].
+poor correlation to the proxy function from [1].
+The lead authors of [1] mention in [62] that [1] is • Per [2, 8], TPU blocks exhibit much lower area
+heavily cited, but cite no positive reproductions outside utilization during placement (roughly 60%) than is
+Google that cleared all known obstacles. [6, 8] do not common in modern chips. Configuring EDA tools
+discussotherways(thanin[1,4])touseRLinICdesign, for this context can be challenging. Court mate-
+so we avoid general conclusions. rials [61] indicate that misleading comparisons due
+to misconfigured EDA tools were flagged at Google
+but not corrected.
+7 Can the work in [1] be used?
+Can Google CT/RL code [4] be improved? RL
+The Nature paper [1] claimed applications to recent andSAare orders ofmagnitudeslowerthanSOTA(Ta-
+GoogleTPUchips,providingcredencetothenotionthat ble 3), but pre-training (missing in CT) speeds up RL
+those methods improved State of the Art. But aside [5, Figure 7] by only several times.
+fromvaguegeneralclaims,nochip-metricimprovements The CT repository [4] now contains attempted im-
+were reported for specific production chips.14 Section 5 provements(suchasupgrading[52]force-directedplace-
+shows that the methods of [1, 4] lag behind Simulated ment [12] to DREAMPlace [51]), but we have not seen
+Annealing from the 1980s [11, 13, 14, 15]. Moreover, serious improvements to chip metrics. Four major bar-
+riers to improving [1, 4] remain:
+14[1, Table 1] shows results for TPU designs of an earlier gen-
+1. The proxy cost function optimized by RL does not
+eration (that is, on chips that were already manufactured at the
+reflect circuit timing [8], so improving RL may not
+time). Assumingsubstantialuseinproduction,morerecentTPU
+designblocksmusthaveused[1,4]fortape-out. help to improve TNS and WNS.
+10
+
+2. [6, 8] show that SA outperforms RL when optimiz- sistent conclusions from similar experiments, and each
+ing a given proxy function. Hence, RL may lose team made additional observations.
+even with a better proxy.
+1. [1] reported improvements in several chip-timing
+3. RL’s placement of macros on a coarse grid limits metrics (TNS and WNS) that were not explicitly
+their locations (Figure 1). When a human designer tracked or optimized by the proposed RL method,
+ignored the coarse grid, they found better macro and those metrics did not correlate with the proxy
+locations[8]. CommercialEDAtoolsalsoavoidthis objective used in optimization [8]. Those timing
+limitation and outperform Google CT/RL. metrics were optimized in postprocessing by com-
+mercial EDA tools.
+4. Clustering as a preprocessing step creates mis-
+matchesbetweenplacementandnetlistpartitioning 2. Design-processtimeimprovementsoverhumanchip
+objectives [27, 53]. designers — a key claim of [1] — were not reported
+per testcase or detailed, and the humans involved
+were not documented. Later, it was clarified in
+8 Conclusions
+theCTFAQ[4]thatthosehumanexpertssomehow
+ElectronicDesignAutomationhasbeenrelyingoncom- used commercial autoplacement tools. However, [8]
+monAImethodsfordozensofyears,includingA*-search has shown how Google CT/RL was outperformed,
+for wire routing, SAT-solving and inductive theorem- inseparatecomparisons,bydifferenthumandesign-
+provers for verification, etc. Attempts to use ML for ers and by fully automated commercial EDA tools.
+combinatorial optimization are more recent. This meta-
+analysisdiscussesthereproductionandevaluationofre-
+3. As first suggested in [6] and confirmed in [8], each
+sultsintheNaturepaper[1]onMLformacroplacement,
+algorithmic baseline described in [1] was lacking in
+as well as the validity of methods, results and claims
+somewaysandnotdifficulttoimprove. Asaresult,
+in that paper. In [1], we find a smorgasboard of ques-
+prior methods outperform the methods of [1, 4] in
+tionable practices in ML [87] including irreproducible
+quality and runtime.
+research practices, multiple variants of cherrypicking,
+misreporting, and likely data contamination (leakage). 4. Theclaimofsix-hourruntimesforRLmacroplace-
+Based on crosschecked newer data, we draw conclusions ment [1] is in doubt because the authors of [1] re-
+with ample redundancy (resistant to isolated mistakes): ported at conferences [48, 59] 12- and 24-hr run-
+the integrity of [1] is substantially undermined owing to timeswiththesamechipimages[1,ExtendedData
+errorsintheconduct,analysisandreportingofitsstudy. Figure 5] and identical total wirelength. Moreover,
+Omissions,inconsistencies,mistakes,andmisrepresenta- theNatureauthorsmayhavestoppedtheclockdur-
+tionsimpactedmethods,data,resultsandinterpretation ing pre-training, which took much longer than six
+in [1]. Table 4 makes it clear that serious issues were hours and was not amortized over a large number
+raised at Google about the work many months before of designs. Either way, commercial tools run orders
+the Nature publication [1]. of magnitude faster (Table 3).
+5. [1] withholds important details required to produce
+8.1 Conclusions about [1]
+reported results. One of these details is the use of
+Wecrosschecktheresultsreportedin[6,7,8]andalsoac- (x,y) locations produced by commercial software.
+countfor[2,4,5,52],thensummarizeconclusionsdrawn UsingtheseinitiallocationswithGoogle’sRLtech-
+from these works. This confirms many of the initial nique markedly improves the (x,y) locations pro-
+doubts about [1] and identifies additional deficiencies. duced by it [8].
+As a result, it is clear that [1] is misleading in several
+6. Improvingthemethodsof[1]tomakethemcompet-
+ways, such that the readers can have no confidence in
+itive would be challenging due to the four barriers
+thetop-lineclaimsof[1]. noritsconclusions. [1]didnot
+itemized in Section 7.
+improveSOTAwhilethemethodsandresultsoftheorig-
+inal paper were not reproducible from the descriptions
+8.2 Conclusions for chip-design tech
+provided, contrary to stated editorial policies at Nature
+(see Section 8.3). The reliance on proprietary TPU de-
+Lackingconclusionsaboutspecificchipdesigns,wefocus
+signs for evaluation, along with insufficient reporting of
+on chip design technologies.
+experiments,continuestoobstructreproducibilityofthe
+methods and the results. Google Team 2 [6] had access 1. Machine-learning from entire chip designs is hard:
+to Google internal code whereas the UCSD Team [8] learning from diverse designs might only improve
+reverse-engineered and/or reimplemented missing com- runtime and not quality in typical cases [5]. Learn-
+ponents. GoogleTeam2andtheUCSDteamdrewcon- ing from earlier versions of the same design can be
+11
+
+Timeline Excerpts from the August 4, 2023 ruling by Judge Frederick S. Chung
+arXiv:2004.10746 Chatterjee claims that he believed the arXiv paper was fraudulent on
+was published on three different levels and attempted to report and correct these issues
+April 22, 2020 by presenting his team’s findings. [...] The FAC further alleges that in
+by the authors October 2020, Chatterjee expressly raised concerns that Google “could
+of [1] and flagged be charged with fraud if it continued to represent” to third parties or
+by Chatterjee in partners for commercial agreements that Google’s methods were com-
+October 2020. paratively better than competitor’s.
+Google’s “Employee Relations” department contacted Chatterjee, and
+Chatterjee was re- thenonApril15, 2021, itdisciplinedChatterjeewithawrittenwarning,
+buffedbyEmployee noting Chatterjee’s “unprofessional tone and manner,” which included
+Relations in April “making uncredible claims of fraud and academic misconduct.” [...]
+2021. Communications from the Employee Relations department further cor-
+roborate Chatterjee’s participation in allegedly protected activity.
+The FAC subsequently alleges that the arXiv paper — defined subse-
+Nature paper [1]
+quentlyastheNaturepaper—waspublishedwithoutthecontradicting
+was published in
+data or disclaimers in the Nature journal on June 9, 2021. [...] There is
+June 2021.
+no basis for striking this allegation.
+Chatterjee urged On February 18, 2022 Chatterjee again urged correction of the scientific
+corrections again in record, asserting it was “not only the ethical thing to do, but also the
+February 2022. legal thing to do.”
+On March 23, 2022, Chatterjee was fired from Google, because he al-
+Chatterjee was
+legedly threatened to disclose his suspicions of fraud to the CEO and
+fired in March 2022.
+the Board.
+Table 4: Timeline of alleged fraud and scientific misconduct per [76]. FAC refers to
+[61]. “Protected activity” refers to whistleblower protections under California law.
+useful in some cases, but should be compared to results without using reinforcement learning. At
+warm-starting Simulated Annealing with an initial the same time, older circuit benchmarks (such as
+placement and adaptive temperature schedule. [23]) remain relevant, difficult and practically use-
+ful. They circumvent proprietary chip infrastruc-
+2. Gridding and clustering methods (popular 20 years
+ture and enable, with minimal effort, quick direc-
+ago, but outperformed by “flat” methods) do not
+tional comparisons valid for any technology node.
+offer new capabilities at this point.
+3. UsingexorbitantCPU/GPUresourcesin[1]didnot 6. A2024effortfromChina[89]comparedseventech-
+help outperform SOTA. It only complicated exper- niques for mixed-size placement using their new in-
+imentation and reproducibility. dependentevaluationframeworkwith20circuits(7
+with macros). End-to-end results for chip metrics
+4. The work in [1, 4] made a keen observation that
+show that post-[1] ML-based techniques lag behind
+physical synthesis tools produce (x,y) locations us-
+RePlAce[45](embeddedinOpenROAD)andother
+able as initial solutions for mixed-size placement.
+optimization-based techniques: DREAMPlace (a
+Sadly,thisobservationwasnotdisclosedinthetext
+GPU-based variant of the RePlAce algorithm) [51]
+of [1] but only used to improve results. As it is not
+and AutoDMP (a Bayesian Optimization wrapper
+specific to RL, it does not support the superiority
+around DREAMPlace) [65]. Despite the obvous
+of RL [8]. On the other hand, initial placements
+need to replicate the methods from [1], the authors
+wererecentlystudiedin[64]andcanbereflectedin
+of [89] were unable to provide such results.
+future placement benchmarking efforts.
+5. The modern open-source infrastructure [7] for eval- When a particular design technology underperforms,
+uating macro placers developed for [8] can be used thisdoesnotnecessarilyreflectontheactualICdesigns
+to check new ideas and software.15 [7, 8] included where it was attempted.
+in its evaluation a new ML-based macro placer Au-
+toDMP [65] from Nvidia that produced promising 8.3 Policy implications
+15The design examples in [7] roughly match [1] in area utiliza- Theoretical arguments and empirical evidence suggest
+tion. Increasingareautilizationwouldcreateharderbenchmarks,
+that numerous published papers across various fields
+keepinginmindthathigherareautilizationdecreasesfabrication
+costformass-producedICs. cannot be replicated and are likely false [10, 9, 41, 71,
+12
+
+77, 85]. The developments with [1] add to the so-called “An inherent principle of publication is that oth-
+reproducibility crisis that undermines trust in published ers should be able to replicate and build upon the
+research results [72, 77]. In response to this crisis, some authors’ published claims. A condition of publica-
+observers say “reproduce or it didn’t happen” [81]. tion in a Nature Portfolio journal is that authors
+are required to make materials, data, code, and
+Retraction Watch now tracks 5000 retractions per
+associated protocols promptly available to readers
+year, including prominent cases of research miscon-
+withoutunduequalifications[...] Afterpublication,
+duct [75, 77]. Per [72], “research misconduct is a se-
+readers who encounter refusal by the authors to
+rious problem and (probably) getting worse”, which
+complywiththesepoliciesshouldcontactthechief
+makes it even more important to separate honest mis-
+editor of the journal.”
+takes from deliberate exaggerations and misconduct
+[73, 74, 75, 78, 85]. To this end, see Table 4. Institu- Specifically for [1], the Nature editorial [3] insisted
+tional response is needed, and opportunities for future that “the technical expertise must be shared widely.”
+reformsarediscussedin[71,78,82,86]. Particularlyim- Butwhenmanuscriptauthorsneglectrequestsforpublic
+portant are faster, more numerous retractions [60] and benchmarking and obstruct reproducibility, their tech-
+clarity in Nature retraction notices [88]. Here we make nical claims should be viewed with suspicion [66] (es-
+a modest contribution to this far-reaching discussion by pecially if they later disagree with comparisons to their
+making specific suggestions. work [62]). Per the peer review file [2], the acceptance
+Google should follow Google AI principleshttps: of the Nature paper was conditional on the release of
+//ai.google/responsibility/principles), in par- code and data in the second revision, but this did not
+ticular, Section “6. Uphold high standards of scientific happen when the paper was published or later, per [8].
+excellence” that says: The Nature paper [1] was amended by the authors to
+claim that the code had been made available (see the
+“Technological innovation is rooted in the sci-
+“Data and Code Availability” disclaimer). But serious
+entific method and a commitment to open in-
+omissions remain in the released code. This is particu-
+quiry, intellectual rigor, integrity, and collabo-
+larlyconcerningbecause(i)[1]omittedkeycomparisons
+ration[...] We aspire to high standards of sci-
+and details, and (ii) fraud was alleged under oath in a
+entific excellence...”
+California court by a Google whistleblower tasked with
+The April 7, 2022 tweet by ex-Head of Google evaluating the project [61]. This makes reproducibility
+Brain [54] appears to contradict the facts: the work more critical.
+in the Nature paper [1] was never fully open-sourced
+andwasnotindependentlyreproduciblebecauseseveral
+8.4 Nature editors investigate
+key parts were not described in the paper or released in
+code. This was stated in [6] prior to the tweet, obvious
+In May 2022, [56] quoted a statement by Nature about
+from [4] (and publicly mentioned to the lead authors of
+[1]: “Issues relating to the paper have been brought to
+[1] in March 2022), was later documented in detail in
+our attention and we are looking into them carefully.”
+[7, 8] and explained in plain English in [66]. The still-
+In March 2023 [63] reported that
+underspecifieduseof[1]onGoogleTPUdesigns(onlyon
+selected blocks? trained and tested on similar blocks?) “Some academics have since urged Nature to re-
+does not counter strong evidence in [6, 7, 8] that [1] view Google’s paper in light of UCSD’s study.
+failed to improve SOTA. Many chips are designed ev- In emails to the journal viewed by The Register,
+ery year without improving SOTA, but prior SOTA im- researchers highlighted concerns raised by Prof.
+provements did not merit Nature publications. Kahngandhiscolleagues,andquestionedwhether
+Google’s paper was misleading.”
+It is unclear why Google did not allow publishing
+[6] (coauthored by the author of this meta-analysis),
+Further, “Nature told The Register it is looking into
+even after its results and conclusions were corroborated
+Google’s paper... This process involves consultation
+by the published paper [8] written at UCSD with
+withtheauthorsand,whereappropriate,seekingadvice
+lengthy involvement from Google. Hesitation to act on
+from peer reviewers and other external experts.” Soon
+[1] is understandable, even after [6] and [7, 8] found
+after, [66] made a plain-language case that [1] lacked re-
+major flaws in [1], but “a commitment to open inquiry,
+producibility. On September 20, 2023, Nature added a
+intellectual rigor, integrity, and collaboration” must
+note to [1] online [79]:
+protect legitimate research in [6].
+Editor’sNote: Readersarealertedthattheperfor-
+Nature Portfolio editorial policies should be fol-
+mance claims in this article have been called into
+lowed broadly and rigorously. Quotingfromhttps: question. The Editors are investigating these con-
+//www.nature.com/nature-portfolio/editorial-p cerns, and, if appropriate, editorial action will be
+olicies/reporting-standards: taken once this investigation is complete.
+13
+
+A year later (late September 2024), the Editor’s note Reinforcement Learning. https://github.com/g
+was removed from the Nature article, but an authors’ oogleresearch/circuit_training,
+addendumappeared. Theaddendumlargelyrepeatsthe
+[5] Summer Yue, Ebrahim M. Songhori, Joe Wenjie
+arguments from an earlier statement [62] which we dis-
+Jiang, TobyBoyd, AnnaGoldie, AzaliaMirhoseini,
+cussed in Section 6, so there was little for us to modify
+Sergio Guadarrama, “Scalability and Generaliza-
+in the present article: none of the major concerns about
+tion of Circuit Training for Chip Floorplanning,”
+the Nature paper have been addressed. In particular,
+Proceedings of Intl. Symp. Physical Design 2022:
+”results” on one additional proprietary TPU block with
+65-70.
+undisclosedstatisticsdonotsupportanyseriousconclu-
+sions. This only aggravates concerns about cherry pick-
+[6] Sungmin Bae, Amir Yazdanbaksh, Myung-
+ing and misreporting. The release of a pretrained model
+Chul Kim, Satrajit Chatterjee, Mingyu
+withoutinformationabouttrainingdataaggravatescon-
+Woo, Igor. L. Markov, “Stronger Baselines
+cernsaboutdata contamination-anypublicbenchmark
+for Evaluating Deep Reinforcement Learn-
+could have been used in training. We do not comment
+ing in Chip Placement”, March, 2022.17
+on the Google blog post,16 except that it repeats the
+https://statmodeling.stat.columbia.e
+demonstrably false claim of a full source code release
+du/wp-content/uploads/2022/05/MLcontra.pdf
+that allows one to reproduce the results in the Nature
+paper. Among other pieces, source code for simulated [7] MacroPlacementRepository.https://github.com
+annealingisstillmissing,andadditionallytheNaturere- /TILOS-AI-Institute/MacroPlacement
+sultscannotbereproducedwithoutproprietarytraining
+data and test data. [8] Chung-Kuan Cheng, Andrew B. Kahng, Sayak
+Kundu,YuchengWang,ZhiangWang,“Assessment
+of Reinforcement Learning for Macro Placement”,
+Proceedings of Intl. Symp. Physical Design 2023:
+We believe it is in everyone’s interest to reach clear 158-166, (arXiv:2302:11014).
+and unequivocal conclusions about published scientific
+[9] “Extraordinary claims require extraordinary evi-
+claims, free of misrepresentations. Authors, Nature ed-
+dence” (a quote by Carl Sagan), the Wikipedia
+itors and reviewers, and the research community, share
+https://en.wikipedia.org/wiki/Extraordin
+the burden of responsibility. Seeking the truth is a
+ary_claims_require_extraordinary_evidence
+shared obligation [74, 78].
+Acknowledgments. This meta-analysis would be im-
+[10] John P.A. Ioannidis, “Why Most Published Re-
+possiblewithoutthehardworkanddedicationtoscience
+search Findings are False,” PLoS Med. 2, e124,
+of the authors of [6] and [7, 8].
+2005 doi:10.1371/journal.pmed.00201244c
+ommentsonPubPeer(by:Peer1,UlrichSchimm
+References ack,MatthiasWjst,MatthewElvey), https:
+//en.wikipedia.org/wiki/Why_Most_Publish
+ed_Research_Findings_Are_False
+[1] Azalia Mirhoseini, Anna Goldie, Mustafa Yazgan
+et al., “A Graph Placement Methodology for Fast
+[11] Scott Kirkpatrick, C. Daniel Gelatt, Jr., Mario P.
+Chip Design,” Nature 594 (2021), pp. 207-212.
+Vecchi, “Optimization by Simulated Annealing,”
+arXiv:2004.10746
+Science 1983, 220(4598),pp.671-680.
+[2] Peer Review File for the Nature paper released by
+[12] Chung-Kuan Cheng, Ernest S. Kuh, “Module
+the editor: https://static-content.springer.
+Placement Based on Resistive Network Optimiza-
+com/esm/art%3A10.1038%2Fs41586-021-03544-w
+tion,” IEEE Transactions on Computer-Aided De-
+/MediaObjects/41586_2021_3544_MOESM1_ESM.p
+sign of Integrated Circuits 3(3), pp. 218-225 (1984)
+df
+[13] CarlSechen,AlbertoSangiovanni-Vincentelli,“The
+[3] Editorial, “Google’s AI Approach to Microchips is
+TimberWolf Placement and Routing Package,”
+Welcome — but Needs Care,” Nature 9 June 2021.
+IEEEJournalofSolid-StateCircuits,SC-20(2),pp.
+https://www.nature.com/articles/d41586-021
+510-522, Apr. 1985.
+-01507-9
+[14] Saul A. Kravitz, Rob A. Rutenbar, “Placement by
+[4] Circuit Training: An Open-source Framework for Simulated Annealing on a Multiprocessor,” IEEE
+Generating Chip Floorplans with Distributed Deep
+17[61] disclosed some authors of the Stronger Baselines paper
+16https://deepmind.google/discover/blog/how-alphachip-t [6].Apparentlytheauthorshipwaswell-knownwithinGooglefrom
+ransformed-computer-chip-design/ 2021.
+14
+
+Transactions on Computer-Aided Design of Inte- [28] Jarrod A. Roy, Saurabh N. Adya, David A. Papa,
+grated Circuits 6(4): 534-549 (1987) Igor L. Markov: “Min-cut floorplacement,” IEEE
+Transactions on Computer-Aided Design of Inte-
+[15] D.-F. Wong, Hon Wai Leong, C.L. Liu, “Simulated
+grated Circuits 25(7), pp. 1313-1326 (2006).
+annealing for VLSI design,” Springer, 1988.
+[29] Jason Cong, Michalis Romesis, Joseph R. Shinnerl,
+[16] William Swartz, Carl Sechen, “Timing Driven
+Kenton Sze, Min Xie, “PEKO-MS benchmarks for
+Placement for Large Standard Cell Circuits,” Pro-
+mixed-size placement,” 2006 https://github.com
+ceedingsofDesignAutomationConf.1995,pp.211-
+/jshinnerl/pekoMS_2006_book
+215.
+[30] Gi-JoonNam,JasonCong,“ModernCircuitPlace-
+[17] Vaughn Betz and Jonathan Rose, “VPR: A new ment, Best Practices and Results,” Springer 2007.
+packing, placement and routing tool for FPGA Chapter 2 available as arXiv:2305.16413.
+research,” Field-Programmable Logic and Applica-
+tions, pp. 213–222, 1997. [31] Charles J. Alpert, Dinesh P. Mehta, Sachin S. Sap-
+atnekar, eds.: “Handbook of Algorithms for Physi-
+[18] Andrew B. Kahng, “Classical floorplanning harm- cal Design Automation,” Auerbach, 2008.
+ful?’ Proceedings of Intl. Symp. Physical Design
+[32] Jarrod A. Roy, Natarajan Viswanathan, Gi-Joon
+2000, pp. 207-213.
+Nam, Charles J. Alpert, Igor L. Markov, “CRISP:
+[19] Andrew E. Caldwell, Andrew B. Kahng, Igor L. Congestion reduction by iterated spreading during
+Markov, “Can recursive bisection alone produce placement,” Proceedings of Intl. Conf. Computer-
+routable placements?” Proceedings of Design Au- Aided Design 2009: 357-362.
+tomation Conf. 2000, pp. 477-482.
+[33] Myung-ChulKim,NatarajanViswanathan,Charles
+[20] Saurabh N. Adya, Igor L. Markov. “Fixed-outline J.Alpert,IgorL.Markov,ShyamRamji,“MAPLE:
+floorplanning: enabling hierarchical design,” IEEE multilevel adaptive placement for mixed-size de-
+Transactions Very Large Scale Integr. 11(6), pp. signs,” Proceedings of Intl. Symp. Physical Design
+1120-1135 (2003). 2012, pp. 193-200, 2011.
+[21] Richard Goering, “IC placement benchmarks [34] Meng-Kai Hsu, Yao-Wen Chang: “Unified Analyt-
+needed,researcherssay,”EETimes,April10,2003. ical Global Placement for Large-Scale Mixed-Size
+CircuitDesigns,”IEEETransactionsonComputer-
+[22] Enno Wein and Jacques Benkoski, “Hard macros
+Aided Design of Integrated Circuits 31(9): 1366-
+will revolutionize SoC design,” EE Times, August
+1378 (2012)
+2004 https://www.eetimes.com/hard-macros-w
+ill-revolutionize-soc-design/ [35] Myung-Chul Kim, Dongjin Lee, Igor L. Markov,
+“SimPL: an algorithm for placing VLSI circuits,”
+[23] Saurabh N. Adya, Igor L. Markov, “ICCAD04
+Comm. ACM 56(6): 105-113 (2013)
+Mixed-size Placement Benchmarks,” http://vlsi
+cad.eecs.umich.edu/BK/ICCAD04bench [36] Jason Cong, Guojie Luo, Kalliopi Tsota, Bingjun
+Xiao, “Optimizing routability in large-scale mixed-
+[24] Chen Li, Min Xie, Cheng-Kok Koh, Jason Cong, sizeplacement,”Proceedings of Asia and South Pa-
+Patrick H. Madden: Routability-driven placement cific Design Automation Conf. 2013, pp. 441-446.
+and white space allocation. ICCAD 2004: 394-401
+[37] Myung-ChulKim,JinHu,NatarajanViswanathan:
+[25] Ateen Khatkhate, Chen Li, Ameya R. Agnihotri, “ICCAD-2014 CAD contest in incremental timing-
+MehmetCanYildiz,SatoshiOno,Cheng-KokKoh, driven placement and benchmark suite,” Proceed-
+Patrick H. Madden, “Recursive bisection based ings of Intl. Conf. Computer-Aided Design 2014,
+mixedblockplacement,”Proceedings of Intl. Symp. pp. 361-366.
+Physical Design 2004, pp. 84-89.
+[38] Myung-Chul Kim, Jin Hu, Jiajia Li, Natarajan
+[26] AmeyaR.Agnihotri,SatoshiOno,PatrickH.Mad- Viswanathan, “ICCAD-2015 CAD Contest in in-
+den, “Recursivebisection placement: FengShui 5.0 cremental timing-driven placement and benchmark
+implementationdetails,”Proceedings of Intl. Symp. suite,” Proceedings of Intl. Conf. Computer-Aided
+Physical Design 2005, pp. 230-232. Design 2015, pp. 921-926
+[27] Saurabh Adya, Igor L. Markov, “Combinatorial [39] Natarajan Viswanathan, Shih-Hsu Huang, Rung-
+techniques for mixed-size placement,” ACM Trans- Bin Lin, Myung-Chul Kim, “Overview of the 2015
+actions on Design Automation of Electronic Sys- CAD Contest at ICCAD,” Proceedings of Intl.
+tems 10(1): 58-90 (2005). Conf. Computer-Aided Design 2015, pp. 910-911.
+15
+
+[40] Igor L. Markov, Jin Hu, Myung-Chul Kim, David Z. Pan. “DREAMPlace: Deep Learn-
+“Progress and Challenges in VLSI Placement Re- ing Toolkit-Enabled GPU Acceleration for Mod-
+search,”Proceedings of the IEEE 103(11), pp. 1985- ern VLSI Placement,” IEEE Transactions on
+2003 (2015). Computer-Aided Design of Integrated Circuits
+40(4), pp. 748-761 (2021).
+[41] Open Science Collaboration, “Estimating the re-
+producibilityofpsychologicalscience,”Science349, [52] ZixuanJiang,EbrahimSonghori,ShenWang,Anna
+aac4716, 2015. doi:10.1126/science.aac4716 Goldie, Azalia Mirhoseini, Joe Jiang, Young-Joon
+Lee, David Z. Pan, “Delving into Macro Place-
+[42] Shih-Hsu Huang, Rung-Bin Lin, Myung-Chul Kim, ment with Reinforcement Learning,” Intl. Work-
+Shigetoshi Nakatake, “Overview of the 2016 CAD shoponMachineLearningforComputer-AidedDe-
+contest at ICCAD,” Proceedings of Intl. Conf. sign, 2021. arXiv:2109.02587
+Computer-Aided Design 2016, pp. 38.
+[53] Andrew B. Kahng, Jens Lienig, Igor L. Markov,
+[43] Luciano Lavagno, Igor L. Markov, Grant E. Mar-
+Jin Hu, “VLSI Physical Design: from Graph Parti-
+tin, Louis K. Scheffer, eds.; “Electronic Design Au-
+tioningtoTimingClosure”,Springer,2nded,2022.
+tomation for Integrated Circuits Handbook,” 2nd
+https://link.springer.com/book/10.1007/978
+ed. (two volumes) CRC. 2016.
+-3-030-96415-3
+[44] Szu-To Chen, Yao-Wen Chang, Tung-Chieh Chen,
+[54] Zoubin Gahramani, “Google stands by this work
+“An integrated-spreading-based macro-refining al-
+publishedinNature”,TwitterApril7,2022,https:
+gorithm for large-scale mixed-size circuit designs,”
+//twitter.com/ZoubinGhahrama1/status/15122
+Proceedings of Intl. Conf. Computer-Aided Design
+03509646741507?t=9kyvWT0gCXQ5coWCG7LvsA
+2017, pp. 496-503
+[55] Daisuke Wakabayashi and Cade Metz, “Another
+[45] Chung-Kuan Cheng, Andrew B. Kahng, Ilgweon
+Firing Among Google’s A.I. Brain Trust, and More
+Kang, Lutong Wang: “RePlAce: Advancing Solu-
+Discord,” The New York Times, May 2, 2022.
+tion Quality and Routability Validation in Global
+https://www.nytimes.com/2022/05/02/techn
+Placement”, IEEE TCAD 38(9) (2018), pp. 1717-
+ology/google-fires-ai-researchers.html
+1730. https://github.com/mgwoo/RePlAce
+[56] Paresh Dave, “Google faces internal battle over re-
+[46] Nina Mazyavkina, Sergey Sviridov, Sergei Ivanov,
+search on AI to speed chip design,” May 3, 2022.
+Evgeny Burnaev, “Reinforcement Learning for
+https://www.reuters.com/technology/googl
+Combinatorial Optimization: A Survey,” https:
+e-faces-internal-battle-over-research-a
+//arxiv.org/abs/2003.03600, December 24,
+i-speed-chip-design-2022-05-03/
+2020.
+[57] TomSimonite,“TensionInsideGoogleOveraFired
+[47] Jeffrey Dean, keynote at ISSCC (February 18,
+AI Researcher’s Conduct,” Wired, May 31, 2022.
+2020), reported at https://www.nextplatform
+https://www.wired.com/story/google-brain-a
+.com/2020/02/20/google-teaches-ai-to-pla
+i-researcher-fired-tension/
+y-the-game-of-chip-design/
+[58] “Lightmatter Names Top Google TPU Engineer
+[48] Young-Joon Lee, presentation at the CHIPS Al-
+RichardHoasVPofHardwareEngineering,”Busi-
+lianceDeepDiveCafeTalks,November2020.http:
+ness Wire, August 2021 https://www.businesswi
+//youtu.be/EKjlr2k_wBM.
+re.com/news/home/20220822005051/en/Lightma
+[49] Nina Mazyavkina, Sergey Sviridov, Sergei Ivanov, tter-Names-Top-Google-TPU-Engineer-Richa
+Evgeny Burnaev, “Reinforcement Learning for rd-Ho-as-VP-of-Hardware-Engineering
+Combinatorial Optimization: A Survey,” Comput-
+ers and Operations Research 134, October 2021, [59] Jeffrey Dean, “ML for Computer Systems at
+105400; arXiv:2003.03600 Google,” keynote at the SysML workshop at
+NeurIPS, Dec 2, 2022 https://slideslive.com/3
+[50] Andrew B. Kahng, “Advancing Placement,” Pro- 8994456/machine-learning-for-computer-sys
+ceedings of Intl. Symp. Physical Design 2021, pp. tems-at-google
+15-22.
+[60] Ivan Oransky, “Retractions are increasing, but not
+[51] Yibo Lin, Zixuan Jiang, Jiaqi Gu, Wuxi Li, enough,” Nature, 02 August 2022. https://www.
+Shounak Dhar, Haoxing Ren, Brucek Khailany, nature.com/articles/d41586-022-02071-6
+16
+
+[61] “Satrajit Chatterjee vs. Google, Case No. [71] D. van Ravenzwaaij, M. Bakker, R. Heesen, F.
+22CV398683”, first Amended Complaint (FAC), Romero, et al, “Perspectives on scientific error,”
+filed in the Superior Court of the Santa Clara Royal Society Open Science, July 19, 2023 https:
+County, February 2023. https://regmedia.co.uk //doi.org/10.1098/rsos.230448
+/2023/03/26/satrajit_vs_google.pdf
+[72] James Brooks, “The battle for research integrity
+[62] AnnaGoldie,AzaliaMirhoseini,“StatementonRe- is winnable,” Research Professional News, July 28,
+inforcement Learning for Chip Design,” March 24, 2023.https://www.researchprofessionalnews.c
+2023 https://regmedia.co.uk/2023/03/27/ag_a om/rr-funding-know-how-start-here-2023-t
+z_statement.pdf he-battle-for-research-integrity-is-winna
+ble/
+[63] KatyannaQuach, “Google’sclaims ofsuper-human
+[73] Jeffrey Brainard, “In some scientific papers, words
+AI chip layout back under the microscope,” March
+expressinguncertaintyhavedecreased,”Science,28
+27, 2023. https://www.theregister.com/2023/0
+July 2023. doi:10.1126/science.adk0158
+3/27/google_ai_chip_paper_nature/
+[74] Theo Baker, ”The Research Scandal at Stanford is
+[64] PengwenChen,Chung-KuanCheng,AlbertChern,
+MoreCommonThanYouThink,”NewYorkTimes,
+Chester Holtz, Aoxi Li, Yucheng Wang, “Place-
+July 30, 2023.
+ment Initialization via Sequential Subspace Opti-
+mization with Sphere Constraints,” Proceedings of [75] Andrew Jack, “ ‘Open science’ advocates warn of
+Intl. Symp. Physical Design 2023, pp. 133-140. widespreadacademicfraud,”FinancialTimes,July
+31, 2023.
+[65] Anthony Agnesina, Puranjay Rajvanshi, Tian
+Yang, Geraldo Pradipta, Austin Jiao, Ben Keller, [76] Judge Frederick S. Chung, Ruling in the
+Brucek Khailany, Haoxing Ren, “AutoDMP: Au- case “Satrajit Chatterjee vs. Google, Case
+tomated DREAMPlace-based Macro Placement,” No. 22CV398683”, Superior Court of the
+Proceedings of Intl. Symp. Physical Design 2023: Santa Clara County, August 4, 2023.
+149-157. https://traffic.scscourt.org/search
+[66] Gregory Goth, “More Details, but Not Enough”, [77] Ivan Oransky and Adam Marcus “There’s far more
+Comms. of the ACM, 29 Mar 2023 https://cacm scientific fraud than anyone wants to admit,” Au-
+.acm.org/news/271439-more-details-but-not gust 9, 2023, https://www.theguardian.com/co
+-enough/fulltext mmentisfree/2023/aug/09/scientific-miscond
+uct-retraction-watch
+[67] Samuel Moore, “Ending an Ugly Chapter in Chip
+Design Study tries to settle a bitter disagreement [78] H. Holden Thorp, ”A Generative Approach to Re-
+over Google’s chip design AI”, IEEE Spectrum, 4 search Integrity,” Science, 381(6658), August 10,
+Apr 2023. https://spectrum.ieee.org/chip-d 2023, p. 587, https://www.science.org/doi/
+esign-controversy 10.1126/science.adk1852
+[79] FrederikJoelving,“NatureflagsdoubtsoverGoogle
+[68] Robert Burnson, “Fired Google AI Engineer’s
+AI study, pulls commentary,” https://retracti
+Whistleblower Lawsuit Moves Ahead,” Bloomberg,
+onwatch.com/2023/09/26/nature-flags-doubt
+July 20, 2023 https://www.bloomberg.com/news
+s-over-google-ai-study-pulls-commentary/,
+/articles/2023-07-20/fired-google-ai-eng
+September 26, 2023.
+ineer-s-whistleblower-lawsuit-moves-ahead
+[80] RylanSchaeffer,“PretrainingontheTestSetIsAll
+[69] Belle Lin, “In Race for AI Chips, Google Deep-
+You Need,” https://arxiv.org/abs/2309.08632
+Mind Uses AI to Design Specialized Semiconduc-
+September 2023.
+tors,” The Wall Street Journal, July 20, 2023.
+https://www.wsj.com/articles/in-race-for [81] Atanu Biswas, “Reproduce or it didn’t happen:
+-ai-chips-google-deepmind-uses-ai-to-des whyreplicablescienceisbetterscience,”TheHindu
+ign-specialized-semiconductors-dcd78967 October 26, 2023.
+[70] Katyanna Quach, “Google fails to get AI engineer [82] SmritiMallapaty, “Chinaconductsfirstnationwide
+lawsuitclaimingwrongfulterminationthrownout,” reviewofretractionsandresearchmisconduct,”Na-
+July 24, 2023 https://www.theregister.com/20 ture News, 12 February 2024, https://www.natu
+23/07/24/ai_in_brief/ re.com/articles/d41586-024-00397-x
+17
+
+[83] Dan Garisto, “Superconductivity scandal: the in-
+sidestoryofdeceptioninarisingstar’sphysicslab,”
+March 8, 2024, Nature. https://www.nature.com
+/articles/d41586-024-00716-2
+[84] Dan Garisto, “Exclusive: official investigation re-
+veals how superconductivity physicist faked block-
+buster results.” April 6. 2024, Nature https://ww
+w.nature.com/articles/d41586-024-00976-y
+[85] Menghui Li and Zhesi Shen, “Science map of aca-
+demic misconduct,” Cell, vol 5(2), 100593, March
+04, 2024 https://doi.org/10.1016/j.xinn.202
+4.100593
+[86] Rachel Brazil, “Illuminating ‘the ugly side of sci-
+ence’: fresh incentives for reporting negative re-
+sults,” Nature, 8 May 2024, https://www.natu
+re.com/articles/d41586-024-01389-7
+[87] Gavin Leech, Juan J. Vazquez, Misha Yagudin,
+Niclas Kupper, Laurence Aitchison, “Questionable
+practices in machine learning,” arxiv:2407.12220,
+July 2024 https://www.arxiv.org/abs/2407.1
+2220.
+[88] Miryam Naddaf, “Retraction notices are getting
+clearer — but progress is slow,” Nature News, 26
+July 2024. https://www.nature.com/articles/
+d41586-024-02423-4
+[89] Zhihai Wang et al, “Benchmarking End-To-End
+Performance of AI-Based Chip Placement Algo-
+rithms,” arxiv:2407.15026, July 2024 https://ar
+xiv.org/abs/2407.15026
+18
+

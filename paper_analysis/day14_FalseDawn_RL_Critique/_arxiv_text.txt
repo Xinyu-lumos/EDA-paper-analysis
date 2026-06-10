@@ -1,0 +1,793 @@
+MNRAS 000, 1–5 (2023)
+
+Preprint 13 September 2023
+
+Compiled using MNRAS LATEX style ﬁle v3.0
+
+Center-to-limb variations in coronal hole and quiet Sun regions obtained
+with IRIS spectroscopic observations
+
+Pradeep Kayshap,1★ Peter R. Young2,3
+1 School of Advanced Sciences and Languages, VIT Bhopal University, Kothrikalan, Sehore Madhya Pradesh - 466114
+2 NASA Goddard Space Flight Center, Greenbelt, MD, USA
+3 Department of Mathematics, Physics and Electrical Engineering, Northumbria University, Newcastle upon Tyne, UK
+
+Accepted XXX. Received YYY; in original form ZZZ
+
+ABSTRACT
+The center-to-limb variations (CLV) of Gaussian ﬁt parameters of the transition region Si iv 1402.77 Å spectral line in quiet Sun
+(QS) and coronal hole (CH) regions are presented. The results are derived from a full-disk mosaic scan obtained by the Interface
+Region Imaging Spectrograph on 24 September 2017. The CLV for a CH transition region line has not previously been reported,
+and the parameters are found to show variations consistent with the QS. The intensity increases towards the limb, consistent with
+an increasing plasma column depth due to line-of-sight eﬀects. The Doppler velocity is normalized to be zero at the limb for
+both QS and CH and increases to +4.8 km s−1 (redshift) at disk center for CH and +5.2 km s−1 for QS. Non-thermal broadening
+in the CH decreases from a maximum of 24 km s−1 at the limb to 10 km s−1 at disk center. For QS the broadening decreases
+from 25 km s−1 at the limb to 14 km s−1 at disk center. Both Doppler velocities and non-thermal velocities vary linearly with
+cos 𝜃, where 𝜃 is the heliocentric angle. The QS results for both parameters are consistent with earlier work.
+
+Key words: Sun: transition region – Sun: atmosphere – Sun: UV radiation
+
+1 INTRODUCTION
+
+Ultraviolet emission lines formed in the solar transition region
+(TR) at temperatures of 105 K have long been known to exhibit
+Doppler redshifts and broadening in excess of the thermal broad-
+ening. Doschek et al. (1976) were the ﬁrst to report redshifts in TR
+lines from a study of Skylab S082-B spectra, ﬁnding Doppler shifts
+of up to 15 km s−1. Enhanced non-thermal broadening at TR temper-
+atures around 105 K was ﬁrst reported by Boland et al. (1973). Both
+results likely give clues on the how mass and energy are balanced
+in the solar atmosphere. For example, non-thermal broadening may
+be caused by the passage of magnetohydrodynamic waves through
+the TR, while ubiquitous downﬂows in the TR represent mass and
+energy loss terms that need to be balanced to maintain a hot corona
+(see Mariska 1992, for more details).
+
+One method for characterizing the TR non-thermal broadening
+and Doppler shifts is to measure the emission line properties at
+diﬀerent positions on the Sun, from the center of the disk to the
+limb. Variations in the parameters then give clues as to the origin
+of the two eﬀects. For example, if plasma ﬂows are along radially-
+aligned structures then net Doppler shifts would be expected to be at
+a maximum at disk center and fall to zero at the limb. Similarly, if
+non-thermal broadening is due to random, lateral motions of radially-
+aligned structures then it would be expected to be largest at the limb
+and fall to zero at disk center (the motions giving a distribution of
+Doppler shifts when the line-of-sight is aligned to the motions).
+
+In the present work we present the center-to-limb variation (CLV)
+of the Doppler velocity and non-thermal broadening of the Si iv
+
+★ E-mail: virat.com@gmail.com
+
+© 2023 The Authors
+
+1402.77 Å TR emission line in both quiet Sun and coronal hole
+conditions across the full range of heliocentric angles. Although
+such a study has been performed for the quiet Sun previously, the
+present work is the ﬁrst for coronal holes. Si iv is formed at around
+80 kK in the solar atmosphere, and the earlier work of Peter & Judge
+(1999) suggests this line should show a redshift of 5–8 km s−1 at
+disk center in the quiet Sun.
+
+CLV of emission line properties has been studied in various ways
+with spectrometers in the past. The HRTS rocket experiment had
+a long slit that could be positioned to extend from disk center to
+the limb. Dere et al. (1984) studied the CLV of several lines, includ-
+ing the C iv 1548 Å 1550 Å doublet, and Brekke (1993) looked
+at the CLV of two O v lines. Another rocket experiment performed
+an east-west scan across the equator, with results for several lines
+presented in Rottman et al. (1990) and Hassler et al. (1991). Space-
+craft enable long-duration observations and full-disk raster scans
+were performed with the Solar Ultraviolet Measurements of Emitted
+Radiation (SUMER: Wilhelm et al. 1995). These have been used to
+study the CLV of several lines (Peter 1999). These studies all yield
+continuous data from disk center to the limb, either with a single
+observation or with a patchwork of multiple spacecraft pointings.
+As spacecraft spectrometers usually have a restricted ﬁeld-of-view,
+authors sometimes combine observations obtained at diﬀerent times
+and pointings to investigate CLV (Doschek et al. 1976; Rao et al.
+2022). In the present work we use IRIS data obtained with a full disk
+scan, analogous to the study of Peter (1999).
+
+For studying the Doppler shift CLV, an important consideration
+is the reference wavelength used to derive the line-of-sight veloc-
+ity. Within a single spectrum a common procedure is to assume a
+chromospheric emission line within the spectrum has a zero Doppler
+
+arXiv:2309.06360v1  [astro-ph.SR]  12 Sep 2023
+
+2
+
+Kayshap & Young
+
+velocity, which then ﬁxes the absolute calibration of that spectrum.
+The measured wavelength of the TR line is then compared with the
+known rest wavelength to yield the Doppler velocity. Tables of rest
+wavelengths are given in Brekke et al. (1997) and Kelly (1987). The
+TR Doppler velocities would be expected to go to zero at the limb,
+and this was validated by Rottman et al. (1990) and Peter & Judge
+(1999). The earlier work of Dere et al. (1984) suggested this may not
+be the case, but Brekke et al. (1997) argued that a single slit position
+(such as used for the Dere et al. 1984, observation) may lead to non-
+zero Doppler shifts at the limb, but a spatial average (multiple slit
+positions) will lead to an average zero Doppler velocity.
+
+Peter & Judge (1999) provided quiet Sun Doppler velocity CLV
+data for 10 ion species, ﬁtting the results with a cos 𝜃 function (𝜃 the
+heliocentric angle). Only the spatial region 750′′ to 1000′′ was ﬁt
+and so the disk center velocity was inferred from the cos 𝜃 form of
+the ﬁt. The results were obtained from a special observation where
+the SOHO spacecraft was progressively rolled through 30◦ steps
+with the SUMER slit positioned 70′′ inside the limb. Some coronal
+hole data were available from this dataset, and Peter & Judge (1999)
+provided CLV curves for eight ion species. The spatial region that
+could be ﬁt was smaller than for the quiet Sun, and varied with ion
+species. The authors noted that the ion C iv, formed at a similar
+temperature to the Si iv considered in the present work, showed a
+CLV behavior signiﬁcantly diﬀerent to the quiet Sun. Inspection
+of the authors’ Figure 5 shows Doppler velocities that are slightly
+positive compared to −1 to −2 km s−1 in the quiet Sun.
+
+TR emission line widths have generally been found to be approx-
+imately constant from disk center to the limb, with a small increase
+at the limb (Feldman et al. 1976; Chae et al. 1998). The limb in-
+crease found by Doyle et al. (2000) for C iv was interpreted as due
+to opacity eﬀects at the limb. Erdelyi et al. (1998) found larger en-
+hancements in the limb non-thermal broadening, with enhancement
+values up 8 km s−1 for lines formed close to the temperature of
+Si iv. This result was interpreted as evidence of Alfvén waves pass-
+ing through the TR. Most recently, Rao et al. (2022) studied the CLV
+of the non-thermal broadening of Si iv using IRIS data, ﬁnding a
+limb non-thermal velocity of 20 km s−1 and a disk center velocity of
+15 km s−1, supporting the earlier Erdelyi et al. (1998) result.
+
+Section 2 presents the observational dataset used in the present
+work. Section 3 describes the analysis method and gives the center-
+to-limb variation for the Si iv emission line parameters. Finally, the
+results are summarized in Section 4.
+
+time of 2 s. The IRIS team assembles the individual rasters into a
+single 3D data cube (𝑥, 𝑦, 𝜆) for each emission line, and makes them
+available at the IRIS Full Disk Mosaic website.
+
+In order to study the CLV within a coronal hole, it is necessary to
+clearly identify the coronal hole boundary within the IRIS full-disk
+mosaic image. For this purpose we used co-temporal 193 Å images
+from the Atmospheric Imaging Assembly (AIA: Lemen et al. 2012)
+on the Solar Dynamics Observatory (SDO: Pesnell et al. 2012). This
+channel is dominated by Fe xii lines formed at around 1.5 MK that
+clearly reveal the coronal hole locations. By matching the observa-
+tion times and spatial locations of IRIS, AIA 193 Å images were
+assembled into a mosaic that shows the co-temporal coronal condi-
+tions for the IRIS mosaic. The left panel of Figure 1 shows the AIA
+193 Å mosaic, and the right panel shows the IRIS Si iv mosaic. The
+coronal hole contours derived from the 193 Å image are over-plotted
+on both full-disk images.
+
+The Si iv 1402.77 Å full-Sun mosaic datacube was downloaded
+for the present study, and gives the spectral radiances for each spa-
+tial pixel of the solar disk. Uncertainties on the spectral radiances
+were derived using the procedure contained in the SSW IDL routine
+iris_getwindata.pro. The Si iv 1402.77 Å image shown in Figure 1
+was generated by ﬁrst binning the mosaic by two and ﬁve pixels in the
+𝑥 and 𝑦 directions, respectively. A single Gaussian function was then
+ﬁt to the line at each spatial pixel using the IDL routine gaussﬁt.pro,
+and the image shows the radiances from the Gaussian ﬁt functions.
+
+3 RESULTS
+
+In this section we obtain distributions of the intensity, Doppler ve-
+locity, and non-thermal line width of Si iv 1402.77 Å as a function of
+𝜇 = cos 𝜃 for quiet Sun and coronal hole regions. 𝜃 is the heliocentric
+angle (𝜃 = 0 is disk center). The AIA and IRIS data used in this work
+provide spatial information in heliocentric coordinates. These were
+converted to 𝜇 values by using a solar radius of 957.3′′, obtained
+from the IDL routine get_rb0p using the date 2017 September 24.
+The method for obtaining a reference wavelength for Si iv 1402.77 Å,
+which is needed to obtain Doppler velocities, is described in Sec-
+tion 3.1. The selections of the QS and CH regions are discussed in
+Sections 3.2, and the results are presented in Sections 3.4 and 3.5.
+
+2 OBSERVATION AND DATA ANALYSIS
+
+3.1 Estimation of Rest Wavelength
+
+The Interface Region Imaging Spectrometer (IRIS: De Pontieu et al.
+2014) provides high-resolution imaging and spectroscopic data at
+near ultraviolet (NUV) and far ultraviolet (FUV) wavelengths. In the
+FUV spectrum are two strong lines at 1393.77 Å and 1402.77 Å that
+are due to Si iv, an ion formed in the TR at a temperature around
+80 kK. The 1402.77 Å line is the subject of the present study.
+
+IRIS has a slit of length 175′′and width 0.33′′, and spectroscopic
+images are built up through rastering. For the full-disk mosaic ob-
+servations, 64-step rasters are used, and the step size is 2′′. Multiple,
+consecutive spacecraft pointings are required to observe the full solar
+disk. The mosaics are performed regularly as part of the IRIS syn-
+optic program (Gunár et al. 2021). These data are ideal for studying
+CLV of emission line properties.
+
+In the present work we use the full-disk mosaic obtained between
+13:09 UT on 24 September 2017 and 06:33 UT on 25 September.
+The mosaic comprised 185 coarse raster scans, each with an exposure
+
+To derive the Doppler velocity CLV for Si iv 1402.77 Å it is necessary
+to have an absolute wavelength calibration reference. For the full-disk
+mosaic data used here, we assume that the 1402.77 Å line has zero
+Doppler velocity at the limb (𝜇 = 0). This is implemented by deﬁning
+quiet Sun and coronal hole regions (Sects. 3.4 and 3.5) within the
+mosaics and plotting the centroids as a function of 𝜇. A straight line
+ﬁt (𝑎 + 𝑏𝜇) to the centroids is performed, and the parameter 𝑎 is set
+to the reference wavelength of the line (1402.770 Å).Further details
+are given in Appendix A . Therefore when the Doppler velocity is
+derived using the reference wavelength, the velocity at the limb is
+0 km s−1.
+
+The wavelength scale of IRIS is known to drift during an or-
+bit (IRIS Technical Note 20), which potentially aﬀects the mosaic
+Doppler velocity results. However, this eﬀect is corrected in the IRIS
+level-2 data used here, hence the reference wavelength is assumed
+the same across the mosaic.
+
+MNRAS 000, 1–5 (2023)
+
+3.2 Selection of the QS and CHs
+
+3.2.1 Selection of the QS
+
+The south-west quadrant of the AIA 193 Å image (Figure 1) is mostly
+free of CH and AR emission, and a diagonal band running from disk
+center to the limb was selected to derive the QS CLV. The IRIS
+Si iv mosaic image was ﬁrst binned by 5 pixels in the 𝑦-direction.
+For each of 339 𝑥-pixels along the diagonal, 109 𝑦-pixels centered
+on the diagonal were extracted resulting in an array of 339 x 109
+spectra. This array is overplotted on Figure 2 in blue. The 𝜇 value
+was derived for each pixel within this array. The Si iv line was ﬁt to
+each spectrum, giving intensity, centroid, and line width data as a
+function of 𝜇.
+
+3.2.2 Selection of the CHs
+
+The white contours on Figure 2 show the locations of two coro-
+nal holes as obtained from the Heliophysics Event Knowledge-
+base (HEK: Hurlburt et al. 2012). The HEK contains coronal po-
+sitions generated from the Spatial Possibilistic Clustering Algorithm
+(SPoCA: Verbeeck et al. 2014) method. The SPoCA results within
+the HEK have a 6 hour cadence, and for each segment of the AIA and
+IRIS mosaic images, the nearest-in-time SPoCA contours were used.
+The IRIS mosaic image was binned by 5 pixels in the 𝑦-direction
+to improve signal-to-noise. Each spatial pixel of the IRIS mosaic
+that lies within the white contours of Figure 2 was extracted and a
+Gaussian ﬁt performed to the Si iv line. The 𝜇 value for each pixel
+was also computed, giving the intensity, centroid and line width as a
+function of 𝜇. Combined, the two coronal holes give almost complete
+coverage of 𝜇 from 0 to 1.
+
+3.3 Gaussian ﬁtting
+
+For each pixel of the QS and CH areas described in the previous
+section, a Gaussian function was ﬁt to Si iv 1402.77 Å using the IDL
+gaussﬁt function. Following Rao et al. (2022) we have rejected ﬁts
+with a reduced-𝜒2 value greater than ﬁve. Such ﬁts can arise from
+data artifacts such as cosmic ray hits, and from non-Gaussian line
+proﬁles due to dynamic solar events, for example. The integrated
+line intensity is computed from the ﬁt parameters, and the Doppler
+velocity is computed from the line centroid using the limb reference
+wavelength described in Section 3.1. The Gaussian width parameter
+is converted to full-width at half-maximum (FWHM), and then input
+to the routine eis_width2velocity, available in the SolarSoft distri-
+bution. This routine subtracts the thermal and instrumental widths
+and outputs the non-thermal velocity (see, e.g., Eq. 1 of Rao et al.
+2022). The instrumental width is 26 mÅ (De Pontieu et al. 2014),
+and a temperature of log 𝑇 = 4.87 is used to compute the thermal
+width. The latter is the temperature of peak ionization of Si iv. The
+width of the line’s emissivity function is 0.19 dex, measured as the
+width at half-maximum of the function.
+
+3.4 Center-to-Limb Variations in QS
+
+Figure 2 shows 2D histograms of the intensity, Doppler velocity and
+non-thermal velocity as a function of 𝜇 as derived from the Gaussian
+ﬁts to the QS pixels. In order to better display the center-to-limb
+trends, in Figure 3 we divide the 𝜇 range into 100 equally-spaced
+bins and plot the mean intensity, Doppler velocity and non-thermal
+velocity derived from the QS pixels within each bin. The error bars
+show the standard deviation of the values within that bin.
+
+CLV in CH and QS
+
+3
+
+Table 1. Linear ﬁt parameters (𝑎, 𝑏) and Pearson correlation coeﬃcients
+(PCC) for the Doppler velocity, 𝑣D, and non-thermal velocity, 𝜉 , in the QS
+and CH regions. Please note that the error in each line ﬁt parameter is the
+1-𝜎 error.
+
+Parameter
+
+Region
+
+𝑎
+
+𝑏
+
+𝑣D
+
+𝜉
+
+QS
+CH
+
+QS
+CH
+
+0±0.33
+0±0.32
+23.8±0.65
+24.4±0.41
+
+5.74±0.57
+4.84±0.54
+−9.42±1.12
+−14.8±0.69
+
+PCC
+
+0.71
+0.68
+−0.64
+−0.91
+
+The Si iv intensity shows a small increase from disk center (𝜇 = 1)
+to 𝜇 = 0.2, with a larger increase towards the limb. This is consistent
+with an increase in the line-of-sight column depth of the emitting
+plasma towards the limb.
+
+The Doppler velocity shows a clear trend of increasing redshift
+towards disk center (Figure 3) and a linear ﬁt yields the parameters
+shown in Table 1. The Doppler shift at disk center is 5.2 km s−1.
+Peter & Judge (1999) presented the CLV for Si iv 1402.77 Å for a
+reduced range of 𝜇 values, and the ﬁt to their data is overplotted in
+blue on the second panel of Figure 3. The ﬁt implies a redshift at disk
+center of 4.8 ± 1.1 km s−1, in excellent agreement with the value
+found here.
+
+The non-thermal velocity shows a clear decrease from the limb to
+disk center, and a linear ﬁt yields the parameters shown in Table 1.
+The non-thermal velocity at the limb is 25 km s−1 and at disk center
+is 14 km s−1. Rao et al. (2022) found values of around 20 km s−1 at
+the limb, and around 14–17 km s−1 near disk center using the Si iv
+1393.75 Å line.
+
+3.5 Center-to-Limb Variations in CHs
+
+Figures 4 and 5 are directly analogous to Figures 2 and 3, but for
+the CH data. Although there is almost complete coverage of the 𝜇
+angles, there are relatively few pixels below 𝜇 = 0.1 and in the
+range 0.55 ≤ 𝜇 ≤ 0.75. The behaviors of the intensity, Doppler
+velocity and nonthermal velocity are consistent with the QS dataset.
+The intensity shows a small increase to about 𝜇 = 0.2, and a larger
+increase towards the limb.
+
+The Doppler velocity shows a clear linear relationship with 𝜇
+(Figure 5, middle panel), and the linear ﬁt parameters are given in
+Table 1. The velocity at disk center is 4.8 km s−1, very similar to the
+value found in the QS. Peter & Judge (1999) did not provide Doppler
+velocity measurements in the coronal hole from Si iv, but they did
+give values for C iv, which is a slightly hotter ion (log 𝑇 = 5.05).
+The ﬁt from this work is over-plotted on the middle panel of Figure 5
+as a blue line, and it can be seen that the line is actually blue-shifted.
+Our work contradicts this measurement.
+
+The non-thermal velocity also shows a clear linear relationship
+with 𝜇 (Figure 5, lower panel), and the linear ﬁt parameters and
+Pearson correlation coeﬃcient are given in Table 1. The velocity at
+the limb is very similar to that found for the QS, but the disk center
+value is lower, at 9.6 km s−1.
+
+4 DISCUSSION AND CONCLUSIONS
+
+We have presented the ﬁrst-ever measurement of the center-to-limb
+variation of Gaussian line-ﬁt parameters for a solar transition region
+line (Si iv 1402.77 Å) in a coronal hole. We have used data from
+an IRIS full-disk mosaic dataset that includes a coronal hole that
+
+MNRAS 000, 1–5 (2023)
+
+ AIA-193
+
+ IRIS-SiIV
+
+4
+
+Kayshap & Young
+
+500
+
+0
+
+-500
+
+Y (arcsec)
+
+-500
+
+0
+X (arcsec)
+
+500
+
+-500
+
+0
+X (arcsec)
+
+500
+
+Figure 1. The right panel shows the IRIS full-disk mosaic image from the Si iv 1402.77 Å line. The left panel shows a mosaic image constructed from AIA
+193 Å images that were chosen to match the timing and pointing data from the IRIS mosaic. The QS region used for the CLV study is shown by a slanted blue
+patch that extends from the disk center towards the southwest limb of the Sun. White contours denote the two CHs that were used for the CLV study.
+
+extends to disk center. The line intensity increases towards the limb,
+consistent with an increasing plasma column depth due to line-of-
+sight eﬀects. The Doppler velocity and non-thermal velocity show
+linear variations with 𝜇. The former is normalized to zero velocity
+at the limb, and displays an increasing redshift towards disk center.
+The disk center velocity is 4.8 km s−1. The non-thermal velocity
+decreases from 24 km s−1 at the limb to 10 km s−1 at disk center.
+
+ACKNOWLEDGEMENTS
+
+PRY acknowledges support from the GSFC Internal Scientist Fund-
+ing Model competitive work package program. IRIS is a NASA
+Small Explorer mission developed and operated by LMSAL with
+mission operations executed at NASA Ames Research Center and
+major contributions to downlink communications funded by ESA
+and the Norwegian Space Centre. We also acknowledge the data
+from SDO/AIA.
+
+The same procedures were applied to a section of quiet Sun, and
+similar results were found. The redshift at disk center is 5.2 km s−1,
+and the non-thermal velocity decreases from 25 km s−1 at the limb
+to 14 km s−1 at disk center.
+
+The quiet Sun Doppler velocity results are consistent with those
+from Peter & Judge (1999), but the coronal hole results are signif-
+icantly diﬀerent. Peter & Judge (1999) found blue-shifted emission
+in a coronal hole from C iv, which is a slightly hotter ion than Si iv.
+Rao et al. (2022) recently measured non-thermal velocities in the
+quiet Sun using the IRIS Si iv 1393.75 Å line, and they found similar
+values at disk center but slightly lower velocities of 20 km s−1 at the
+limb.
+
+MNRAS 000, 1–5 (2023)
+
+DATA AVAILABILITY
+
+We used spectroscopic data from IRIS and imaging ob-
+from AIA/SDO in-
+servations
+struments,
+at
+https://www.lmsal.com/solarsoft/irisa/data/level2_compressed/2
+
+(i.e., AIA 193 Å mosaic)
+complete
+and the
+
+set of data
+
+available
+
+is
+
+REFERENCES
+
+Boland B. C., Engstrom S. F. T., Jones B. B., Wilson R., 1973, A&A, 22, 161
+Brekke P., 1993, ApJ, 408, 735
+Brekke P., Hassler D. M., Wilhelm K., 1997, Sol. Phys., 175, 349
+Chae J., Schühle U., Lemaire P., 1998, ApJ, 505, 957
+
+ 
+CLV in CH and QS
+
+5
+
+ QS CLV
+
+ Intensity
+
+ Doppler Velocity
+
+12
+10
+
+2468
+
+40
+
+20
+
+0
+
+ Intensity (DN/pix)
+
+ Doppler Vel. (km/s)
+
+−20
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+µ
+
+Figure 2. Two-dimensional histograms of spectral intensity (top panel), Doppler velocity (middle panel), and non-thermal velocity (bottom panel) plotted against
+𝜇 for the QS region (the blue slanted patch in Figure 1). The blue line on the middle panel shows the ﬁt to the Doppler velocity from Figure 4, and the white line
+denotes zero velocity.
+
+De Pontieu B., et al., 2014, Sol. Phys., 289, 2733
+Dere K. P., Bartoe J. D. F., Brueckner G. E., 1984, ApJ, 281, 870
+Doschek G. A., Feldman U., Bohlin J. D., 1976, ApJ, 205, L177
+Doyle J. G., Teriaca L., Banerjee D., 2000, A&A, 356, 335
+Erdelyi R., Doyle J. G., Perez M. E., Wilhelm K., 1998, A&A, 337, 287
+Feldman U., Doschek G. A., Patterson N. P., 1976, ApJ, 209, 270
+Gunár S., Koza J., Schwartz P., Heinzel P., Liu W., 2021, ApJS, 255, 16
+Hassler D. M., Rottman G. J., Orrall F. Q., 1991, ApJ, 372, 710
+Hurlburt N., et al., 2012, Sol. Phys., 275, 67
+Kelly R. L., 1987, Journal of Physical and Chemical Reference Data, 17
+Lemen J. R., et al., 2012, Sol. Phys., 275, 17
+Mariska J. T., 1992, The Solar Transition Region
+Pesnell W. D., Thompson B. J., Chamberlin P. C., 2012, Sol. Phys., 275, 3
+Peter H., 1999, ApJ, 516, 490
+Peter H., Judge P. G., 1999, ApJ, 522, 1148
+Rao Y. K., Del Zanna G., Mason H. E., 2022, MNRAS, 511, 1383
+Rottman G. J., Hassler D. D., Jones M. D., Orrall F. Q., 1990, ApJ, 358, 693
+Verbeeck C., Delouille V., Mampaey B., De Visscher R., 2014, A&A,
+
+561, A29
+
+Wilhelm K., et al., 1995, Sol. Phys., 162, 189
+
+APPENDIX A: REST WAVELENGTH ESTIMATION:
+CENTRIOD VS 𝜇
+
+We have estimated the mean and standard deviation of the centroid
+at 100 𝜇 values between 0.0 to 1.0 (disk center to limb). Please see
+section 3.1 for more details. The mean centroid versus 𝜇 is ﬁtted
+with a straight line (see blue line in ﬁgure A.1). The ﬁtted line is as
+follows: 𝑦 = 1402.7670+0.0243𝜇. Hence, the centroid at ﬁrst 𝜇 value
+(i.e., at solar limb) is 1402.7670 Å, and it is considered as the rest
+wavelength of Si iv spectral line to calculate the Doppler velocity.
+
+This paper has been typeset from a TEX/LATEX ﬁle prepared by the author.
+
+MNRAS 000, 1–5 (2023)
+
+ Non−thermal Velocity
+
+60
+
+40
+
+20
+
+ Ntv (km/s)
+
+ 
+ 
+0.2
+
+0.4
+
+µ
+
+0.6
+
+0.8
+
+1.0
+
+0
+0.0
+
+30
+
+20
+
+10
+
+ Ntv (km/s)
+
+Figure 3. Plots of intensity (top), Doppler velocity (middle) and non-thermal velocity (bottom) averaged over 100 equally-spaced bins in 𝜇. Linear ﬁts to the
+Doppler velocity and non-thermal velocity are over-plotted in red, and the ﬁt parameters are given in Table 1. The Pearson correlation coeﬃcients, 𝑅, are
+displayed on the middle and bottom panels. The blue points on the middle panel are from Peter & Judge (1999).
+
+MNRAS 000, 1–5 (2023)
+
+−10
+
+ Peter & Judge (1999)
+
+ R = −0.64
+
+ R = 0.71
+
+12
+10
+
+02468
+
+20
+
+10
+
+0
+
+ Intensity (DN/pix)
+
+ Doppler Velocity (km/s)
+
+6
+
+Kayshap & Young
+
+ 
+ 
+MNRAS 000, 1–5 (2023)
+
+CLV in CH and QS
+
+7
+
+ Intensity
+
+ Doppler Velocity
+
+ Width
+
+0.2
+
+0.4
+
+0.6
+
+µ
+
+0.8
+
+12345
+
+20
+
+10
+
+0
+
+ Intensity (DN/pix)
+
+−10
+
+−20
+
+ Doppler Vel. (km/s)
+
+25
+20
+15
+10
+5
+
+ Ntv (km/s)
+
+Figure 4. Two-dimensional histograms of spectral intensity (top panel), Doppler velocity (middle panel), and non-thermal velocity (bottom panel) plotted against
+𝜇 for the CH region. The green line on the middle panel shows the ﬁt to the Doppler velocity from Figure 3, and the white line denotes zero velocity.
+
+ 
+ 
+0.0
+
+0.2
+
+0.4
+
+µ
+
+0.6
+
+0.8
+
+1.0
+
+Figure 5. Same as Figure 3 but for the CH regions.
+
+ C IV: Peter & Judge (1999)
+
+ R = 0.68
+
+ R = −0.91
+
+15
+
+10
+
+05
+
+−5
+
+25
+
+20
+
+15
+
+10
+
+05
+
+012345
+
+ Intensity (DN/pix)
+
+ Doppler Velocity (km/s)
+
+ Ntv (km/s)
+
+8
+
+Kayshap & Young
+
+MNRAS 000, 1–5 (2023)
+
+ 
+ 
+MNRAS 000, 1–5 (2023)
+
+CLV in CH and QS
+
+9
+
+ y = 1402.7670+0.0243µ
+
+0.2
+
+0.4
+
+ µ
+
+0.6
+
+0.8
+
+1.0
+
+1402.84
+
+1402.82
+
+1402.80
+
+1402.78
+
+1402.76
+
+1402.74
+
+1402.72
+
+1402.70
+
+0.0
+
+ Centriods (A)
+
+Figure A.1. The ﬁgure shows variations of centroid with 𝜇 values. The errors corresponding to each centroid are shown in red color. The blue line is the linear
+ﬁt on the centroid, and the ﬁtted line y = 1042.7670+0.0243𝜇. Hence, the centroid at the limb is 1402.7670 Å(or 1402.77 Å) which is considered as the rest
+wavelength.
+
+
