@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 20 CircuitGNN Resources</title>
+<style>
+:root {
+  --bg: #fafbfc;
+  --text: #1a1a2e;
+  --heading: #0f3460;
+  --accent: #16213e;
+  --border: #e0e0e0;
+  --card-bg: #fff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  font-size: 15px;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+h1 { font-size: 1.8em; color: var(--heading); border-bottom: 3px solid var(--heading); padding-bottom: 12px; margin-bottom: 24px; }
+h2 { font-size: 1.3em; color: var(--heading); margin: 32px 0 16px; border-bottom: 2px solid #c0c8d8; }
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+}
+.card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+a { color: #0f3460; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 600;
+  margin-right: 6px;
+}
+.tag-pdf { background: #e74c3c; color: #fff; }
+.tag-link { background: #3498db; color: #fff; }
+.tag-md { background: #2ecc71; color: #fff; }
+.tag-html { background: #9b59b6; color: #fff; }
+.tag-proceedings { background: #e67e22; color: #fff; }
+.resource-list { list-style: none; }
+.resource-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.resource-list li:last-child { border-bottom: none; }
+.bibtex {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 16px;
+  font-family: 'Fira Code', Consolas, monospace;
+  font-size: 0.82em;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Day 20: CircuitGNN — Resource Index</h1>
+
+<div class="card">
+<h2>Analysis File Index</h2>
+<ul class="resource-list">
+  <li>
+    <span class="tag tag-md">MD</span>
+    <a href="day20_CircuitGNN_Circuit_Representation.md">day20_CircuitGNN_Circuit_Representation.md</a>
+    <span style="color:#888;">Markdown Analysis (full technical depth)</span>
+  </li>
+  <li>
+    <span class="tag tag-html">HTML</span>
+    <a href="day20_CircuitGNN_Circuit_Representation.html">day20_CircuitGNN_Circuit_Representation.html</a>
+    <span style="color:#888;">HTML with MathJax + Mermaid rendering</span>
+  </li>
+  <li>
+    <span class="tag tag-pdf">PDF</span>
+    <a href="Yang_CircuitGNN_NeurIPS2022.pdf">Yang_CircuitGNN_NeurIPS2022.pdf</a>
+    <span style="color:#888;">Original paper (NeurIPS 2022 Proceedings)</span>
+  </li>
+</ul>
+</div>
+
+<div class="card">
+<h2>Paper Information</h2>
+<table style="width:100%; border-collapse:collapse;">
+  <tr><td style="padding:6px 12px; width:180px; font-weight:600; color:var(--heading);">Title</td><td style="padding:6px 12px;">Versatile Multi-stage Graph Neural Network for Circuit Representation</td></tr>
+  <tr><td style="padding:6px 12px; font-weight:600; color:var(--heading);">Authors</td><td style="padding:6px 12px;">Shuwen Yang, Zhihao Yang, Dong Li, Yingxue Zhang, Zhanguang Zhang, Guojie Song*, Jianye HAO*</td></tr>
+  <tr><td style="padding:6px 12px; font-weight:600; color:var(--heading);">Institutions</td><td style="padding:6px 12px;">Peking University (School of Intelligence Science and Technology; School of Software and Microelectronics); Huawei Noah's Ark Lab</td></tr>
+  <tr><td style="padding:6px 12px; font-weight:600; color:var(--heading);">Venue</td><td style="padding:6px 12px;">NeurIPS 2022 (Advances in Neural Information Processing Systems 35) — Main Conference Track</td></tr>
+  <tr><td style="padding:6px 12px; font-weight:600; color:var(--heading);">Year</td><td style="padding:6px 12px;">2022</td></tr>
+  <tr><td style="padding:6px 12px; font-weight:600; color:var(--heading);">Citations</td><td style="padding:6px 12px;">76+ (Google Scholar)</td></tr>
+  <tr><td style="padding:6px 12px; font-weight:600; color:var(--heading);">Analysis Date</td><td style="padding:6px 12px;">2026-06-11</td></tr>
+  <tr><td style="padding:6px 12px; font-weight:600; color:var(--heading);">Series Position</td><td style="padding:6px 12px;">Day 20: From task-specific models to universal circuit representation learning</td></tr>
+</table>
+</div>
+
+<div class="card">
+<h2>Online Resources</h2>
+<ul class="resource-list">
+  <li>
+    <span class="tag tag-proceedings">NeurIPS</span>
+    <a href="https://proceedings.neurips.cc/paper_files/paper/2022/hash/7fa548155f40c014372146be387c4f6a-Abstract-Conference.html" target="_blank">NeurIPS 2022 Proceedings — Abstract Page</a>
+  </li>
+  <li>
+    <span class="tag tag-link">PDF</span>
+    <a href="https://proceedings.neurips.cc/paper_files/paper/2022/file/7fa548155f40c014372146be387c4f6a-Paper-Conference.pdf" target="_blank">NeurIPS 2022 Proceedings — Direct PDF</a>
+  </li>
+  <li>
+    <span class="tag tag-link">Suppl.</span>
+    <a href="https://proceedings.neurips.cc/paper_files/paper/2022/file/7fa548155f40c014372146be387c4f6a-Supplemental-Conference.zip" target="_blank">NeurIPS 2022 — Supplemental Material (ZIP)</a>
+  </li>
+</ul>
+</div>
+
+<div class="card">
+<h2>Related Papers in This Series</h2>
+<ul class="resource-list">
+  <li><span class="tag tag-md">Day 13</span> <a href="../day13_ClusterNet_GNN_Congestion/day13_ClusterNet_GNN_Congestion.md">ClusterNet — GNN + Leiden Clustering for Congestion (ICCAD 2023)</a></li>
+  <li><span class="tag tag-md">Day 15</span> <a href="../day15_RouteNet_CNN_Congestion_Prediction/day15_RouteNet_CNN_Congestion_Prediction.md">RouteNet — CNN Routability Prediction (ICCAD 2018)</a></li>
+  <li><span class="tag tag-md">Day 16</span> <a href="../day16_LHNN_Lattice_Hypergraph_Congestion/day16_LHNN_Lattice_Hypergraph_Congestion.md">LHNN — Lattice Hypergraph GNN (DAC 2022)</a></li>
+  <li><span class="tag tag-md">Day 17</span> <a href="../day17_NAS_Routability_Predictor/day17_NAS_Routability_Predictor.md">NAS-Routability — AutoML for EDA (ICCAD 2021)</a></li>
+  <li><span class="tag tag-pdf">Day 18</span> <a href="../day18_cGAN_Congestion_Prediction/Yu_cGAN_DAC_2019.pdf">cGAN — Conditional GAN Congestion (DAC 2019)</a></li>
+  <li><span class="tag tag-pdf">Day 19</span> <a href="../day19_PROS_Routability_Optimization/Chen_PROS_ICCAD2020.pdf">PROS — Prediction-Driven Optimization (ICCAD 2020)</a></li>
+</ul>
+</div>
+
+<div class="card">
+<h2>BibTeX Citation</h2>
+<div class="bibtex">@inproceedings{yang2022circuitgnn,
+  title={Versatile Multi-stage Graph Neural Network for Circuit Representation},
+  author={Yang, Shuwen and Yang, Zhihao and Li, Dong and Zhang, Yingxue and
+          Zhang, Zhanguang and Song, Guojie and Hao, Jianye},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={35},
+  pages={},
+  year={2022},
+  url={https://proceedings.neurips.cc/paper_files/paper/2022/hash/7fa548155f40c014372146be387c4f6a-Abstract-Conference.html}
+}</div>
+</div>
+
+<div class="card">
+<h2>Paper Abstract</h2>
+<p style="color:#444; font-style:italic;">
+Due to the rapid growth in the scale of circuits and the desire for knowledge transfer from old designs to new ones, deep learning technologies have been widely exploited in Electronic Design Automation (EDA) to assist circuit design. In chip design cycles, we might encounter heterogeneous and diverse information sources, including the two most informative ones: the netlist and the design layout. However, handling each information source independently is sub-optimal. In this paper, we propose a novel way to integrate the multiple information sources under a unified heterogeneous graph named Circuit Graph, where topological and geometrical information is well integrated. Then, we propose Circuit GNN to fully utilize the features of vertices, edges as well as heterogeneous information during the message passing process. It is the first attempt to design a versatile circuit representation that is compatible across multiple EDA tasks and stages. Experiments on the two most representative prediction tasks in EDA show that our solution reaches state-of-the-art performance in both logic synthesis and global placement chip design stages. Besides, it achieves a 10x speed-up on congestion prediction compared to the state-of-the-art model.
+</p>
+</div>
+
+<p style="text-align:center; color:#888; font-size:0.85em; margin-top:40px;">
+Day 20 CircuitGNN Resources | Generated 2026-06-11
+</p>
+</div>
+</body>
+</html>

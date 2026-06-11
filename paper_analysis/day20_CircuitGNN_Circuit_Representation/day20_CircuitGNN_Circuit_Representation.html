@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 20: CircuitGNN —— 通用多阶段图神经网络电路表示学习</title>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true,
+    macros: {
+      R: '\\mathbb{R}',
+      E: '\\mathbb{E}',
+      O: '\\mathcal{O}',
+      P: '\\mathcal{P}'
+    }
+  },
+  options: {
+    ignoreHtmlClass: 'no-mathjax',
+    processHtmlClass: 'mathjax-process'
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'default',
+  flowchart: { useMaxWidth: true, htmlLabels: true },
+  securityLevel: 'loose'
+});
+</script>
+<style>
+:root {
+  --bg: #fafbfc;
+  --text: #1a1a2e;
+  --heading: #0f3460;
+  --accent: #16213e;
+  --quote-bg: #f0f4ff;
+  --code-bg: #1e1e2e;
+  --code-fg: #cdd6f4;
+  --table-header: #0f3460;
+  --table-stripe: #f8f9fa;
+  --border: #e0e0e0;
+  --link: #0f3460;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  font-size: 15px;
+}
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+h1 { font-size: 1.9em; color: var(--heading); border-bottom: 3px solid var(--heading); padding-bottom: 12px; margin: 32px 0 20px; }
+h2 { font-size: 1.5em; color: var(--heading); margin: 36px 0 16px; padding-top: 8px; border-bottom: 2px solid #c0c8d8; }
+h3 { font-size: 1.2em; color: var(--accent); margin: 24px 0 12px; }
+h4 { font-size: 1.05em; color: #2a2a4a; margin: 18px 0 8px; }
+p { margin: 12px 0; }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+blockquote {
+  background: var(--quote-bg);
+  border-left: 4px solid var(--heading);
+  padding: 12px 20px;
+  margin: 16px 0;
+  border-radius: 0 8px 8px 0;
+  color: #2a3a5a;
+}
+blockquote > p { margin: 4px 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 0.92em;
+  overflow-x: auto;
+  display: block;
+}
+thead th {
+  background: var(--table-header);
+  color: #fff;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+tbody td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+}
+tbody tr:nth-child(even) { background: var(--table-stripe); }
+code {
+  background: #f0f0f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-size: 0.9em;
+}
+pre {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 16px 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 12px 0;
+  font-size: 0.88em;
+  line-height: 1.6;
+}
+.mermaid {
+  text-align: center;
+  margin: 20px 0;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.math-block {
+  overflow-x: auto;
+  padding: 8px 0;
+}
+.meta-box {
+  background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+  color: #fff;
+  padding: 28px 32px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+.meta-box h1 { color: #fff; border-bottom-color: rgba(255,255,255,0.3); }
+.meta-box p { color: rgba(255,255,255,0.85); }
+.meta-box a { color: #7cc4ff; }
+.toc {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 28px;
+  margin: 20px 0;
+}
+.toc ol { padding-left: 24px; }
+.toc li { margin: 6px 0; }
+.toc a { color: var(--link); }
+.tag {
+  display: inline-block;
+  background: var(--heading);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 600;
+  margin-right: 6px;
+}
+.tag-gold { background: #b8860b; }
+.tag-green { background: #2d6a4f; }
+.highlight-box {
+  background: #fff8e1;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.highlight-box p { margin: 4px 0; }
+@media (max-width: 768px) {
+  .container { padding: 20px 12px; }
+  h1 { font-size: 1.5em; }
+  h2 { font-size: 1.25em; }
+  table { font-size: 0.8em; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="meta-box">
+<h1>Day 20: CircuitGNN —— 通用多阶段图神经网络电路表示学习</h1>
+<p><strong>论文标题</strong>: Versatile Multi-stage Graph Neural Network for Circuit Representation</p>
+<p><strong>作者</strong>: Shuwen Yang, Zhihao Yang, Dong Li, Yingxue Zhang, Zhanguang Zhang, Guojie Song*, Jianye HAO*</p>
+<p><strong>机构</strong>: Peking University (智能科学与技术学院, 软件与微电子学院); Huawei Noah's Ark Lab</p>
+<p><strong>会议</strong>: NeurIPS 2022 (Advances in Neural Information Processing Systems 35) — Main Conference Track</p>
+<p><strong>年份</strong>: 2022 | <strong>分析日期</strong>: 2026-06-11 | <strong>引用数</strong>: 76+</p>
+<p><strong>系列定位</strong>: <span class="tag">从专用模型到通用表示</span> 首次统一电路表示框架，跨阶段跨任务兼容</p>
+<p><strong>论文链接</strong>: <a href="https://proceedings.neurips.cc/paper_files/paper/2022/hash/7fa548155f40c014372146be387c4f6a-Abstract-Conference.html" target="_blank" style="color:#7cc4ff;">NeurIPS 2022 Proceedings</a></p>
+</div>
+
+<div class="toc">
+<h3>目录</h3>
+<ol>
+<li><a href="#s1">背景与动机</a></li>
+<li><a href="#s2">核心贡献概述</a></li>
+<li><a href="#s3">相关工作</a></li>
+<li><a href="#s4">Circuit Graph：统一异构图表示</a></li>
+<li><a href="#s5">Circuit GNN：多阶段消息传递框架</a></li>
+<li><a href="#s6">问题建模与形式化</a></li>
+<li><a href="#s7">实验结果与分析</a></li>
+<li><a href="#s8">迁移学习实验</a></li>
+<li><a href="#s9">消融与讨论</a></li>
+<li><a href="#s10">创新点深度分析</a></li>
+<li><a href="#s11">从专用模型到通用表示：拥塞预测演进对比</a></li>
+<li><a href="#s12">结论与未来方向</a></li>
+<li><a href="#s13">参考文献</a></li>
+</ol>
+</div>
+
+<h2 id="s1">1. 背景与动机</h2>
+
+<h3>1.1 EDA 中的信息孤岛问题</h3>
+
+<p>集成电路设计流程包含多个阶段：系统规格说明、架构设计、功能与逻辑设计、逻辑综合、布局布线、制造封装。在芯片设计过程中，会遇到来自不同阶段的多样化、异质性信息源，其中最重要的两类是：</p>
+
+<table>
+<thead><tr><th>信息类型</th><th>来源阶段</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td><strong>拓扑信息</strong> (Topological)</td><td>逻辑综合阶段即可得</td><td>网表（Netlist）：cells（电子单元）和 nets（连接关系/超边），以及 cell 类型、逻辑关系</td></tr>
+<tr><td><strong>几何信息</strong> (Geometrical)</td><td>布局后可得</td><td>单元物理位置 ($p_x, p_y$)、空间邻近关系</td></tr>
+</tbody>
+</table>
+
+<p>论文指出核心痛点：<strong>每个信息源独立处理是次优的</strong>。现有方法要么只使用拓扑信息（基于图的 GNN 方法），要么只使用几何信息（基于图像的 CNN 方法），两者未能有效融合。</p>
+
+<div class="mermaid">
+graph TD
+    A["<b>芯片设计流程</b>"] --> B["<b>逻辑综合阶段</b><br/>仅拓扑信息可用"]
+    A --> C["<b>物理设计阶段</b><br/>拓扑+几何信息"]
+    B --> D["<b>拓扑方法</b><br/>GNN on 同质图"]
+    C --> E["<b>几何方法</b><br/>CNN on 网格图像"]
+    D --> F["<b>不兼容</b>"]
+    E --> F
+    F --> G["<b>本文目标：统一表示</b>"]
+</div>
+
+<h3>1.2 现有方法的三大局限</h3>
+
+<table>
+<thead><tr><th>局限</th><th>说明</th><th>代表方法</th></tr></thead>
+<tbody>
+<tr><td><strong>跨阶段不兼容</strong></td><td>拓扑方法只工作在逻辑综合阶段，几何方法只工作在布局后阶段</td><td>CongestionNet vs LHNN</td></tr>
+<tr><td><strong>任务专用性</strong></td><td>每个方法为特定任务设计，无法迁移到其他任务</td><td>Net2a 只预测线长</td></tr>
+<tr><td><strong>异构信息丢失</strong></td><td>拓扑方法将二部图简化为同质图，丢失 cell/net 的异质性</td><td>GAT/GCN 简化处理</td></tr>
+</tbody>
+</table>
+
+<h3>1.3 "Shift-Left" 愿景</h3>
+
+<blockquote>
+<p><strong>核心洞察</strong>：如果能在逻辑综合阶段就拥有一个能够编码位置信息的表示框架，那么后期物理指标（拥塞、线长）就能在早期被预测，避免不必要的设计迭代。在有布局信息时，这个框架又能自然融入几何信息进行更精细的预测。</p>
+</blockquote>
+
+<hr>
+
+<h2 id="s2">2. 核心贡献概述</h2>
+
+<div class="mermaid">
+graph TD
+    A["<b>CircuitGNN</b>"] --> B["<b>Circuit Graph</b><br/>统一异构图表示<br/>拓扑+几何融合"]
+    A --> C["<b>Circuit GNN</b><br/>Topo-Geom Fusion<br/>双模态消息传递"]
+    A --> D["<b>跨阶段兼容</b><br/>逻辑综合+物理设计"]
+    A --> E["<b>跨任务通用</b><br/>拥塞+线长+迁移"]
+</div>
+
+<p>三大核心贡献：</p>
+<ol>
+<li><strong>Circuit Graph（统一表示）</strong>：首次将拓扑信息（cells/nets/topo-edges）和几何信息（geom-edges）融合为一个异构图，兼容逻辑综合和布局后两个阶段。</li>
+<li><strong>Circuit GNN（新型消息传递）</strong>：对拓扑边和几何边分别进行消息传递、然后融合（MaxPooling）的两阶段消息传递范式，推理时间与电路规模线性。</li>
+<li><strong>SOTA 性能</strong>：逻辑综合阶段拥塞预测超最优方法 16.7%；布局阶段拥塞预测比 LHNN 平均提升 5.6%（10x 加速）；线长预测误差降低 16.9%。</li>
+</ol>
+
+<hr>
+
+<h2 id="s3">3. 相关工作</h2>
+
+<h3>3.1 拓扑方法对比</h3>
+<table>
+<thead><tr><th>方法</th><th>年份</th><th>会议</th><th>技术路线</th><th>关键特征</th><th>局限</th></tr></thead>
+<tbody>
+<tr><td>CongestionNet</td><td>2019</td><td>VLSI-SoC</td><td>多层 GAT</td><td>逻辑综合阶段 cell 级拥塞</td><td>仅拓扑；任务专用</td></tr>
+<tr><td>GCN/GAT/GraphSAGE</td><td>2017-2018</td><td>ICLR/NIPS</td><td>通用 GNN</td><td>网表转同质图</td><td>异构信息丢失</td></tr>
+<tr><td>Net2f/Net2a</td><td>2022</td><td>TCAD</td><td>定制 GNN</td><td>布局前线长/时序预测</td><td>仅拓扑；任务专用</td></tr>
+<tr><td>MPNN</td><td>2017</td><td>ICML</td><td>边函数消息传递</td><td>理论可处理异构边</td><td>推理慢（5x）</td></tr>
+</tbody>
+</table>
+
+<h3>3.2 几何方法对比</h3>
+<table>
+<thead><tr><th>方法</th><th>年份</th><th>会议</th><th>技术路线</th><th>关键特征</th><th>局限</th></tr></thead>
+<tbody>
+<tr><td>RouteNet</td><td>2018</td><td>ICCAD</td><td>CNN (ResNet-18)</td><td>首次 CNN 可布线性预测</td><td>仅图像级，忽略拓扑</td></tr>
+<tr><td>pix2pix/cGAN</td><td>2019</td><td>DAC</td><td>条件 GAN</td><td>生成式拥塞图预测</td><td>纯图像方法</td></tr>
+<tr><td>LHNN</td><td>2022</td><td>DAC</td><td>格超图 GNN</td><td>融合几何+有限拓扑</td><td>仅拥塞；仅布局阶段</td></tr>
+</tbody>
+</table>
+
+<h3>3.3 本文方法定位</h3>
+<div class="mermaid">
+graph LR
+    A["<b>拓扑方法</b><br/>GNN on 同质图"] --> C["<b>CircuitGNN</b><br/>异质图+双模态"]
+    B["<b>几何方法</b><br/>CNN/GAN on 图像"] --> C
+    C --> D["<b>跨阶段</b><br/>逻辑综合+布局"]
+    C --> E["<b>跨任务</b><br/>拥塞+线长+迁移"]
+</div>
+
+<hr>
+
+<h2 id="s4">4. Circuit Graph：统一异构图表示</h2>
+
+<h3>4.1 电路特征化</h3>
+
+<p>电路设计最初表示为网表（netlist），由 cells $V$ 和 nets $U$ 组成：</p>
+<ul>
+<li>$X_V$：cell 特征矩阵（尺寸和 degree to net）</li>
+<li>$X_U$：net 特征矩阵（net span 和 degree to cell）</li>
+<li>$P \subseteq V \times U$：pins（cell-net 二部连接）</li>
+<li>$X_P$：pin 特征矩阵（信号方向：input/output）</li>
+<li>$p_x, p_y$：布局后 cell 位置坐标</li>
+</ul>
+
+<h3>4.2 现有两种特征化方法</h3>
+
+<p><strong>定义 1（几何驱动的电路特征化）</strong>：</p>
+<div class="math-block">$$F_G = \{X_{gr}\}$$</div>
+<p>其中 $X_{gr} \in \mathbb{R}^{C_x \times C_y \times D_{gr}}$ 是网格特征矩阵（pin density + net density）。类似 RGB 图像，可用 CNN 处理。</p>
+
+<p><strong>定义 2（拓扑驱动的电路特征化）</strong>：</p>
+<div class="math-block">$$F_T = \{V, U, P, X_V, X_U, X_P\}$$</div>
+<p>cells $V$ 和 nets $U$ 为两类顶点，pins $P$ 为边。但 $F_T$ 通常被简化为同质图喂给 GNN，导致异构信息丢失。</p>
+
+<h3>4.3 Circuit Graph 定义</h3>
+
+<div class="mermaid">
+graph TD
+    A["<b>电路设计</b><br/>netlist + positions"] --> B["<b>Topo-edge 构造</b><br/>ET = P, XET = XP"]
+    A --> C["<b>Geom-edge 构造</b><br/>shifted windows<br/>链接邻近 cells"]
+    B --> D["<b>Circuit Graph G</b>"]
+    C --> D
+</div>
+
+<p><strong>定义 3（Circuit Graph）</strong>：</p>
+<div class="math-block">$$G = \{V, U, E_T, E_G, X_V, X_U, X_{E_T}, X_{E_G}\}$$</div>
+
+<table>
+<thead><tr><th>符号</th><th>含义</th><th>边类型</th></tr></thead>
+<tbody>
+<tr><td>$V$</td><td>cells 集合（顶点类型 1）</td><td>—</td></tr>
+<tr><td>$U$</td><td>nets 集合（顶点类型 2）</td><td>—</td></tr>
+<tr><td>$E_T \subseteq V \times U$</td><td>topo-edges（pin 连接）</td><td>cell ↔ net</td></tr>
+<tr><td>$E_G \subseteq V \times V$</td><td>geom-edges（空间邻近）</td><td>cell ↔ cell</td></tr>
+<tr><td>$X_V, X_U, X_{E_T}, X_{E_G}$</td><td>对应特征矩阵</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h3>4.4 Shifted Windows 几何边构造</h3>
+
+<pre><code>算法：Shifted Windows 几何边构造
+输入: cells 位置 {(p_x(v), p_y(v))}, 窗口大小 (w_x, w_y), link capacity c
+输出: geom-edges E_G 及其特征 X_{E_G}
+
+1. 将电路板划分为大小为 (w_x, w_y) 的非重叠窗口
+2. 将窗口水平和垂直偏移 (w_x/2, w_y/2)，得到 shifted windows
+3. 对每个窗口内的每对 cell (v, v*)，计算欧几里得距离 d(v, v*)
+4. 对每个 cell v，仅保留距离最近的 c 个邻居加入 E_G
+5. X_{E_G}(v, v*) ← d(v, v*) （存储距离作为边特征）</code></pre>
+
+<p><strong>复杂度</strong>：$O(|V| + |U| + |P|)$，与电路规模线性（附录 B.2 严格证明）。</p>
+
+<h3>4.5 跨阶段兼容性</h3>
+
+<table>
+<thead><tr><th>阶段</th><th>可用信息</th><th>$E_G$ 处理</th></tr></thead>
+<tbody>
+<tr><td>逻辑综合阶段（预布局）</td><td>$V, U, E_T$ 及特征</td><td>$E_G = \emptyset$，geom 消息传递不影响</td></tr>
+<tr><td>物理设计阶段（布局后）</td><td>全部 $V, U, E_T, E_G$ 及特征</td><td>正常使用 geom-edges</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2 id="s5">5. Circuit GNN：多阶段消息传递框架</h2>
+
+<h3>5.1 整体架构</h3>
+
+<div class="mermaid">
+graph TD
+    A["<b>Circuit Design</b>"] --> B["<b>Circuit Graph</b>"]
+    B --> C["<b>Feature Initializer</b><br/>MLP 初始化"]
+    C --> D["<b>Topo-Geom Message-Passing</b><br/>L 层迭代"]
+    D --> E["<b>Readout</b><br/>任务自适应"]
+    E --> F["<b>Downstream Tasks</b>"]
+</div>
+
+<h3>5.2 Topo-Geom 消息传递（核心创新）</h3>
+
+<h4>5.2.1 拓扑消息传递（公式 1）</h4>
+<div class="math-block">$$M^{(l),\text{topo}}_V = \Phi^{E_T \rightarrow V}_{\text{msg}}(U, E_T, H^{(l)}_U, H_{E_T})$$</div>
+<div class="math-block">$$M^{(l)}_U = \Phi^{V \rightarrow U}_{\text{msg}}(V, E_T, H^{(l)}_V, H_{E_T}) \tag{1}$$</div>
+
+<p>其中 $l$ 为当前层号，$\Phi^{E_T \rightarrow V}_{\text{msg}}$ 从 nets 向 cells 收集拓扑消息，$\Phi^{V \rightarrow U}_{\text{msg}}$ 从 cells 向 nets 收集拓扑消息。</p>
+
+<h4>5.2.2 $\Phi^{V \rightarrow U}_{\text{msg}}$ 详细设计（公式 5）</h4>
+<div class="math-block">$$\Phi^{V \rightarrow U}_{\text{msg}}(\{(h^V_v, h^{E_T}_{(v,u)}) | (v, u) \in E_T\}) = \sum_{(v,u)\in E_T} (W^{E_T \rightarrow U} h^{E_T}_{(v,u)}) \odot (W^{V \rightarrow U} h^V_v) \tag{5}$$</div>
+
+<p>符号说明：$h^V_v$ 是 cell $v$ 的表示，$h^{E_T}_{(v,u)}$ 是 topo-edge 表示，$W^{V \rightarrow U}, W^{E_T \rightarrow U}$ 为可学习权重矩阵，$\odot$ 为逐元素乘法——topo-edge 表示起到"门控"作用。</p>
+
+<h4>5.2.3 $\Phi^{E_T \rightarrow V}_{\text{msg}}$ 简化设计（公式 6）</h4>
+<div class="math-block">$$\Phi^{E_T \rightarrow V}_{\text{msg}}(\{h^U_u | (v, u) \in E_T\}) = \sum_{(v,u)\in E_T} W^{U \rightarrow V} h^U_u \tag{6}$$</div>
+
+<p>省略 topo-edge 权重以减少计算量。topo-edge 表示已在公式 5 中收集。</p>
+
+<h4>5.2.4 几何消息传递（公式 2 和 7）</h4>
+<div class="math-block">$$M^{(l),\text{geom}}_V = \Phi^{E_G \rightarrow V}_{\text{msg}}(V, E_G, H^{(l)}_V, H_{E_G}) \tag{2}$$</div>
+
+<div class="math-block">$$\Phi^{E_G \rightarrow V}_{\text{msg}}(\{(h^V_{v^*}, h^{E_G}_{(v,v^*)}) | (v, v^*) \in E_G\}) = \sum_{(v,v^*)\in E_G} (a^\top h^{E_G}_{(v,v^*)}) \cdot W^{V \rightarrow V} h^V_{v^*} \tag{7}$$</div>
+
+<p>$a$ 是可学习权重向量，$a^\top h^{E_G}_{(v,v^*)}$ 计算标量边权重（距离越近，权重越大），$W^{V \rightarrow V}$ 为可学习权重矩阵。geom-edge 距离被转化为注意力权重，显式编码空间局部性。</p>
+
+<h4>5.2.5 融合与更新（公式 3 和 4）</h4>
+<div class="math-block">$$M^{(l)}_V = \text{MaxPooling}(M^{(l),\text{geom}}_V, M^{(l),\text{topo}}_V) \tag{3}$$</div>
+
+<div class="math-block">$$H^{(l+1)}_V = \Phi_{\text{update}}(H^{(l)}_V, M^{(l)}_V), \quad H^{(l+1)}_U = \Phi_{\text{update}}(H^{(l)}_U, M^{(l)}_U) \tag{4}$$</div>
+
+<p>更新函数：$\Phi_{\text{update}}(H, M) = H + \text{Tanh}(M)$。MaxPooling 保留两个信息源中最显著特征，Tanh 限制消息范围 $[-1, 1]$，残差连接促进梯度流动。</p>
+
+<h4>5.2.6 推理时间分析</h4>
+<table>
+<thead><tr><th>组件</th><th>时间复杂度</th></tr></thead>
+<tbody>
+<tr><td>$\Phi^{V \rightarrow U}_{\text{msg}}$</td><td>$O(|E_T|(F_{E_T}F_U + F_V F_U + F_U))$</td></tr>
+<tr><td>$\Phi^{E_T \rightarrow V}_{\text{msg}}$</td><td>$O(|E_T|F_U F_V)$</td></tr>
+<tr><td>$\Phi^{E_G \rightarrow V}_{\text{msg}}$</td><td>$O(|E_G|(F_{E_G} + F_V^2))$</td></tr>
+<tr><td>融合 (MaxPooling)</td><td>$O(|V|F_V)$</td></tr>
+<tr><td>更新</td><td>$O(|V|F_V + |U|F_U)$</td></tr>
+<tr><td><strong>单层总计</strong></td><td><strong>$O(|V| + |U| + |P|)$ 线性</strong></td></tr>
+</tbody>
+</table>
+
+<p>维度常数：$F_V=64, F_U=128, F_{E_T}=8, F_{E_G}=4$，$|E_T| = O(|P|), |E_G| = O(|V|)$。</p>
+
+<h3>5.3 任务自适应 Readout</h3>
+
+<h4>Cell-level / Net-level 任务（公式 8）</h4>
+<div class="math-block">$$\hat{y}_{\text{cell}} = \text{MLP}(H^{(L)}_V \oplus X_V), \quad \hat{y}_{\text{net}} = \text{MLP}(H^{(L)}_U \oplus X_U) \tag{8}$$</div>
+<p>$\oplus$ 为拼接操作——将学习表示与原始特征拼接，增强信息。</p>
+
+<h4>Grid-level 任务（公式 9）</h4>
+<div class="math-block">$$\hat{y}_{\text{grid}} = \text{MLP}(\hat{M} H^{(L)}_V) \tag{9}$$</div>
+<p>$\hat{M} \in \mathbb{R}^{C_x \times C_y \times |V|}$ 是变换矩阵，$\sum_k \hat{M}_{i,j,k} = 1$。将 cell 表示通过 mean-pooling 映射到 grid 表示。</p>
+
+<hr>
+
+<h2 id="s6">6. 问题建模与形式化</h2>
+
+<h3>6.1 拥塞预测</h3>
+<table>
+<thead><tr><th>场景</th><th>可用信息</th><th>预测粒度</th><th>评估指标</th></tr></thead>
+<tbody>
+<tr><td>逻辑综合阶段</td><td>仅拓扑</td><td>Cell 级 + Grid 级</td><td>Pearson/Spearman/Kendall 相关系数</td></tr>
+<tr><td>布局后阶段</td><td>拓扑 + 几何</td><td>Cell 级 + Grid 级</td><td>同上 + Precision/Recall/F1-score</td></tr>
+</tbody>
+</table>
+
+<p><strong>数据集</strong>：ISPD 2011（12 个 VLSI 设计）。10 个训练，#18 验证，#19 测试。DREAMPlace 放置 + NCTU-GR 2.0 生成标签。</p>
+
+<h3>6.2 线长预测</h3>
+<p><strong>目标</strong>：预测每条 net 的半周长线长（HPWL）。</p>
+<p><strong>数据集</strong>：DAC 2012（7 个训练，#16 验证，#19 测试）。目标值取 $\log_{10}$ 平滑分布。</p>
+<p><strong>评估</strong>：Pearson/Spearman/Kendall + MAE + RMSE。</p>
+
+<h3>6.3 迁移任务</h3>
+<table>
+<thead><tr><th>模式</th><th>GNN 参数</th><th>Readout</th><th>训练量</th></tr></thead>
+<tbody>
+<tr><td>Evaluate</td><td>冻结</td><td>从头训练</td><td>1/5 epoch</td></tr>
+<tr><td>Fine-tune</td><td>可微调</td><td>从头训练</td><td>1/5 epoch</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2 id="s7">7. 实验结果与分析</h2>
+
+<h3>7.1 超参数设置</h3>
+<table>
+<thead><tr><th>超参数</th><th>值</th></tr></thead>
+<tbody>
+<tr><td>隐藏维度 $(F_V, F_U, F_{E_T}, F_{E_G})$</td><td>$(64, 128, 8, 4)$</td></tr>
+<tr><td>消息传递层数 $L$</td><td>2</td></tr>
+<tr><td>窗口大小 $(w_x, w_y)$</td><td>$(32, 40)$</td></tr>
+<tr><td>Link capacity $c$</td><td>5</td></tr>
+<tr><td>优化器 / 学习率 / 衰减 / 权重衰减</td><td>Adam / 0.0002 / 0.02 / 0.0002</td></tr>
+<tr><td>Epochs</td><td>100</td></tr>
+</tbody>
+</table>
+
+<h3>7.2 逻辑综合阶段拥塞预测（Table 1）</h3>
+<table>
+<thead><tr><th>方法</th><th>Time (s/ep)</th><th>Cell P</th><th>Cell S</th><th>Cell K</th><th>Grid P</th><th>Grid S</th><th>Grid K</th></tr></thead>
+<tbody>
+<tr><td>GCN</td><td>9.43</td><td>0.777</td><td>0.265</td><td>0.199</td><td>0.221</td><td>0.366</td><td>0.260</td></tr>
+<tr><td>GraphSAGE</td><td>11.79</td><td>0.776</td><td>0.252</td><td>0.188</td><td>0.208</td><td>0.375</td><td>0.268</td></tr>
+<tr><td>GAT</td><td>13.90</td><td>0.777</td><td>0.267</td><td>0.200</td><td>0.215</td><td>0.399</td><td>0.280</td></tr>
+<tr><td>CongestionNet</td><td>22.31</td><td>0.777</td><td>0.269</td><td>0.200</td><td>0.277</td><td>0.394</td><td>0.280</td></tr>
+<tr><td>MPNN</td><td>116.24</td><td>0.780</td><td>0.289</td><td>0.217</td><td>0.292</td><td>0.458</td><td>0.319</td></tr>
+<tr><td><strong>Ours (w/o. geom.)</strong></td><td><strong>21.62</strong></td><td><strong>0.779</strong></td><td><strong>0.289</strong></td><td><strong>0.217</strong></td><td><strong>0.315</strong></td><td><strong>0.468</strong></td><td><strong>0.329</strong></td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+<p><strong>关键发现</strong>：</p>
+<p>1. Grid-level 全面超越所有基线（Kendall +17.5% vs CongestionNet）</p>
+<p>2. Cell-level 与 MPNN 并列最优，但速度快 5.4x</p>
+<p>3. 与简单 GAT 速度相当——证明方法效率</p>
+</div>
+
+<h3>7.3 布局阶段拥塞预测（Table 2）</h3>
+<table>
+<thead><tr><th>方法</th><th>Time (s/ep)</th><th>Cell P</th><th>Cell S</th><th>Cell K</th><th>Grid P</th><th>Grid S</th><th>Grid K</th></tr></thead>
+<tbody>
+<tr><td>GAT (w. geom.)</td><td>16.21</td><td>0.777</td><td>0.263</td><td>0.197</td><td>0.210</td><td>0.397</td><td>0.279</td></tr>
+<tr><td>pix2pix</td><td>4.46</td><td>—</td><td>—</td><td>—</td><td>0.562</td><td>0.554</td><td>0.392</td></tr>
+<tr><td>LHNN</td><td>305.47</td><td>—</td><td>—</td><td>—</td><td>0.703</td><td>0.695</td><td>0.540</td></tr>
+<tr><td>Ours (w/o. topo.)</td><td>21.54</td><td>0.883</td><td>0.713</td><td>0.573</td><td>0.684</td><td>0.730</td><td>0.536</td></tr>
+<tr><td><strong>Ours</strong></td><td><strong>27.07</strong></td><td><strong>0.887</strong></td><td><strong>0.714</strong></td><td><strong>0.575</strong></td><td><strong>0.697</strong></td><td><strong>0.770</strong></td><td><strong>0.577</strong></td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+<p><strong>关键发现</strong>：</p>
+<p>1. vs LHNN（SOTA）：Grid Spearman +10.8%, Kendall +6.9%</p>
+<p>2. <strong>10x 加速</strong>：27.07 vs 305.47 s/epoch</p>
+<p>3. Ours (w/o. topo.) 表现良好，但完整模型最优——证明拓扑+几何互补</p>
+</div>
+
+<h3>7.4 线长预测（Table 3）</h3>
+<table>
+<thead><tr><th>方法</th><th>Time (s/ep)</th><th>Pearson</th><th>Spearman</th><th>Kendall</th><th>MAE ↓</th><th>RMSE ↓</th></tr></thead>
+<tbody>
+<tr><td>MLP</td><td>2.22</td><td>0.493</td><td>0.547</td><td>0.415</td><td>0.626</td><td>0.819</td></tr>
+<tr><td>Net2f</td><td>10.42</td><td>0.517</td><td>0.635</td><td>0.525</td><td>0.615</td><td>0.825</td></tr>
+<tr><td>Net2a</td><td>19.83</td><td>0.632</td><td>0.656</td><td>0.553</td><td>0.614</td><td>0.821</td></tr>
+<tr><td>LHNN</td><td>260.00</td><td>0.801</td><td>0.796</td><td>0.603</td><td>0.581</td><td>0.780</td></tr>
+<tr><td><strong>Ours</strong></td><td><strong>14.79</strong></td><td><strong>0.848</strong></td><td><strong>0.835</strong></td><td><strong>0.646</strong></td><td><strong>0.483</strong></td><td><strong>0.683</strong></td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+<p><strong>关键发现</strong>：</p>
+<p>1. 所有指标全面最优——Pearson 0.848（vs LHNN 0.801），RMSE 降低 12.4%</p>
+<p>2. 通用模型超越任务专用模型（Net2f/Net2a）：MAE 增益 21.4%</p>
+<p>3. 速度与 Net2a 相当（14.79 vs 19.83），远快于 LHNN</p>
+</div>
+
+<hr>
+
+<h2 id="s8">8. 迁移学习实验（Table 4）</h2>
+
+<table>
+<thead><tr><th>方法</th><th>Time (s/ep)</th><th>Pearson</th><th>Spearman</th><th>Kendall</th></tr></thead>
+<tbody>
+<tr><td>MLP</td><td>2.22</td><td>0.493</td><td>0.547</td><td>0.415</td></tr>
+<tr><td>LHNN (evaluate)</td><td>192.45</td><td>0.689</td><td>0.715</td><td>0.563</td></tr>
+<tr><td><strong>Ours (evaluate)</strong></td><td><strong>9.55</strong></td><td><strong>0.799</strong></td><td><strong>0.811</strong></td><td><strong>0.622</strong></td></tr>
+<tr><td>LHNN (fine-tune)</td><td>248.96</td><td>0.805</td><td>0.794</td><td>0.612</td></tr>
+<tr><td><strong>Ours (fine-tune)</strong></td><td><strong>14.80</strong></td><td><strong>0.842</strong></td><td><strong>0.829</strong></td><td><strong>0.639</strong></td></tr>
+<tr><td>LHNN (full train)</td><td>260.00</td><td>0.801</td><td>0.796</td><td>0.603</td></tr>
+<tr><td>Ours (full train)</td><td>14.79</td><td>0.848</td><td>0.835</td><td>0.646</td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+<p><strong>关键发现</strong>：</p>
+<p>1. <strong>冻结评估</strong>：Ours evaluate 即达 Spearman 0.811（LHNN evaluate 仅 0.715）</p>
+<p>2. <strong>仅 1/5 epoch 微调</strong>即接近全量训练性能（Spearman 0.829 vs 0.835）</p>
+<p>3. <strong>LHNN 不可迁移</strong>：其表示过度专用化于拥塞预测</p>
+<p>4. <strong>Ours 评估速度 20x LHNN</strong>（9.55 vs 192.45 s/ep）</p>
+</div>
+
+<hr>
+
+<h2 id="s9">9. 消融与讨论</h2>
+
+<h3>9.1 模块消融</h3>
+<table>
+<thead><tr><th>变体</th><th>逻辑综合阶段</th><th>布局阶段</th><th>结论</th></tr></thead>
+<tbody>
+<tr><td>Ours (w/o. geom.)</td><td>仅拓扑，超所有基线</td><td>—</td><td>拓扑信息是关键基础</td></tr>
+<tr><td>Ours (w/o. topo.)</td><td>—</td><td>仅几何，表现良好但不及完整</td><td>几何信息是有效补充</td></tr>
+<tr><td>Ours (完整)</td><td>—</td><td>拓扑+几何，全面最优</td><td>两者互补，缺一不可</td></tr>
+</tbody>
+</table>
+
+<h3>9.2 参数敏感性</h3>
+<p>附录 C 测试窗口大小 $(w_x, w_y)$ 和 link capacity $c$ 的敏感性——结论是模型对这些参数<strong>不敏感</strong>，显示鲁棒性。</p>
+
+<h3>9.3 局限性</h3>
+<table>
+<thead><tr><th>局限</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>学术-工业落差</td><td>新型 ML 算法与商业 EDA 工具之间仍存鸿沟</td></tr>
+<tr><td>早期 EDA 阶段兼容</td><td>数据流图 / AIG 图中节点/边语义不同，方法可能不适用</td></tr>
+<tr><td>社会影响</td><td>总体有限，但存在极小误用可能性</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2 id="s10">10. 创新点深度分析</h2>
+
+<table>
+<thead><tr><th>创新点</th><th>创新程度</th><th>贡献类型</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>统一异构图表示</td><td><span class="tag-gold">★★★★★</span></td><td>范式级</td><td>首个跨阶段跨任务的统一电路表示</td></tr>
+<tr><td>双模态消息传递与融合</td><td><span class="tag">★★★★☆</span></td><td>机制创新</td><td>独立处理拓扑/几何消息后 MaxPooling 融合</td></tr>
+<tr><td>任务自适应 Readout</td><td><span class="tag">★★★☆☆</span></td><td>工程创新</td><td>变换矩阵将 cell 表示映射到 grid 表示</td></tr>
+<tr><td>跨任务迁移能力验证</td><td><span class="tag">★★★★☆</span></td><td>能力验证</td><td>首次证明 EDA GNN 表示的可迁移性</td></tr>
+<tr><td>理论效率保证</td><td><span class="tag">★★★☆☆</span></td><td>理论贡献</td><td>严格证明 $O(|V|+|U|+|P|)$ 复杂度</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2 id="s11">11. 从专用模型到通用表示：拥塞预测演进对比</h2>
+
+<div style="overflow-x:auto;">
+<table>
+<thead><tr>
+<th>维度</th><th>ClusterNet</th><th>RouteNet</th><th>LHNN</th><th>NAS-Routability</th><th>cGAN</th><th>PROS</th><th><span class="tag">CircuitGNN</span></th>
+</tr></thead>
+<tbody>
+<tr><td><strong>年份</strong></td><td>2023</td><td>2018</td><td>2022</td><td>2021</td><td>2019</td><td>2020</td><td><strong>2022</strong></td></tr>
+<tr><td><strong>会议</strong></td><td>ICCAD</td><td>ICCAD</td><td>DAC</td><td>ICCAD</td><td>DAC</td><td>ICCAD</td><td><strong>NeurIPS</strong></td></tr>
+<tr><td><strong>Daily Day</strong></td><td>Day 13</td><td>Day 15</td><td>Day 16</td><td>Day 17</td><td>Day 18</td><td>Day 19</td><td><strong>Day 20</strong></td></tr>
+<tr><td><strong>方法类型</strong></td><td>GNN+聚类</td><td>CNN</td><td>格超图GNN</td><td>NAS搜索</td><td>条件GAN</td><td>DL+优化</td><td><strong>通用异构图GNN</strong></td></tr>
+<tr><td><strong>输入表示</strong></td><td>网格图像</td><td>网格特征</td><td>格网络</td><td>网格特征</td><td>网格图像</td><td>网格+路由</td><td><strong>Circuit Graph</strong></td></tr>
+<tr><td><strong>拓扑建模</strong></td><td>无</td><td>无</td><td>有限</td><td>无</td><td>无</td><td>无</td><td><strong>完整异质图</strong></td></tr>
+<tr><td><strong>几何建模</strong></td><td>CNN</td><td>CNN</td><td>格网络</td><td>NAS架构</td><td>GAN</td><td>CNN+统计</td><td><strong>geom-edges</strong></td></tr>
+<tr><td><strong>跨阶段</strong></td><td>仅布局</td><td>仅布局</td><td>仅布局</td><td>仅布局</td><td>仅布局</td><td>仅布局</td><td><strong>逻辑综合+布局</strong></td></tr>
+<tr><td><strong>跨任务</strong></td><td>仅拥塞</td><td>可布性+DRC</td><td>仅拥塞</td><td>拥塞+DRC</td><td>仅拥塞</td><td>仅拥塞优化</td><td><strong>拥塞+线长+迁移</strong></td></tr>
+<tr><td><strong>Cell级感知</strong></td><td>否</td><td>否</td><td>否</td><td>否</td><td>否</td><td>否</td><td><strong>是</strong></td></tr>
+<tr><td><strong>迁移能力</strong></td><td>未测试</td><td>未测试</td><td>弱</td><td>未测试</td><td>未测试</td><td>未测试</td><td><strong>强（0.811 Spearman）</strong></td></tr>
+<tr><td><strong>推理速度</strong></td><td>-</td><td>快</td><td>慢(305s)</td><td>快</td><td>快</td><td>快</td><td><strong>快(27s, 10x LHNN)</strong></td></tr>
+<tr><td><strong>范式定位</strong></td><td>专用</td><td>专用</td><td>专用</td><td>自动设计</td><td>生成式</td><td>预测驱动</td><td><strong>通用表示基础模型</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>演进脉络总结</h3>
+<pre><code>2018 RouteNet ──→ 2019 cGAN ──→ 2020 PROS ──→ 2021 NAS-Routability ──→ 2022 LHNN ──→ 2023 ClusterNet
+   CNN首次引入    生成式方法   预测驱动优化    自动架构搜索     拓扑+几何融合     GNN+聚类
+
+                                    ↓ 范式跃迁 ↓
+
+                      2022 CircuitGNN (NeurIPS)
+              从"为每个任务设计专用模型"到"学习通用电路表示"
+         → 一次训练，多任务共享 → 特征可迁移 → 跨阶段兼容 → 线性效率</code></pre>
+
+<hr>
+
+<h2 id="s12">12. 结论与未来方向</h2>
+
+<p>CircuitGNN 提出了首个通用电路图神经网络表示框架：</p>
+<ol>
+<li><strong>Circuit Graph</strong>：将拓扑信息（cells/nets/pins）和几何信息（cell 位置距离）统一编码为异构图</li>
+<li><strong>Circuit GNN</strong>：通过独立的拓扑/几何消息传递 + MaxPooling 融合进行表示学习</li>
+</ol>
+<p>实验在拥塞预测和线长预测上均达 SOTA，且具优越跨任务迁移能力。该工作支持 EDA "shift-left" 方向。</p>
+
+<p><strong>未来方向</strong>：扩展到更早期 EDA 阶段（数据流图/AIG图）、与商业 EDA 工具集成、更多下游任务适配、大规模预训练+微调范式（真正的 EDA 基础模型）。</p>
+
+<hr>
+
+<h2 id="s13">13. 参考文献</h2>
+<ol class="references" style="font-size:0.9em;">
+<li>Bustany et al. "ISPD 2015 benchmarks." ISPD 2015.</li>
+<li>Mirhoseini et al. "A graph placement methodology for fast chip design." Nature 594, 2021.</li>
+<li>Cheng & Yan. "On joint learning for solving placement and routing in chip design." NeurIPS 2021.</li>
+<li>Sanchez Lopera et al. "A survey of GNNs for EDA." MLCAD 2021.</li>
+<li>Kirby et al. "CongestionNet: Routing congestion prediction using deep GNNs." VLSI-SoC 2019.</li>
+<li>Ghose et al. "Generalizable cross-graph embedding for GNN-based congestion prediction." ICCAD 2021.</li>
+<li>Alawieh et al. "High-definition routing congestion prediction for large-scale FPGAs." ASP-DAC 2020.</li>
+<li>Yu & Zhang. "Painting on placement: Forecasting routing congestion using cGAN." DAC 2019.</li>
+<li>Zhou et al. "Congestion-aware global routing using deep convolutional GANs." MLCAD 2019.</li>
+<li>Gilmer et al. "Neural message passing for quantum chemistry." ICML 2017.</li>
+<li>Velickovic et al. "Graph attention networks." ICLR 2018.</li>
+<li>Xie et al. "Pre-placement net length and timing estimation by customized GNN." TCAD 2022.</li>
+<li>Xie et al. "RouteNet: Routability prediction for mixed-size designs using CNN." ICCAD 2018.</li>
+<li>Wang et al. "LHNN: Lattice hypergraph neural network for VLSI congestion prediction." DAC 2022.</li>
+<li>You et al. "Deep lattice networks and partial monotonic functions." NeurIPS 2017.</li>
+<li>Liu et al. "Swin transformer: Hierarchical vision transformer using shifted windows." ICCV 2021.</li>
+<li>Schutt et al. "SchNet: A continuous-filter convolutional neural network." NeurIPS 2017.</li>
+<li>Lin et al. "DREAMPlace: Deep learning toolkit-enabled GPU acceleration for VLSI placement." TCAD 2021.</li>
+<li>Lin & Chu. "POLAR 2.0: An effective routability-driven placer." DAC 2014.</li>
+<li>Li et al. "Routability-driven placement and white space allocation." TCAD 2007.</li>
+<li>Jindal et al. "Detecting tangled logic structures in VLSI netlists." DAC 2010.</li>
+<li>Kudva et al. "Metrics for structural logic synthesis." ICCAD 2002.</li>
+<li>Liu et al. "NCTU-GR 2.0: Multithreaded collision-aware global routing." TCAD 2013.</li>
+<li>Caldwell et al. "On wirelength estimations for row-based placement." TCAD 1999.</li>
+<li>Kipf & Welling. "Semi-supervised classification with GCNs." 2017.</li>
+<li>Hamilton et al. "Inductive representation learning on large graphs." NeurIPS 2017.</li>
+</ol>
+
+<hr>
+<p style="text-align:center; color:#888; font-size:0.85em; margin-top:40px;">
+Day 20 CircuitGNN Analysis | Generated 2026-06-11 | Based on Yang et al., NeurIPS 2022
+</p>
+</div>
+</body>
+</html>

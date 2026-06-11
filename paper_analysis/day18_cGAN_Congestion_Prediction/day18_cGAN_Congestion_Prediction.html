@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 18: cGAN Congestion —— 基于条件生成对抗网络的布线拥塞预测</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'default' });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  :root {
+    --bg: #fafbfc;
+    --text: #1a1a2e;
+    --heading: #0f3460;
+    --accent: #0f3460;
+    --quote-bg: #f0f4ff;
+    --quote-border: #0f3460;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+    --table-header-bg: #0f3460;
+    --table-header-text: #ffffff;
+    --table-even-bg: #f8f9fa;
+    --border: #e0e0e0;
+    --link: #0f3460;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+  h1 { color: var(--heading); font-size: 1.8rem; border-bottom: 3px solid var(--accent); padding-bottom: 0.5rem; margin: 2rem 0 1rem; }
+  h2 { color: var(--heading); font-size: 1.4rem; margin: 2rem 0 1rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.3rem; }
+  h3 { color: var(--heading); font-size: 1.15rem; margin: 1.5rem 0 0.75rem; }
+  h4 { color: var(--heading); font-size: 1.05rem; margin: 1.2rem 0 0.5rem; }
+  p { margin: 0.75rem 0; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  blockquote {
+    background: var(--quote-bg);
+    border-left: 4px solid var(--quote-border);
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    font-style: italic;
+  }
+  blockquote p { margin: 0.25rem 0; }
+  code {
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    font-size: 0.9em;
+    background: #f0f0f5;
+    padding: 0.15em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.85em;
+    line-height: 1.6;
+  }
+  pre code { background: transparent; padding: 0; color: inherit; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9em;
+  }
+  th {
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
+    padding: 0.6em 0.8em;
+    text-align: left;
+    font-weight: 600;
+  }
+  td {
+    padding: 0.5em 0.8em;
+    border: 1px solid var(--border);
+  }
+  tr:nth-child(even) td { background: var(--table-even-bg); }
+  .mermaid {
+    margin: 1.2rem 0;
+    text-align: center;
+  }
+  .meta-box {
+    background: var(--quote-bg);
+    border-left: 4px solid var(--accent);
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .meta-box p { margin: 0.3rem 0; }
+  .toc {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+  }
+  .toc ul { list-style: none; padding-left: 0; }
+  .toc li { padding: 0.2rem 0; }
+  .highlight-box {
+    background: #fff3e0;
+    border-left: 4px solid #e65100;
+    padding: 0.8rem 1rem;
+    margin: 1rem 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .citation { font-size: 0.85em; color: #666; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  strong { color: var(--heading); }
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    table { font-size: 0.8em; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Day 18: cGAN Congestion —— 基于条件生成对抗网络的布线拥塞预测</h1>
+
+<div class="meta-box">
+  <p><strong>论文标题</strong>: Painting on Placement: Forecasting Routing Congestion using Conditional Generative Adversarial Nets</p>
+  <p><strong>作者</strong>: Cunxi Yu, Zhiru Zhang</p>
+  <p><strong>机构</strong>: Computer Systems Laboratory (CSL), Cornell University</p>
+  <p><strong>会议</strong>: The 56th Annual Design Automation Conference (DAC)</p>
+  <p><strong>年份</strong>: 2019</p>
+  <p><strong>DOI</strong>: <a href="https://doi.org/10.1145/3316781.3317876">10.1145/3316781.3317876</a></p>
+  <p><strong>arXiv</strong>: <a href="https://arxiv.org/abs/1904.07077">1904.07077</a></p>
+  <p><strong>分析日期</strong>: 2026-06-11</p>
+  <p><strong>系列定位</strong>: Day 15（RouteNet）首次将判别式 CNN 引入可布线性预测；Day 16（LHNN）以异构图 GNN 融合几何与拓扑信息；Day 17（NAS-Routability）自动搜索最优判别式架构。本文实现了从<strong>判别式模型</strong>到<strong>生成式模型</strong>的范式跃迁——首次利用条件 GAN（cGAN）将布线拥塞预测构建为图像到图像的翻译（image translation）问题，学习拥塞图的条件分布而非单一点估计。</p>
+</div>
+
+<div class="toc">
+  <h3 id="toc">目录</h3>
+  <ul>
+    <li>1. <a href="#s1">背景与动机</a></li>
+    <li>2. <a href="#s2">相关工作</a></li>
+    <li>3. <a href="#s3">问题建模</a></li>
+    <li>4. <a href="#s4">核心方法</a></li>
+    <li>5. <a href="#s5">架构设计</a></li>
+    <li>6. <a href="#s6">训练方法</a></li>
+    <li>7. <a href="#s7">实验结果与分析</a></li>
+    <li>8. <a href="#s8">消融与分析</a></li>
+    <li>9. <a href="#s9">应用场景</a></li>
+    <li>10. <a href="#s10">讨论与局限性</a></li>
+    <li>11. <a href="#s11">创新点深度分析</a></li>
+    <li>12. <a href="#s12">演进对比表</a></li>
+    <li>13. <a href="#s13">参考文献</a></li>
+  </ul>
+</div>
+
+<h2 id="s1">1. 背景与动机</h2>
+
+<h3>1.1 物理设计的核心瓶颈</h3>
+
+<p>随着技术节点的持续缩微，物理设计规则（manufacturing parameters）的复杂度急剧增长。物理设计是 EDA 流程中最为耗时的一个阶段，其中<strong>布线（routing）</strong>是最关键的步骤。现代设计收敛（design closure）过程通常需要经历多次完整的布局布线（PnR）迭代才能满足设计约束，对大型设计而言开销巨大。由于物理设计过程不可预测、运行时间长，在短 time-to-market 的要求下完成设计收敛面临全新挑战。</p>
+
+<div class="mermaid">
+graph LR
+    A["<b>技术节点缩微</b>"] --> B["<b>设计规则复杂化</b>"]
+    B --> C["<b>PnR 迭代次数增加</b>"]
+    C --> D["<b>设计收敛困难</b>"]
+    D --> E["<b>需要快速拥塞预测</b>"]
+</div>
+
+<h3>1.2 现有方法的三大局限</h3>
+
+<table>
+  <tr><th>局限</th><th>说明</th></tr>
+  <tr><td><strong>需要布线阶段特征</strong></td><td>[6]、[9]、[11] 均需要从布线阶段收集特征，无法在布局完成时就做出预测</td></tr>
+  <tr><td><strong>仅预测热点</strong></td><td>RouteNet [9] 仅预测设计规则违反（DRV）的位置，而非完整拥塞热力图</td></tr>
+  <tr><td><strong>仅预测 SLICE 拥塞</strong></td><td>[6] 仅基于 SLICE 预测热力图，未覆盖所有布线通道</td></tr>
+</table>
+
+<h3>1.3 核心洞察：从"判别"到"生成"</h3>
+
+<p>论文的核心洞察是<strong>物理设计各阶段的中间结果可以可视化为图像</strong>：</p>
+
+<ul>
+  <li>布图规划结果：\(im_{floor} \in \mathbb{R}^{w \times w \times 3}\)</li>
+  <li>布局后结果：\(im_{place} \in \mathbb{R}^{w \times w \times 3}\)</li>
+  <li>布线后结果：\(im_{route} \in \mathbb{R}^{w \times w \times 3}\)</li>
+</ul>
+
+<p>这些图像在整个 PnR 流程中<strong>增量地变化</strong>：</p>
+<ul>
+  <li>从布图规划到布局：\(Graph(V,E), im_{floor} \to im_{place}\)</li>
+  <li>从布局到布线：\(Graph(V,E', grids), im_{place} \to im_{route}\)</li>
+</ul>
+
+<p>因此，<strong>预测布线热力图</strong>可以自然地建模为<strong>图像到图像的翻译问题</strong>——给定布局图像（\(im_{place}\)），生成对应的布线拥塞热力图（\(im_{route}\)）。</p>
+
+<blockquote>
+  <p><strong>范式跃迁</strong>：判别式模型学习 \(P(congestion \mid placement)\)，给出单一点估计；生成式 cGAN 学习完整条件分布 \(P(im_{route} \mid im_{place})\)，捕获拥塞图的空间结构和不确定性。</p>
+</blockquote>
+
+<h2 id="s2">2. 相关工作</h2>
+
+<h3>2.1 深度学习 for EDA</h3>
+
+<table>
+  <tr><th>工作</th><th>应用领域</th><th>方法</th><th>与本工作的关系</th></tr>
+  <tr><td>Xu et al. [5]</td><td>SRAF 生成</td><td>有监督学习</td><td>同属 ML+EDA</td></tr>
+  <tr><td>Ding et al. [7]</td><td>热点检测</td><td>EPIC 元分类</td><td>同属后端 ML 应用</td></tr>
+  <tr><td>Yu et al. [8]</td><td>热点检测</td><td>SVM-Kernels</td><td>传统 ML 方法</td></tr>
+  <tr><td>Yang et al. [10]</td><td>热点检测</td><td>深度学习+张量</td><td>深度学习方法</td></tr>
+</table>
+
+<h3>2.2 布线拥塞预测</h3>
+
+<table>
+  <tr><th>工作</th><th>方法</th><th>所需阶段</th><th>输出范围</th><th>关键区别</th></tr>
+  <tr><td>Pui et al. [6]</td><td>ML 预测 SLICE</td><td>布线阶段特征</td><td>SLICE 区域</td><td>需布线特征，仅覆盖 SLICE</td></tr>
+  <tr><td>RouteNet [9]</td><td>CNN + ResNet18</td><td>布线阶段特征</td><td>DRV 热点</td><td>需路由特征，仅预测热点</td></tr>
+  <tr><td>Chan [11]</td><td>ML 可布线性</td><td>sub-14nm</td><td>可布线性判定</td><td>工业应用方向</td></tr>
+  <tr><td><strong>本文</strong></td><td><strong>cGAN 图像翻译</strong></td><td><strong>仅需布局阶段</strong></td><td><strong>全部布线通道</strong></td><td><strong>首次全通道预测+无路由特征</strong></td></tr>
+</table>
+
+<div class="mermaid">
+graph TD
+    A["<b>拥塞预测方法</b>"] --> B["<b>判别式</b><br/>RouteNet [9]<br/>Pui [6]"]
+    A --> C["<b>生成式</b><br/>本文 cGAN"]
+    B --> D["需布线特征<br/>仅预测热点"]
+    C --> E["仅需布局特征<br/>全通道热力图"]
+</div>
+
+<h3>2.3 图像翻译基础</h3>
+
+<table>
+  <tr><th>方法</th><th>核心贡献</th><th>对本文的影响</th></tr>
+  <tr><td>Isola et al. [19] (pix2pix)</td><td>条件 GAN + L1 损失</td><td><strong>直接方法基础</strong></td></tr>
+  <tr><td>Ronneberger et al. [16] (U-Net)</td><td>跳跃连接的 FCN</td><td><strong>跳跃连接设计</strong></td></tr>
+  <tr><td>Long et al. [15] (FCN)</td><td>全卷积语义分割</td><td><strong>编码器-解码器范式</strong></td></tr>
+  <tr><td>Goodfellow et al. [20]</td><td>原始 GAN</td><td>GAN 理论基础</td></tr>
+  <tr><td>Mirza &amp; Osindero [21]</td><td>条件 GAN (cGAN)</td><td>cGAN 基础框架</td></tr>
+</table>
+
+<blockquote>
+  <p><strong>关键洞察</strong>：图像翻译成立的前提是输入和输出图像具有<strong>相同的底层结构</strong>，仅在表面外观上不同 [19]。布局图像 \(im_{place}\) 和布线拥塞图像 \(im_{route}\) 恰好满足这一条件——底层结构（CLB 位置、I/O Pad 布局、存储器和乘法器块）完全一致，仅布线通道的"着色"不同。</p>
+</blockquote>
+
+<h2 id="s3">3. 问题建模</h2>
+
+<h3>3.1 物理设计的形式化表示</h3>
+
+<p>物理设计的输入是技术映射后的网表，用有向图表示：</p>
+
+$$Graph(V, E)$$
+
+<p>其中 \(V\) 是电路元件（cells）的集合，\(E\) 是互连线（interconnects）的集合。对于 FPGA 布局，这是一个<strong>打包后的网表</strong>（packed netlist），每个集群逻辑块（CLB）可包含一个或多个基本逻辑元件（BLE）。</p>
+
+<p>布图规划后，所有 \(V\) 中的元件被放置在 2D 平面上的特定位置：</p>
+
+$$Graph(V, E', grids)$$
+
+<p>其中 <code>grids</code> 表示 \(V\) 中元件的 2D 坐标位置，边的集合更新为 \(E'\)（包含位置信息）。</p>
+
+<h3>3.2 图像表示</h3>
+
+<table>
+  <tr><th>图像</th><th>符号</th><th>维度</th><th>说明</th></tr>
+  <tr><td>布图规划图像</td><td>\(im_{floor}\)</td><td>\(\mathbb{R}^{w \times w \times 3}\)</td><td>显示 FPGA 架构的基本结构</td></tr>
+  <tr><td>布局后图像</td><td>\(im_{place}\)</td><td>\(\mathbb{R}^{w \times w \times 3}\)</td><td>已用 CLB/I/O 位置填充黑色像素</td></tr>
+  <tr><td>布线后图像</td><td>\(im_{route}\)</td><td>\(\mathbb{R}^{w \times w \times 3}\)</td><td>布线通道按利用率着色</td></tr>
+</table>
+
+<h3>3.3 图像翻译建模</h3>
+
+<p>核心问题被建模为从布局图像到布线图像的映射：</p>
+
+$$G: (Graph(V, E', grids), im_{place}) \to im_{route}$$
+
+<p>其中 \(G\) 是由生成器学习的一个可微函数。具体而言：</p>
+
+<ul>
+  <li><strong>输入 \(x\)</strong>：\(im_{place}\)（布局后 RGB 图像）+ \(im_{connect}\)（连接性图像，单通道）</li>
+  <li><strong>输出 \(\hat{y}\)</strong>：\(im_{route}\)（布线拥塞热力图，RGB 图像）</li>
+  <li><strong>"翻译"</strong>：布线本质上是将布局图像中的布线通道按照利用率"着色"</li>
+</ul>
+
+<h3>3.4 图像翻译成立条件</h3>
+
+<p>根据 [19]，高质量图像翻译需要满足：</p>
+
+<blockquote>
+  <p><strong>输入和输出图像应具有相同的底层结构，主要差异在于表面外观（surface appearance）。</strong></p>
+</blockquote>
+
+<p>在本文的应用中：</p>
+
+<ul>
+  <li><strong>输入 \(im_{place}\)</strong> 和<strong>输出 \(im_{route}\)</strong> 共享：
+    <ul>
+      <li>CLB 位置（黑色方块）</li>
+      <li>I/O Pad 位置（四边元素）</li>
+      <li>存储器/乘法器位置（特定颜色块）</li>
+    </ul>
+  </li>
+  <li><strong>差异仅在于</strong>：布线通道的颜色按利用率变化（白→黄→紫渐变）</li>
+</ul>
+
+<div class="mermaid">
+graph LR
+    A["<b>im_place</b><br/>放置完成<br/>布线通道为白色"] -->|"cGAN 着色"| B["<b>im_route</b><br/>布线完成<br/>通道按利用率着色"]
+    C["<b>底层结构相同</b>"] --- A
+    C --- B
+</div>
+
+<h2 id="s4">4. 核心方法</h2>
+
+<h3>4.1 GAN 基础</h3>
+
+<p>生成对抗网络（GANs）由 Goodfellow et al. [20] 提出，包含两个多层感知器：</p>
+
+<ul>
+  <li><strong>生成器 \(G\)</strong>：从随机噪声向量 \(z\) 生成映射 \(\hat{y} = G(z)\)</li>
+  <li><strong>判别器 \(D\)</strong>：区分生成器生成的样本和真实训练样本</li>
+</ul>
+
+<h4>原始 GAN 损失函数（式 1）</h4>
+
+$$\mathcal{L}(G, D) = \min_{G}\max_{D}\Big(\mathbb{E}_{x}[\log D(x)] + \mathbb{E}_{z}[\log(1 - D(G(z)))]\Big) \tag{1}$$
+
+<p>其中：</p>
+<ul>
+  <li>\(\mathbb{E}_{x}[\log D(x)]\)：判别器对真实样本分类正确的期望对数概率</li>
+  <li>\(\mathbb{E}_{z}[\log(1 - D(G(z)))]\)：判别器对生成样本分类正确的期望对数概率</li>
+  <li>\(\min_G \max_D\)：双人零和博弈——G 最小化、D 最大化该损失</li>
+</ul>
+
+<h4>训练目标</h4>
+<ul>
+  <li><strong>训练 \(D\)</strong>：最大化给训练样本和生成样本分配正确标签的概率</li>
+  <li><strong>训练 \(G\)</strong>：最小化 \(\log(1 - D(G(z)))\)</li>
+</ul>
+
+<h3>4.2 条件 GAN（cGAN）</h3>
+
+<p>条件 GAN [21] 的核心改进：生成器和判别器都额外<strong>观察输入向量 \(x\)</strong>：</p>
+
+$$\hat{y} = G(x, z), \quad (x, z) \to y$$
+
+<h4>条件 GAN 损失函数（式 2）</h4>
+
+$$c\mathcal{L}(G, D) = \min_{G}\max_{D}\Big(\mathbb{E}_{x, y}[\log D(x, y)] + \mathbb{E}_{x, z}[\log(1 - D(G(x, z)))]\Big) \tag{2}$$
+
+<p>与传统 GAN 的关键区别：</p>
+
+<table>
+  <tr><th>特性</th><th>GAN</th><th>cGAN</th></tr>
+  <tr><td>生成器输入</td><td>仅噪声 \(z\)</td><td>输入 \(x\) + 噪声 \(z\)</td></tr>
+  <tr><td>判别器输入</td><td>仅图像</td><td>输入 \(x\) + 输出 \(y/\hat{y}\)</td></tr>
+  <tr><td>数据生成</td><td>无约束</td><td>受 \(x\) 约束</td></tr>
+  <tr><td>适用场景</td><td>无条件图像生成</td><td>图像翻译、修复</td></tr>
+</table>
+
+<h3>4.3 引入 L1 距离的联合损失</h3>
+
+<p>根据 pix2pix [19] 的经验，论文在 cGAN 目标中额外加入 L1 距离：</p>
+
+$$c\mathcal{L}(G, D) + \lambda \cdot \mathbb{E}_{x, y, z}\big[\|y - G(x, z)\|_1\big] \tag{3}$$
+
+<p>其中：</p>
+<ul>
+  <li>\(\lambda = 50\)：L1 损失的权重</li>
+  <li>\(\beta = 0.1\)：调节 GAN 损失和 L1 损失的比例</li>
+  <li>\(\|y - G(x, z)\|_1\)：真实图像与生成图像之间的 L1 逐像素距离</li>
+</ul>
+
+<blockquote>
+  <p><strong>L1 距离的作用</strong>：GAN 损失确保生成图像在<strong>高频结构</strong>上与真实图像相似（视觉真实性）；L1 距离确保生成图像在<strong>低频像素值</strong>上与真实图像接近（像素级精度）。对图像翻译任务，L1 鼓励减少模糊（相比 L2 更有利于产生清晰的边缘）。</p>
+</blockquote>
+
+<h2 id="s5">5. 架构设计</h2>
+
+<h3>5.1 输入特征工程</h3>
+
+<h4>5.1.1 颜色方案（Color Scheme）</h4>
+
+<table>
+  <tr><th>颜色</th><th>\(im_{place}\) 中的含义</th><th>\(im_{route}\) 中的含义</th></tr>
+  <tr><td>白色（White）</td><td>布线通道</td><td>超出布图范围</td></tr>
+  <tr><td>浅蓝（Light Blue）</td><td>CLB 空位</td><td>剩余 CLB 空位</td></tr>
+  <tr><td>粉色（Pink）</td><td>乘法器</td><td>乘法器</td></tr>
+  <tr><td>浅黄（Light Yellow）</td><td>存储器</td><td>存储器</td></tr>
+  <tr><td>黑色（Black）</td><td>已用 CLB 和 I/O 位</td><td>已用 CLB 和 I/O 位</td></tr>
+  <tr><td>黄→紫渐变</td><td>—</td><td>布线通道利用率</td></tr>
+</table>
+
+<h4>5.1.2 连接性图像</h4>
+
+<p>将网表连接性 \(Graph(V, E', grids)\) 编码为<strong>连接性图像</strong> \(im_{connect}\)：</p>
+<ul>
+  <li>每个边 \(e \in E'\) 连接两个具有特定 2D 位置的节点</li>
+  <li>根据这些位置绘制边，构成 \(im_{connect}\)</li>
+  <li>维度与 \(im_{place}\) 相同但仅 <strong>1 通道</strong>：\(\mathbb{R}^{w \times w \times 1}\)</li>
+</ul>
+
+<h4>5.1.3 分辨率</h4>
+
+<p>\(w = 256\)，每个放置元件的尺寸 \(\ge 2 \times 2\) 像素。</p>
+
+<h4>5.1.4 最终输入特征</h4>
+
+$$x = \text{stack}(im_{place}, \text{expand}(im_{connect})), \quad x \in \mathbb{R}^{256 \times 256 \times 4}$$
+
+<h3>5.2 生成器架构</h3>
+
+<p>全卷积网络（FCN），仅卷积层和反卷积层：</p>
+
+<table>
+  <tr><th>阶段</th><th>层</th><th>输入尺寸</th><th>输出尺寸</th><th>通道</th></tr>
+  <tr><td rowspan="8"><strong>编码器<br/>（下采样）</strong></td><td>Conv1</td><td>256×256</td><td>128×128</td><td>4→64</td></tr>
+  <tr><td>Conv2</td><td>128×128</td><td>64×64</td><td>64→128</td></tr>
+  <tr><td>Conv3</td><td>64×64</td><td>32×32</td><td>128→256</td></tr>
+  <tr><td>Conv4</td><td>32×32</td><td>16×16</td><td>256→512</td></tr>
+  <tr><td>Conv5</td><td>16×16</td><td>8×8</td><td>512→512</td></tr>
+  <tr><td>Conv6</td><td>8×8</td><td>4×4</td><td>512→512</td></tr>
+  <tr><td>Conv7</td><td>4×4</td><td>2×2</td><td>512→512</td></tr>
+  <tr><td>Conv8</td><td>2×2</td><td>1×1</td><td>512→512</td></tr>
+  <tr><td rowspan="8"><strong>解码器<br/>（上采样）</strong></td><td>Deconv1</td><td>1×1</td><td>2×2</td><td>512→512</td></tr>
+  <tr><td>Deconv2</td><td>2×2</td><td>4×4</td><td>512→512</td></tr>
+  <tr><td>Deconv3</td><td>4×4</td><td>8×8</td><td>512→512</td></tr>
+  <tr><td>Deconv4</td><td>8×8</td><td>16×16</td><td>512→256</td></tr>
+  <tr><td>Deconv5</td><td>16×16</td><td>32×32</td><td>256→128</td></tr>
+  <tr><td>Deconv6</td><td>32×32</td><td>64×64</td><td>128→64</td></tr>
+  <tr><td>Deconv7</td><td>64×64</td><td>128×128</td><td>64→64</td></tr>
+  <tr><td>Deconv8</td><td>128×128</td><td>256×256</td><td>64→3</td></tr>
+</table>
+
+<h4>跳跃连接</h4>
+
+<p>将编码器中每一层的输出与解码器中对称层的输入进行拼接（concatenation），确保输入图像的结构信息能够传递到输出。</p>
+
+<div class="mermaid">
+graph TD
+    A["<b>输入 x</b><br/>256x256x4"] --> B["<b>编码器</b><br/>Conv x8<br/>256 to 1x1"]
+    B --> C["<b>瓶颈</b><br/>1x1x512"]
+    C --> D["<b>解码器</b><br/>Deconv x8<br/>1 to 256"]
+    B -.->|"跳跃连接 x8"| D
+    D --> E["<b>输出 y-hat</b><br/>256x256x3"]
+</div>
+
+<h3>5.3 判别器架构</h3>
+
+<table>
+  <tr><th>层</th><th>输入尺寸</th><th>输出尺寸</th><th>说明</th></tr>
+  <tr><td>Conv1</td><td>256×256</td><td>128×128</td><td>6→64，批标准化</td></tr>
+  <tr><td>Conv2</td><td>128×128</td><td>64×64</td><td>64→128，批标准化</td></tr>
+  <tr><td>Conv3</td><td>64×64</td><td>32×32</td><td>128→256，批标准化</td></tr>
+  <tr><td>Conv4</td><td>32×32</td><td>31×31</td><td>256→512，批标准化</td></tr>
+  <tr><td>Conv5</td><td>31×31</td><td>30×30</td><td>512→1</td></tr>
+  <tr><td>Sigmoid</td><td>30×30</td><td>30×30</td><td>输出 [0,1] 概率</td></tr>
+</table>
+
+<p>判别器输入为两个 3 通道图像的拼接（输入 x + 真实/生成的输出），因此输入通道数为 6。</p>
+
+<h3>5.4 整体数据流</h3>
+
+<div class="mermaid">
+graph LR
+    A["<b>输入 x</b><br/>256x256x4<br/>(im_place+connect)"] --> B["<b>Generator G</b><br/>FCN + Skip"]
+    B --> C["<b>输出 y-hat</b><br/>256x256x3"]
+    A --> D["<b>Discriminator D</b>"]
+    C --> D
+    D --> E["<b>真/假</b><br/>二分类"]
+</div>
+
+<h2 id="s6">6. 训练方法</h2>
+
+<h3>6.1 训练流程</h3>
+
+<div class="mermaid">
+graph TD
+    A["<b>真实对 (x,y)</b>"] --> D["<b>判别器 D</b>"]
+    B["<b>生成对 (x,G(x,z))</b>"] --> D
+    D --> E["<b>分类损失 -> 更新 D</b>"]
+    D --> F["<b>GAN 损失 -> 更新 G</b>"]
+    B --> G["<b>L1 损失 ||y-G(x,z)||</b>"]
+    G --> F
+</div>
+
+<p><strong>判别器训练</strong>：</p>
+<ol>
+  <li>接收输入-真实输出对 \((x, y)\)，标签为 <code>1 (true)</code></li>
+  <li>接收输入-生成输出对 \((x, \hat{y})\)，标签为 <code>0 (fake)</code></li>
+  <li>基于分类误差通过反向传播更新权重</li>
+</ol>
+
+<p><strong>生成器训练</strong>：</p>
+<ol>
+  <li>生成输出 \(\hat{y} = G(x, z)\)</li>
+  <li>损失由两部分组成：
+    <ul>
+      <li>判别器反馈：\(\log(1 - D(x, G(x, z)))\)（GAN 损失）</li>
+      <li>像素级差异：\(\lambda \|y - G(x, z)\|_1\)（L1 损失）</li>
+    </ul>
+  </li>
+  <li>通过反向传播更新生成器权重</li>
+</ol>
+
+<h3>6.2 超参数设置</h3>
+
+<table>
+  <tr><th>超参数</th><th>值</th><th>说明</th></tr>
+  <tr><td>学习率</td><td>0.0002</td><td>Adam 优化器</td></tr>
+  <tr><td>Adam \(\beta_1\)</td><td>0.5</td><td>一阶动量</td></tr>
+  <tr><td>Adam \(\beta_2\)</td><td>0.999</td><td>二阶动量</td></tr>
+  <tr><td>Adam \(\varepsilon\)</td><td>\(10^{-8}\)</td><td>数值稳定性</td></tr>
+  <tr><td>L1 权重 \(\lambda\)</td><td>50</td><td>L1 损失权重</td></tr>
+  <tr><td>\(\beta\)</td><td>0.1</td><td>损失比例调节</td></tr>
+  <tr><td>训练轮数</td><td>250</td><td>epochs</td></tr>
+  <tr><td>批大小</td><td>1</td><td>batch size</td></tr>
+  <tr><td>训练时间</td><td>2-3 小时</td><td>单 GPU NVIDIA 1080Ti</td></tr>
+  <tr><td>推理时间</td><td>~0.09 秒</td><td>每张图</td></tr>
+</table>
+
+<h3>6.3 数据集</h3>
+
+<ul>
+  <li><strong>设计数量</strong>：8 个 FPGA 设计（VTR 8.0）</li>
+  <li><strong>布局结果生成</strong>：扫描 VPR 布局选项（seed, ALPHA_T, INNER_NUM, place_algorithm）</li>
+  <li><strong>每设计图像对数</strong>：200 对</li>
+  <li><strong>总数据量</strong>：1500 对输入-输出图像</li>
+</ul>
+
+<h3>6.4 两种训练策略</h3>
+
+<table>
+  <tr><th>策略</th><th>训练集</th><th>评估指标</th><th>目的</th></tr>
+  <tr><td><strong>策略 1</strong></td><td>排除目标设计（leave-one-out）</td><td>Acc. 1</td><td>对<strong>未见过的设计</strong>进行推理</td></tr>
+  <tr><td><strong>策略 2</strong></td><td>策略 1 模型 + 目标设计 <strong>10 对</strong>微调</td><td>Acc. 2</td><td>迁移学习，提高鲁棒性</td></tr>
+</table>
+
+<h2 id="s7">7. 实验结果与分析</h2>
+
+<h3>7.1 Benchmark 设计</h3>
+
+<table>
+  <tr><th>设计</th><th>#LUTs</th><th>#FF</th><th>#Nets</th><th>规模</th></tr>
+  <tr><td>diffeq1</td><td>563</td><td>193</td><td>2,059</td><td>小型</td></tr>
+  <tr><td>diffeq2</td><td>419</td><td>96</td><td>1,560</td><td>小型</td></tr>
+  <tr><td>raygentop</td><td>1,920</td><td>1,047</td><td>5,023</td><td>中型</td></tr>
+  <tr><td>SHA</td><td>2,501</td><td>911</td><td>10,910</td><td>中型</td></tr>
+  <tr><td>OR1200</td><td>2,823</td><td>670</td><td>12,336</td><td>中大型</td></tr>
+  <tr><td>ode</td><td>5,488</td><td>1,316</td><td>20,981</td><td>大型</td></tr>
+  <tr><td>dcsm</td><td>9,088</td><td>1,618</td><td>36,912</td><td>大型</td></tr>
+  <tr><td>bfly</td><td>9,503</td><td>1,748</td><td>38,582</td><td>大型</td></tr>
+</table>
+
+<h3>7.2 完整实验结果</h3>
+
+<table>
+  <tr><th>设计</th><th># P</th><th>Acc. 1</th><th>Acc. 2</th><th>Top10</th></tr>
+  <tr><td>diffeq1</td><td>200</td><td>67.2%</td><td>68.9%</td><td>50%</td></tr>
+  <tr><td>diffeq2</td><td>200</td><td>65.3%</td><td>65.9%</td><td>40%</td></tr>
+  <tr><td>raygentop</td><td>200</td><td>68.1%</td><td>77.1%</td><td>70%</td></tr>
+  <tr><td>SHA</td><td>200</td><td>43.3%</td><td>61.0%</td><td>40%</td></tr>
+  <tr><td>OR1200</td><td>200</td><td>64.6%</td><td>67.6%</td><td>90%</td></tr>
+  <tr><td>ode</td><td>200</td><td>74.9%</td><td>75.9%</td><td>80%</td></tr>
+  <tr><td>dcsm</td><td>200</td><td>71.4%</td><td>85.4%</td><td>80%</td></tr>
+  <tr><td>bfly</td><td>200</td><td>71.5%</td><td>76.5%</td><td>70%</td></tr>
+</table>
+
+<p><strong>精度度量说明</strong>：</p>
+<ul>
+  <li><strong>Acc. 1</strong>：逐像素精度（per-pixel accuracy），使用策略 1（leave-one-out 训练）</li>
+  <li><strong>Acc. 2</strong>：逐像素精度，使用策略 2（迁移学习微调）</li>
+  <li><strong>Top10</strong>：在测试集中找到真正最小拥塞布局的 top-10 准确率</li>
+</ul>
+
+<h3>7.3 关键观察</h3>
+
+<ol>
+  <li><strong>策略 2 显著改善 SHA</strong>：SHA 设计的 Acc. 1（43.3%）远低于其他设计，但策略 2 提升至 61.0%（+17.7%），说明小样本迁移学习对"困难"设计特别有效</li>
+  <li><strong>小型设计预测困难</strong>：diffeq1 和 diffeq2 的精度低于大型设计——小型设计中布线算法可以找到近最优解，使得数据集极度不平衡</li>
+  <li><strong>大型设计预测更准确</strong>：ode（74.9%）、dcsm（71.4%）、bfly（71.5%）的 Acc. 1 较高</li>
+  <li><strong>OR1200 的 Top10 最高</strong>：达到 90%，表明 cGAN 非常擅长做拥塞排序任务</li>
+</ol>
+
+<h2 id="s8">8. 消融与分析</h2>
+
+<h3>8.1 颜色方案 vs 灰度方案</h3>
+
+<table>
+  <tr><th>配置</th><th>效果</th></tr>
+  <tr><td>RGB 颜色方案</td><td>基准性能</td></tr>
+  <tr><td>灰度方案</td><td>平均像素精度下降 3-5%，生成图像偏亮，对低拥塞输入不准确</td></tr>
+</table>
+
+<p>灰度方案节省约 20% 训练时间和 50% 推理时间，但精度损失不划算。</p>
+
+<h3>8.2 L1 损失和跳跃连接的影响（OR1200 设计）</h3>
+
+<h4>定性分析</h4>
+
+<table>
+  <tr><th>配置</th><th>生成图像质量</th><th>问题</th></tr>
+  <tr><td><strong>L1 + 全部跳跃连接</strong></td><td>最优，几乎与真值相同</td><td>—</td></tr>
+  <tr><td><strong>无 L1 + 全部跳跃连接</strong></td><td>明显存在误预测区域</td><td>缺少像素级约束</td></tr>
+  <tr><td><strong>L1 + 单一跳跃连接</strong></td><td>大量误预测区域和噪声</td><td>结构信息传递不足</td></tr>
+</table>
+
+<h4>定量分析——训练损失曲线</h4>
+
+<table>
+  <tr><th>配置</th><th>生成器损失</th><th>判别器损失</th><th>训练稳定性</th></tr>
+  <tr><td>L1 + 全部跳跃连接</td><td>平滑优化</td><td>平滑下降</td><td>最稳定</td></tr>
+  <tr><td>无 L1</td><td>剧烈波动</td><td>噪声较大</td><td>可能过拟合/欠拟合</td></tr>
+  <tr><td>无跳跃连接</td><td>噪声最大</td><td>噪声最大</td><td>最不稳定</td></tr>
+</table>
+
+<div class="highlight-box">
+  <p><strong>与 RouteNet 的关键对比</strong>：</p>
+  <ul>
+    <li>RouteNet [9] 发现 FCN 中<strong>单个</strong>跳跃连接足以预测热点（DRV 位置热力图）</li>
+    <li>本文发现：预测<strong>完整布线热力图</strong>需要连接<strong>所有</strong>卷积层和反卷积层的跳跃连接</li>
+    <li>这说明完整通道利用率预测远比热点预测更难，需要更强力的结构信息传递</li>
+  </ul>
+</div>
+
+<div class="mermaid">
+graph TD
+    A["<b>L1 + 全跳跃</b>"] --> B["生成器: 平滑优化"]
+    A --> C["判别器: 平滑下降"]
+    B --> D["最优拥塞图"]
+    E["<b>无 L1</b>"] --> F["生成器: 剧烈波动"]
+    E --> G["判别器: 大噪声"]
+    F --> H["误预测区域"]
+    I["<b>无跳跃</b>"] --> J["生成器: 最大噪声"]
+    I --> K["判别器: 最大噪声"]
+    J --> L["最多噪声+误预测"]
+</div>
+
+<h2 id="s9">9. 应用场景</h2>
+
+<h3>9.1 拥塞最小化布局探索</h3>
+
+<p>如 Top10 结果（50%-90%）所示，cGAN 可以有效探索布局解空间，找到具最低布线拥塞的布局方案。</p>
+
+<h3>9.2 约束布局探索</h3>
+
+<p>利用 ODE 设计展示了五个约束场景：</p>
+
+<table>
+  <tr><th>目标</th><th>描述</th></tr>
+  <tr><td><strong>Overall max-congestion</strong></td><td>找整体拥塞最高的布局</td></tr>
+  <tr><td><strong>Overall min-congestion</strong></td><td>找整体拥塞最低的布局</td></tr>
+  <tr><td><strong>Upper-min</strong></td><td>找 floorplan 上部区域拥塞最低的布局</td></tr>
+  <tr><td><strong>Lower-min</strong></td><td>找 floorplan 下部区域拥塞最低的布局</td></tr>
+  <tr><td><strong>Right-min</strong></td><td>找 floorplan 右侧区域拥塞最低的布局</td></tr>
+</table>
+
+<p>cGAN 能准确预测所有通道的布线密度，非目标区域预测也与真值良好吻合。</p>
+
+<h3>9.3 逐次布局过程可视化</h3>
+
+<p>cGAN 可在布局过程中<strong>实时（on-the-fly）</strong>可视化布线通道利用率变化，应用于 VPR 的模拟退火布局算法。实时预测结果见 <a href="https://ycunxi.github.io/cunxiyu/dac19_demo.html">项目网站</a>。</p>
+
+<h2 id="s10">10. 讨论与局限性</h2>
+
+<h3>10.1 方法优势</h3>
+
+<ol>
+  <li><strong>无需布线特征</strong>：仅利用布局阶段可获取的特征</li>
+  <li><strong>全通道覆盖</strong>：不是仅预测热点</li>
+  <li><strong>生成式输出</strong>：输出完整热力图，含丰富空间信息</li>
+  <li><strong>低延迟推理</strong>：每张图 ~0.09 秒</li>
+  <li><strong>多功能应用</strong>：探索、约束优化和实时可视化</li>
+</ol>
+
+<h3>10.2 局限性</h3>
+
+<ol>
+  <li><strong>仅针对 FPGA 架构</strong>：未在 ASIC 设计上验证</li>
+  <li><strong>小型设计预测差</strong>：diffeq1/diffeq2 精度不理想</li>
+  <li><strong>逐像素精度有限</strong>：Acc. 1 从 43.3% 到 74.9%，signoff 场景可能不足</li>
+  <li><strong>未讨论模式坍塌</strong>：GAN 训练稳定性问题未系统讨论</li>
+  <li><strong>缺少与判别式模型的直接定量比较</strong></li>
+  <li><strong>特征工程依赖</strong>：连接性图像需手工设计</li>
+  <li><strong>分辨率限制</strong>：w=256 可能不够</li>
+  <li><strong>未覆盖时序/多工艺/大规模 ASIC</strong></li>
+</ol>
+
+<h2 id="s11">11. 创新点深度分析</h2>
+
+<h3>创新点 1：范式跃迁——从判别式到生成式</h3>
+
+<table>
+  <tr><th>维度</th><th>判别式模型（RouteNet 等）</th><th>生成式模型（本文 cGAN）</th></tr>
+  <tr><td>数学本质</td><td>学习 \(P(congestion \mid placement)\)</td><td>学习 \(P(im_{route} \mid im_{place})\)</td></tr>
+  <tr><td>输出形式</td><td>标量或热点图</td><td>完整热力图（每像素值）</td></tr>
+  <tr><td>信息完整性</td><td>点估计</td><td>全空间分布</td></tr>
+  <tr><td>应用灵活性</td><td>固定任务</td><td>可扩展至多种探索任务</td></tr>
+</table>
+
+<h3>创新点 2：图像翻译建模的完美适配</h3>
+
+<p>识别出 EDA 物理设计中的天然图像翻译结构——PnR 各阶段结果可视觉化为图像，输入和输出共享底层结构，差异仅在于布线通道的"着色"。</p>
+
+<h3>创新点 3：连接性图像——拓扑信息编码</h3>
+
+<p>将网表连接性 \(Graph(V, E', grids)\) 编码为图像形式 \(im_{connect}\)，将<strong>几何信息</strong>（布局图像）和<strong>拓扑信息</strong>（连接性图像）同时输入 cGAN。</p>
+
+<h3>创新点 4：全跳跃连接 vs 单跳跃连接</h3>
+
+<p>证明完整拥塞热力图预测需要<strong>所有层</strong>的跳跃连接——与 RouteNet 的单跳跃连接形成鲜明对比。</p>
+
+<h3>创新点 5：多场景应用验证</h3>
+
+<p>在三个不同场景中验证：拥塞最小化、约束探索、实时可视化。</p>
+
+<h2 id="s12">12. 演进对比表</h2>
+
+<h3>12.1 拥塞预测论文全线对比</h3>
+
+<table>
+  <tr><th>维度</th><th>Day 13 ClusterNet</th><th>Day 15 RouteNet</th><th>Day 16 LHNN</th><th>Day 17 NAS-Routability</th><th><strong>Day 18 cGAN</strong></th></tr>
+  <tr><td><strong>年份/会议</strong></td><td>ICCAD 2023</td><td>ICCAD 2018</td><td>DAC 2022</td><td>ICCAD 2021</td><td><strong>DAC 2019</strong></td></tr>
+  <tr><td><strong>核心方法</strong></td><td>GNN + Leiden 聚类</td><td>CNN + ResNet18</td><td>异构图 GNN</td><td>NAS 自动搜索 CNN</td><td><strong>条件 GAN (cGAN)</strong></td></tr>
+  <tr><td><strong>模型范式</strong></td><td>判别式</td><td>判别式</td><td>判别式</td><td>判别式（自动发现）</td><td><strong>生成式</strong></td></tr>
+  <tr><td><strong>输入特征</strong></td><td>网表图 + 布局</td><td>布局图像</td><td>格节点 + 超边</td><td>17 通道</td><td><strong>布局 RGB + 连接性图</strong></td></tr>
+  <tr><td><strong>输出</strong></td><td>拥塞图（逐单元）</td><td>DRV 热点</td><td>拥塞热力图</td><td>二值可布线性</td><td><strong>完整布线热力图</strong></td></tr>
+  <tr><td><strong>几何信息</strong></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><strong>✓</strong></td></tr>
+  <tr><td><strong>拓扑信息</strong></td><td>✓ (GNN 天然)</td><td>✗</td><td>✓ (超边)</td><td>✓</td><td><strong>✓ (连接性图像)</strong></td></tr>
+  <tr><td><strong>跳跃连接</strong></td><td>N/A</td><td>单跳</td><td>N/A</td><td>NAS 搜索</td><td><strong>全部层跳跃</strong></td></tr>
+  <tr><td><strong>需布线特征</strong></td><td>✗</td><td>✓</td><td>✗</td><td>✗</td><td><strong>✗</strong></td></tr>
+  <tr><td><strong>全通道覆盖</strong></td><td>全芯片</td><td>仅热点</td><td>全芯片</td><td>全芯片</td><td><strong>全通道</strong></td></tr>
+  <tr><td><strong>训练范式</strong></td><td>有监督</td><td>有监督</td><td>有监督</td><td>有监督 + NAS</td><td><strong>对抗训练</strong></td></tr>
+  <tr><td><strong>架构设计</strong></td><td>人工</td><td>人工</td><td>人工</td><td><strong>自动搜索</strong></td><td>人工</td></tr>
+  <tr><td><strong>关键创新</strong></td><td>GNN 消息传递</td><td>首次 CNN for EDA</td><td>格超图融合</td><td><strong>首次 NAS for EDA</strong></td><td><strong>首次 GAN for EDA</strong></td></tr>
+  <tr><td><strong>实验设计</strong></td><td>工业 ASIC</td><td>工业 mixed-size</td><td>开源 benchmark</td><td>ISPD benchmark</td><td><strong>VTR 8.0 FPGA</strong></td></tr>
+  <tr><td><strong>Top-K 排序</strong></td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td><strong>Top10 50-90%</strong></td></tr>
+  <tr><td><strong>实时预测</strong></td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td><strong>✓ (on-the-fly)</strong></td></tr>
+  <tr><td><strong>约束探索</strong></td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td><strong>✓ (区域约束)</strong></td></tr>
+</table>
+
+<h3>12.2 范式演进路线</h3>
+
+<div class="mermaid">
+graph TD
+    A["<b>Day 15 RouteNet 2018</b><br/>判别式 CNN<br/>需布线特征<br/>仅预测热点"] --> B["<b>Day 18 cGAN 2019</b><br/>生成式 GAN<br/>仅需布局特征<br/>全通道热力图"]
+    B --> C["<b>Day 17 NAS-Routability 2021</b><br/>自动搜索判别式 CNN<br/>自动架构优化"]
+    B --> D["<b>Day 16 LHNN 2022</b><br/>异构图 GNN<br/>几何+拓扑融合"]
+    D --> E["<b>Day 13 ClusterNet 2023</b><br/>GNN + 聚类<br/>消息传递增强"]
+</div>
+
+<h3>12.3 判别式 vs 生成式对比</h3>
+
+<table>
+  <tr><th>维度</th><th>判别式家族 (Day 13/15/16/17)</th><th>生成式家族 (Day 18)</th></tr>
+  <tr><td>学习目标</td><td>\(P(y \mid x)\) 的后验概率</td><td>联合分布</td></tr>
+  <tr><td>输出类型</td><td>标量/热点/二值</td><td>完整图像</td></tr>
+  <tr><td>损失函数</td><td>交叉熵/MSE/Kendall \(\tau\)</td><td>GAN 损失 + L1</td></tr>
+  <tr><td>泛化能力</td><td>见过的分布预测准确</td><td>可生成未见分布样本</td></tr>
+  <tr><td>可解释性</td><td>弱（黑盒）</td><td>强（可视化热力图）</td></tr>
+  <tr><td>应用灵活性</td><td>固定预测任务</td><td>多场景（探索/约束/可视化）</td></tr>
+  <tr><td>训练难度</td><td>中等</td><td>较高（对抗训练）</td></tr>
+  <tr><td>推理速度</td><td>快</td><td>快（0.09s）</td></tr>
+</table>
+
+<h2 id="s13">13. 参考文献</h2>
+
+<ol class="citation">
+  <li>M. M. Ziegler et al., "Machine Learning Techniques for Taming the Complexity of Modern Hardware Design," IBM JRD, 2017.</li>
+  <li>S. Dai et al., "Fast and Accurate Estimation of Quality of Results in High-Level Synthesis with Machine Learning," FCCM 2018.</li>
+  <li>C. Yu, H. Xiao, and G. De Micheli, "Developing Synthesis Flows without Human Knowledge," DAC 2018.</li>
+  <li>E. Ustun et al., "Fast and Accurate Estimation of Quality of Results in High-Level Synthesis with Machine Learning," FCCM 2018.</li>
+  <li>X. Xu et al., "Sub-Resolution Assist Feature Generation with Supervised Data Learning," IEEE TCAD, 2018.</li>
+  <li>C.-W. Pui et al., "Clock-aware Ultrascale FPGA Placement with Machine Learning Routability Prediction," ICCAD 2017.</li>
+  <li>D. Ding et al., "EPIC: Efficient Prediction of IC Manufacturing Hotspots," ASP-DAC 2012.</li>
+  <li>Y.-T. Yu et al., "ML-based hotspot detection using topological classification," IEEE TCAD, 2015.</li>
+  <li>Z. Xie et al., "RouteNet: Routability Prediction for Mixed-size Designs using CNN," ICCAD 2018.</li>
+  <li>H. Yang et al., "Layout Hotspot Detection with Feature Tensor Generation," IEEE TCAD, 2018.</li>
+  <li>W.-T. J. Chan et al., "Routability Optimization for Industrial Designs at sub-14nm," ISPD 2017.</li>
+  <li>A. Krizhevsky et al., "Imagenet Classification with Deep CNNs," NeurIPS 2012.</li>
+  <li>Y. Kim, "CNNs for Sentence Classification," arXiv:1408.5882, 2014.</li>
+  <li>D. Silver et al., "Mastering the Game of Go with DNNs and Tree Search," Nature 2016.</li>
+  <li>J. Long et al., "Fully Convolutional Networks for Semantic Segmentation," CVPR 2015.</li>
+  <li>O. Ronneberger et al., "U-Net: CNNs for Biomedical Image Segmentation," MICCAI 2015.</li>
+  <li>C. Yu et al., "End-to-End Industrial Study of Retiming," ISVLSI 2018.</li>
+  <li>J. Luu et al., "VTR 7.0: Next generation CAD system for FPGAs," ACM TRETS, 2014.</li>
+  <li>P. Isola et al., "Image-to-Image Translation with Conditional Adversarial Networks," arXiv:1611.07004, 2016.</li>
+  <li>I. Goodfellow et al., "Generative adversarial nets," NeurIPS 2014.</li>
+  <li>M. Mirza and S. Osindero, "Conditional Generative Adversarial Nets," arXiv:1411.1784, 2014.</li>
+  <li>J.-Y. Zhu et al., "Unpaired Image-to-Image Translation using CycleGAN," arXiv:1703.10593, 2017.</li>
+</ol>
+
+<hr>
+
+<p><strong>分析完成日期</strong>: 2026-06-11<br>
+<strong>分析工具</strong>: Claude Code</p>
+
+<blockquote>
+  <p><strong>核心贡献总结</strong>: 本文是 EDA 领域首次将生成对抗网络引入拥塞预测的开创性工作。通过将布线拥塞预测建模为图像到图像的翻译问题，cGAN 仅需布局阶段特征即可生成完整的布线通道利用率热力图。这一范式跃迁使得模型从"单点预测"走向"全图生成"，为布局探索、约束优化和实时可视化等应用开辟了新路径。L1 损失和全跳跃连接被证明对全图预测至关重要——这与 RouteNet 仅需单跳跃连接形成鲜明对比。</p>
+</blockquote>
+
+</body>
+</html>

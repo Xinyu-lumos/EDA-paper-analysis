@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 18: cGAN Congestion Prediction - Resources</title>
+<style>
+  :root {
+    --bg: #fafbfc;
+    --text: #1a1a2e;
+    --heading: #0f3460;
+    --accent: #0f3460;
+    --quote-bg: #f0f4ff;
+    --quote-border: #0f3460;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+    --table-header-bg: #0f3460;
+    --table-header-text: #ffffff;
+    --table-even-bg: #f8f9fa;
+    --border: #e0e0e0;
+    --link: #0f3460;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+  h1 { color: var(--heading); font-size: 1.8rem; border-bottom: 3px solid var(--accent); padding-bottom: 0.5rem; margin: 2rem 0 1rem; }
+  h2 { color: var(--heading); font-size: 1.4rem; margin: 2rem 0 1rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.3rem; }
+  h3 { color: var(--heading); font-size: 1.15rem; margin: 1.5rem 0 0.75rem; }
+  p { margin: 0.75rem 0; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+    font-size: 0.9em;
+    background: #f0f0f5;
+    padding: 0.15em 0.35em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.85em;
+  }
+  pre code { background: transparent; padding: 0; color: inherit; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9em;
+  }
+  th {
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
+    padding: 0.6em 0.8em;
+    text-align: left;
+    font-weight: 600;
+  }
+  td {
+    padding: 0.5em 0.8em;
+    border: 1px solid var(--border);
+  }
+  tr:nth-child(even) td { background: var(--table-even-bg); }
+  .resource-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem 1.5rem;
+    margin: 1rem 0;
+  }
+  .resource-card h3 { margin-top: 0; }
+  .link-list { list-style: none; padding: 0; }
+  .link-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .link-list li:last-child { border-bottom: none; }
+  .tag {
+    display: inline-block;
+    background: var(--quote-bg);
+    color: var(--accent);
+    padding: 0.15em 0.6em;
+    border-radius: 4px;
+    font-size: 0.8em;
+    margin-right: 0.5em;
+  }
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    table { font-size: 0.8em; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Day 18: cGAN Congestion Prediction - Resources</h1>
+
+<h2>Paper Information</h2>
+
+<div class="resource-card">
+  <h3>Painting on Placement: Forecasting Routing Congestion using Conditional Generative Adversarial Nets</h3>
+  <p><strong>Authors:</strong> Cunxi Yu, Zhiru Zhang (CSL, Cornell University)</p>
+  <p><strong>Venue:</strong> DAC 2019 (56th Annual Design Automation Conference), Las Vegas, NV, USA</p>
+  <p><strong>DOI:</strong> <a href="https://doi.org/10.1145/3316781.3317876">10.1145/3316781.3317876</a></p>
+  <p><strong>arXiv:</strong> <a href="https://arxiv.org/abs/1904.07077">1904.07077</a></p>
+</div>
+
+<h2>Online Resources</h2>
+
+<ul class="link-list">
+  <li>
+    <span class="tag">arXiv</span>
+    <a href="https://arxiv.org/abs/1904.07077">Paper on arXiv</a> — Full PDF available for download
+  </li>
+  <li>
+    <span class="tag">arXiv PDF</span>
+    <a href="https://arxiv.org/pdf/1904.07077.pdf">Direct PDF Link</a>
+  </li>
+  <li>
+    <span class="tag">ACM DL</span>
+    <a href="https://dl.acm.org/doi/10.1145/3316781.3317876">ACM Digital Library</a> — Official publisher version
+  </li>
+  <li>
+    <span class="tag">Demo</span>
+    <a href="https://ycunxi.github.io/cunxiyu/dac19_demo.html">Project Demo Page</a> — Real-time routing forecast GIF videos
+  </li>
+  <li>
+    <span class="tag">Homepage</span>
+    <a href="https://ycunxi.github.io/cunxiyu/">Cunxi Yu's Homepage</a> — Author's website
+  </li>
+  <li>
+    <span class="tag">Homepage</span>
+    <a href="https://www.csl.cornell.edu/~zhiruz/">Zhiru Zhang's Homepage</a> — Author's website
+  </li>
+</ul>
+
+<h2>Key Dependencies</h2>
+
+<div class="resource-card">
+  <h3>Software & Tools</h3>
+  <table>
+    <tr><th>Component</th><th>Details</th><th>Link</th></tr>
+    <tr>
+      <td>TensorFlow</td>
+      <td>Python3 deep learning framework for cGAN training/inference</td>
+      <td><a href="https://www.tensorflow.org/">tensorflow.org</a></td>
+    </tr>
+    <tr>
+      <td>VTR 8.0</td>
+      <td>Verilog-to-Routing, open-source FPGA CAD framework</td>
+      <td><a href="https://github.com/verilog-to-routing/vtr-verilog-to-routing">GitHub</a></td>
+    </tr>
+    <tr>
+      <td>VPR</td>
+      <td>Versatile Place and Route (part of VTR)</td>
+      <td><a href="https://docs.verilogtorouting.org/en/latest/vpr/">Documentation</a></td>
+    </tr>
+    <tr>
+      <td>NVIDIA 1080Ti</td>
+      <td>GPU for training (2-3 hours for 250 epochs)</td>
+      <td>—</td>
+    </tr>
+  </table>
+</div>
+
+<div class="resource-card">
+  <h3>Benchmark Designs (VTR 8.0)</h3>
+  <table>
+    <tr><th>Design</th><th>#LUTs</th><th>#FF</th><th>#Nets</th><th>#Image Pairs</th></tr>
+    <tr><td>diffeq1</td><td>563</td><td>193</td><td>2,059</td><td>200</td></tr>
+    <tr><td>diffeq2</td><td>419</td><td>96</td><td>1,560</td><td>200</td></tr>
+    <tr><td>raygentop</td><td>1,920</td><td>1,047</td><td>5,023</td><td>200</td></tr>
+    <tr><td>SHA</td><td>2,501</td><td>911</td><td>10,910</td><td>200</td></tr>
+    <tr><td>OR1200</td><td>2,823</td><td>670</td><td>12,336</td><td>200</td></tr>
+    <tr><td>ode</td><td>5,488</td><td>1,316</td><td>20,981</td><td>200</td></tr>
+    <tr><td>dcsm</td><td>9,088</td><td>1,618</td><td>36,912</td><td>200</td></tr>
+    <tr><td>bfly</td><td>9,503</td><td>1,748</td><td>38,582</td><td>200</td></tr>
+  </table>
+  <p><strong>Total:</strong> 1500 input-output image pairs</p>
+</div>
+
+<h2>Related Work References</h2>
+
+<div class="resource-card">
+  <h3>Core Foundation Papers</h3>
+  <table>
+    <tr><th>Reference</th><th>Year</th><th>Venue</th><th>Link</th></tr>
+    <tr><td>Goodfellow et al. "Generative Adversarial Nets" [20]</td><td>2014</td><td>NeurIPS</td><td><a href="https://arxiv.org/abs/1406.2661">arXiv:1406.2661</a></td></tr>
+    <tr><td>Mirza &amp; Osindero "Conditional GANs" [21]</td><td>2014</td><td>arXiv</td><td><a href="https://arxiv.org/abs/1411.1784">arXiv:1411.1784</a></td></tr>
+    <tr><td>Isola et al. "pix2pix: Image-to-Image Translation" [19]</td><td>2016</td><td>arXiv</td><td><a href="https://arxiv.org/abs/1611.07004">arXiv:1611.07004</a></td></tr>
+    <tr><td>Ronneberger et al. "U-Net" [16]</td><td>2015</td><td>MICCAI</td><td><a href="https://arxiv.org/abs/1505.04597">arXiv:1505.04597</a></td></tr>
+    <tr><td>Long et al. "FCN for Semantic Segmentation" [15]</td><td>2015</td><td>CVPR</td><td><a href="https://arxiv.org/abs/1411.4038">arXiv:1411.4038</a></td></tr>
+  </table>
+</div>
+
+<div class="resource-card">
+  <h3>EDA Congestion Prediction</h3>
+  <table>
+    <tr><th>Reference</th><th>Year</th><th>Venue</th><th>Link</th></tr>
+    <tr><td>Xie et al. "RouteNet" [9]</td><td>2018</td><td>ICCAD</td><td><a href="https://doi.org/10.1145/3240765.3240811">DOI</a></td></tr>
+    <tr><td>Pui et al. "FPGA Placement with ML Routability" [6]</td><td>2017</td><td>ICCAD</td><td><a href="https://doi.org/10.1109/ICCAD.2017.8203850">DOI</a></td></tr>
+    <tr><td>Chan et al. "Routability Optimization at sub-14nm" [11]</td><td>2017</td><td>ISPD</td><td><a href="https://doi.org/10.1145/3036669.3036683">DOI</a></td></tr>
+  </table>
+</div>
+
+<h2>Local Files</h2>
+
+<table>
+  <tr><th>File</th><th>Description</th></tr>
+  <tr><td><code>Yu_cGAN_DAC_2019.pdf</code></td><td>Paper PDF (downloaded from arXiv, 3.3 MB, 6 pages)</td></tr>
+  <tr><td><code>day18_cGAN_Congestion_Prediction.md</code></td><td>Comprehensive analysis in Markdown</td></tr>
+  <tr><td><code>day18_cGAN_Congestion_Prediction.html</code></td><td>Interactive HTML analysis with MathJax + Mermaid</td></tr>
+  <tr><td><code>day18_cGAN_Congestion_Prediction_resources.html</code></td><td>This resource index</td></tr>
+</table>
+
+<h2>Key Architecture Summary</h2>
+
+<pre><code>Input: x = stack(im_place, im_connect)  in  R^(256x256x4)
+
+Generator (FCN with skip connections):
+  Encoder: Conv1..Conv8  (256x256x4  -->  1x1x512)
+  Decoder: Deconv1..Deconv8 (1x1x512  -->  256x256x3)
+
+Discriminator:
+  Conv1..Conv5 + Sigmoid  (256x256x6  -->  30x30x1)
+
+Loss: cGAN_loss + lambda * L1_distance  (lambda = 50, beta = 0.1)
+Optimizer: Adam (lr=0.0002, beta1=0.5, beta2=0.999, eps=1e-8)
+Training: 250 epochs, batch size 1, 2-3 hours on 1080Ti
+Inference: ~0.09 seconds per image</code></pre>
+
+<h2>Key Hyperparameters</h2>
+
+<table>
+  <tr><th>Hyperparameter</th><th>Value</th></tr>
+  <tr><td>Image resolution (w)</td><td>256</td></tr>
+  <tr><td>Input channels</td><td>4 (RGB 3 + connectivity 1)</td></tr>
+  <tr><td>Output channels</td><td>3 (RGB heat map)</td></tr>
+  <tr><td>Learning rate</td><td>0.0002</td></tr>
+  <tr><td>Adam beta1</td><td>0.5</td></tr>
+  <tr><td>Adam beta2</td><td>0.999</td></tr>
+  <tr><td>Adam epsilon</td><td>1e-8</td></tr>
+  <tr><td>L1 weight (lambda)</td><td>50</td></tr>
+  <tr><td>Loss ratio (beta)</td><td>0.1</td></tr>
+  <tr><td>Epochs</td><td>250</td></tr>
+  <tr><td>Batch size</td><td>1</td></tr>
+</table>
+
+<p style="margin-top: 2rem; color: #666; font-size: 0.9em;">
+  Generated: 2026-06-11 | Analysis for Day 18 of EDA Paper Deep-Dive Series
+</p>
+
+</body>
+</html>
