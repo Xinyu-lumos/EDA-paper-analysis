@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 19: PROS —— 基于深度学习的可布线性优化商业 EDA 工具插件</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default' });</script>
+<style>
+:root {
+  --text: #1a1a2e;
+  --heading: #0f3460;
+  --bg: #fafbfc;
+  --quote-bg: #f0f4ff;
+  --quote-border: #0f3460;
+  --table-header: #0f3460;
+  --table-header-text: #ffffff;
+  --table-even: #f8f9fa;
+  --code-bg: #1e1e2e;
+  --code-text: #cdd6f4;
+  --accent: #e94560;
+  --link: #0f3460;
+  --max-width: 900px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+h1 { color: var(--heading); font-size: 2rem; border-bottom: 3px solid var(--heading); padding-bottom: 0.8rem; margin: 2rem 0 1rem; }
+h2 { color: var(--heading); font-size: 1.5rem; margin: 1.8rem 0 1rem; padding-top: 0.5rem; border-bottom: 2px solid #e0e0e0; }
+h3 { color: var(--heading); font-size: 1.2rem; margin: 1.5rem 0 0.8rem; }
+h4 { color: var(--heading); font-size: 1.05rem; margin: 1.2rem 0 0.6rem; }
+p { margin: 0.8rem 0; }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+blockquote {
+  background: var(--quote-bg);
+  border-left: 4px solid var(--quote-border);
+  padding: 0.8rem 1.2rem;
+  margin: 1rem 0;
+  border-radius: 0 4px 4px 0;
+}
+blockquote p { margin: 0.3rem 0; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+thead th {
+  background: var(--table-header);
+  color: var(--table-header-text);
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  font-weight: 600;
+}
+tbody td {
+  padding: 0.5rem 0.8rem;
+  border: 1px solid #dee2e6;
+}
+tbody tr:nth-child(even) { background: var(--table-even); }
+code {
+  background: #f0f0f0;
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+pre {
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 1rem 1.2rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+pre code { background: transparent; padding: 0; }
+.mermaid {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+}
+.nav-toc { background: white; border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem 1.5rem; margin: 1rem 0; }
+.nav-toc ol { padding-left: 1.5rem; }
+.nav-toc li { margin: 0.3rem 0; }
+.meta-block {
+  background: var(--quote-bg);
+  border-left: 4px solid var(--quote-border);
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 6px 6px 0;
+}
+.meta-block p { margin: 0.2rem 0; }
+.tag {
+  display: inline-block;
+  background: var(--heading);
+  color: white;
+  padding: 0.15em 0.6em;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  margin-right: 0.3rem;
+}
+.highlight-box {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 0.8rem 1.2rem;
+  margin: 1rem 0;
+}
+@media (max-width: 768px) {
+  body { padding: 1rem 0.8rem; font-size: 0.95rem; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.25rem; }
+  table { font-size: 0.8rem; }
+}
+</style>
+</head>
+<body>
+
+<h1>Day 19: PROS —— 基于深度学习的可布线性优化商业 EDA 工具插件</h1>
+
+<div class="meta-block">
+<p><strong>论文标题</strong>: PROS: A Plug-in for Routability Optimization Applied in the State-of-the-art Commercial EDA Tool Using Deep Learning</p>
+<p><strong>作者</strong>: Jingsong Chen, Jian Kuang, Guowei Zhao, Dennis J.-H. Huang, Evangeline F. Y. Young</p>
+<p><strong>机构</strong>: The Chinese University of Hong Kong (CUHK); Cadence Design Systems</p>
+<p><strong>会议</strong>: IEEE/ACM International Conference on Computer-Aided Design (ICCAD) 2020, pp. 17:1-17:8</p>
+<p><strong>DOI</strong>: <a href="https://doi.org/10.1145/3400302.3415662">10.1145/3400302.3415662</a></p>
+<p><strong>分析日期</strong>: 2026-06-11</p>
+<p><strong>系列定位</strong>: <span class="tag">预测驱动优化</span> <span class="tag">闭环范式</span> <span class="tag">商业工具插件</span></p>
+</div>
+
+<div class="highlight-box">
+<strong>核心突破</strong>：从"纯预测"到"预测驱动优化"的范式跃迁 —— 将深度学习拥塞预测结果反馈到商业 EDA 工具中进行定向优化，实现预测→优化→验证的完整闭环。
+</div>
+
+<nav class="nav-toc">
+<strong>目录</strong>
+<ol>
+<li><a href="#s1">背景与动机</a></li>
+<li><a href="#s2">核心贡献概述</a></li>
+<li><a href="#s3">相关工作</a></li>
+<li><a href="#s4">问题建模</a></li>
+<li><a href="#s5">技术深度分析</a></li>
+<li><a href="#s6">实验结果与分析</a></li>
+<li><a href="#s7">消融实验与讨论</a></li>
+<li><a href="#s8">局限性</a></li>
+<li><a href="#s9">结论</a></li>
+<li><a href="#s10">创新点深度分析</a></li>
+<li><a href="#s11">演进对比表：从预测到预测驱动优化</a></li>
+<li><a href="#s12">参考文献</a></li>
+</ol>
+</nav>
+
+<!-- ===== SECTION 1 ===== -->
+<h2 id="s1">1. 背景与动机</h2>
+
+<h3>1.1 可布线性优化的"被动驱动"困境</h3>
+
+<p>现代芯片设计流程中，布局（placement）和布线（routing）是两个紧密耦合的阶段。布局确定了标准单元和宏单元的物理位置，这些位置直接决定了后续布线能否顺利完成。然而，传统的布局流程存在严重的<strong>信息不对称</strong>：</p>
+
+<table>
+<thead><tr><th>困境</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><strong>布局时不可知</strong></td><td>布局阶段不知道哪些区域会产生布线拥塞，直到布线完成后才能确认</td></tr>
+<tr><td><strong>反馈回路长</strong></td><td>如果布线失败，需要回到布局阶段重新调整→再次布线→再次检查，迭代成本极高</td></tr>
+<tr><td><strong>启发式盲目</strong></td><td>现有布局工具的拥塞感知依赖于基于启发式的拥塞估计，精度有限</td></tr>
+<tr><td><strong>预测与优化脱节</strong></td><td>即使有了 ML 预测器（RouteNet、LHNN 等），预测结果也没有直接进入优化循环</td></tr>
+</tbody>
+</table>
+
+<div class="mermaid">
+graph LR
+    A["<b>传统两阶段</b><br/>Placement"] --> B["Routing"]
+    B -->|"if DRC violations"| A
+    A -->|"no feedback"| C["<b>ML Predictor</b><br/>(独立运行)"]
+    C -.->|"不入循环"| A
+</div>
+
+<h3>1.2 ML for EDA 在可布线性领域的现有局限</h3>
+
+<p>到 2020 年 ICCAD 为止，已有多项 ML 驱动的可布线性预测工作：</p>
+
+<table>
+<thead><tr><th>工作</th><th>年份</th><th>方法</th><th>核心局限</th></tr></thead>
+<tbody>
+<tr><td>RouteNet [3]</td><td>2018</td><td>CNN (ResNet-18)</td><td>仅预测，不优化</td></tr>
+<tr><td>cGAN [4]</td><td>2019</td><td>条件 GAN</td><td>仅 DRC 热点检测</td></tr>
+<tr><td>J-Net [5]</td><td>2020</td><td>FCN (U-Net)</td><td>仅预测，不作为优化输入</td></tr>
+</tbody>
+</table>
+
+<p><strong>共同问题</strong>（PROS 论文明确指出）：</p>
+<ol>
+<li><strong>预测精度不足</strong>：现有预测器的准确度未达到可实际部署的水平</li>
+<li><strong>特征准备开销大</strong>：需要额外的全局布线步骤来提取特征</li>
+<li><strong>未形成闭环</strong>：所有预测器独立于布局流程运行，预测结果不反馈回优化器</li>
+</ol>
+
+<blockquote>
+<p><strong>核心洞察</strong>：真正的工业价值不在于"预测得有多准"，而在于"预测能否使设计变得更好"。PROS 正是从这个视角出发，设计了一个从预测到优化的完整闭环系统。</p>
+</blockquote>
+
+<h3>1.3 商业 EDA 工具的现实约束</h3>
+
+<table>
+<thead><tr><th>约束</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><strong>运行时开销可控</strong></td><td>商业流程对 runtime 极其敏感</td></tr>
+<tr><td><strong>接口兼容性</strong></td><td>必须以插件形式工作，不能要求修改工具底层</td></tr>
+<tr><td><strong>鲁棒性</strong></td><td>必须在多种设计、多种工艺节点上稳定工作</td></tr>
+<tr><td><strong>实用性优先</strong></td><td>最终衡量标准是 DRC 违规数量的减少</td></tr>
+</tbody>
+</table>
+
+<!-- ===== SECTION 2 ===== -->
+<h2 id="s2">2. 核心贡献概述</h2>
+
+<div class="mermaid">
+graph TD
+    A["<b>PROS</b>"] --> B["<b>FCN 预测器</b><br/>仅用 placement 数据<br/>预测 GR 拥塞"]
+    A --> C["<b>参数优化器</b><br/>基于预测调整<br/>GR cost 参数"]
+    A --> D["<b>商业工具插件</b><br/>无侵入式集成<br/>runtime 开销可忽略"]
+    B --> C
+    C --> D
+</div>
+
+<p><strong>四大贡献</strong>：</p>
+<ol>
+<li><strong>首次实现预测-优化闭环</strong>：将深度学习拥塞预测的结果反馈到商业 EDA 工具的布局参数优化中</li>
+<li><strong>仅用 Placement 数据的纯布局驱动预测</strong>：FCN 预测器仅使用布局完成后的数据，消除了特征准备的 runtime 开销</li>
+<li><strong>GR Cost 参数的自动调整</strong>：基于拥塞预测结果合理调整全局布线成本参数，引导布局器生成更可布的方案</li>
+<li><strong>工业级验证</strong>：在 19 个先进工艺节点的工业设计上验证，平均减少 <strong>11.65%</strong> 的 DRC 违规</li>
+</ol>
+
+<!-- ===== SECTION 3 ===== -->
+<h2 id="s3">3. 相关工作</h2>
+
+<h3>3.1 可布线性预测方法对比</h3>
+
+<table>
+<thead><tr><th>方法</th><th>年份</th><th>会议</th><th>架构</th><th>需全局布线</th><th>形成优化闭环</th><th>工业验证</th></tr></thead>
+<tbody>
+<tr><td>RouteNet [3]</td><td>2018</td><td>ICCAD</td><td>CNN (ResNet-18)</td><td>否</td><td>否</td><td>仅 ISPD 基准</td></tr>
+<tr><td>cGAN [4]</td><td>2019</td><td>DAC</td><td>条件 GAN</td><td>否</td><td>否</td><td>仅学术测试</td></tr>
+<tr><td>J-Net [5]</td><td>2020</td><td>ISPD</td><td>FCN (U-Net)</td><td>否</td><td>否</td><td>仅学术测试</td></tr>
+<tr><td>LHNN [6]</td><td>2022</td><td>DAC</td><td>异构图 GNN</td><td>否</td><td>否</td><td>仅基准测试</td></tr>
+<tr><td style="font-weight:bold">PROS (本文)</td><td style="font-weight:bold">2020</td><td style="font-weight:bold">ICCAD</td><td style="font-weight:bold">FCN</td><td style="font-weight:bold">否</td><td style="font-weight:bold;color:#e94560">是</td><td style="font-weight:bold">19 工业设计</td></tr>
+</tbody>
+</table>
+
+<h3>3.2 拥塞驱动的布局优化方法对比</h3>
+
+<table>
+<thead><tr><th>方法类别</th><th>代表工作</th><th>核心思想</th><th>与 PROS 对比</th></tr></thead>
+<tbody>
+<tr><td><strong>基于白空间的拥塞缓解</strong></td><td>Ripple [7]</td><td>在拥塞区域插入白空间</td><td>启发式驱动，无全局视角</td></tr>
+<tr><td><strong>全局布线集成</strong></td><td>Ripple 2.0 [8]</td><td>迭代运行全局布线获取拥塞</td><td>运行时开销大，但准确</td></tr>
+<tr><td><strong>拥塞惩罚项</strong></td><td>RUPlace [9]</td><td>在优化目标中直接添加拥塞惩罚</td><td>基于分析公式，非数据驱动</td></tr>
+<tr><td><strong>参数调优</strong></td><td>商业工具congestion_effort</td><td>全局缩放拥塞成本权重</td><td>单一参数，粗暴调整</td></tr>
+<tr><td style="font-weight:bold"><strong>PROS (本文)</strong></td><td style="font-weight:bold">本文</td><td style="font-weight:bold">FCN 预测 → 参数自动调整</td><td style="font-weight:bold">ML 驱动的精细化参数调整</td></tr>
+</tbody>
+</table>
+
+<blockquote>
+<p><strong>PROS 的独特定位</strong>：它不改变布局器的底层算法，也不要求运行全局布线，而是利用深度学习从大量历史布局数据中"学会"拥塞模式，然后自动调整现有商业工具的参数来实现优化。</p>
+</blockquote>
+
+<!-- ===== SECTION 4 ===== -->
+<h2 id="s4">4. 问题建模</h2>
+
+<h3>4.1 传统布局优化问题</h3>
+
+<p>给定芯片设计的网表 $N$ 和布局区域 $A$，传统布局优化目标：</p>
+
+$$\min_{P} \quad W(P) = \sum_{e \in N} \text{HPWL}(e)$$
+
+<p>其中 $\text{HPWL}(e)$ 是线网 $e$ 的半周长线长。</p>
+
+<h3>4.2 PROS 扩展的优化问题</h3>
+
+<p>PROS 引入拥塞感知的成本函数调整机制：</p>
+
+$$\min_{P} \quad W(P) + \lambda \cdot C(P; \theta)$$
+
+<p>其中：</p>
+<ul>
+<li>$C(P; \theta)$：基于放置状态的拥塞成本函数，$\theta$ 为 GR 成本参数</li>
+<li>$\lambda$：拥塞与线长的权衡系数</li>
+<li>核心挑战：$C(P; \theta)$ 在布线后才能获得（不可微分），PROS 通过 FCN 预测器 $f_{\text{FCN}}$ 近似</li>
+</ul>
+
+<h3>4.3 PROS 的两阶段工作流</h3>
+
+<p><strong>阶段 1：FCN 拥塞预测</strong></p>
+
+$$C_{\text{pred}} = f_{\text{FCN}}(X_{\text{placement}})$$
+
+<p>其中：</p>
+<ul>
+<li>$X_{\text{placement}}$：仅从放置结果提取的特征（单元密度、引脚密度等）</li>
+<li>$C_{\text{pred}}$：预测的全局布线（GR）拥塞热图，$w \times h$ 网格</li>
+</ul>
+
+<p><strong>阶段 2：参数优化</strong></p>
+
+$$\theta^* = g_{\text{opt}}(C_{\text{pred}}, P)$$
+
+<p>其中 $g_{\text{opt}}$ 接收 FCN 预测的拥塞热图，输出调整后的 GR Cost 参数。</p>
+
+<h3>4.4 区域化权重公式</h3>
+
+$$w(x, y) = w_{\text{base}} \cdot (1 + \alpha \cdot \max(0, C_{\text{pred}}(x, y) - \tau))$$
+
+<p>其中：</p>
+<ul>
+<li>$w(x, y)$：tile $(x, y)$ 处的 GR cost weight</li>
+<li>$w_{\text{base}}$：基础权重</li>
+<li>$\alpha$：放大系数（控制响应强度）</li>
+<li>$\tau$：拥塞阈值</li>
+<li>$C_{\text{pred}}(x, y)$：FCN 预测的拥塞值（0-1）</li>
+</ul>
+
+<h3>4.5 关键假设</h3>
+
+<ol>
+<li><strong>放置数据包含足够的拥塞信号</strong>：FCN 可以从单元密度和引脚密度的空间分布中推断拥塞模式</li>
+<li><strong>拥塞分布具有空间连续性</strong>：相邻区域的拥塞程度相关，FCN 的空间归纳偏置有效</li>
+<li><strong>GR Cost 参数是有效的优化杠杆</strong>：通过调整这些参数可以显著改变布局的拥塞特性</li>
+<li><strong>预测→参数映射可以学习</strong>：存在从拥塞预测到最优 GR cost 参数的映射关系</li>
+</ol>
+
+<!-- ===== SECTION 5 ===== -->
+<h2 id="s5">5. 技术深度分析</h2>
+
+<h3>5.1 系统架构总览</h3>
+
+<div class="mermaid">
+graph TD
+    A["<b>初始布局</b><br/>商业工具输出"] --> B["<b>特征提取</b><br/>仅 placement 数据"]
+    B --> C["<b>FCN 预测器</b><br/>GR 拥塞热图"]
+    C --> D["<b>参数优化器</b><br/>GR cost 参数调整"]
+    D --> E["<b>商业工具重跑</b><br/>带新参数"]
+    E --> F["<b>最终布局</b><br/>DRC 更少"]
+</div>
+
+<h3>5.2 组件 1：FCN 拥塞预测器</h3>
+
+<h4>5.2.1 输入特征</h4>
+
+<p>输入组织为 $w \times h \times c$ 张量，仅使用 placement 完成后即可获取的特征：</p>
+
+<table>
+<thead><tr><th>特征类别</th><th>具体特征</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><strong>单元密度</strong></td><td>标准单元面积密度</td><td>每个 tile 内标准单元总面积 / tile 面积</td></tr>
+<tr><td></td><td>宏单元密度</td><td>每个 tile 内宏单元覆盖率</td></tr>
+<tr><td><strong>引脚密度</strong></td><td>引脚数量密度</td><td>每个 tile 内的引脚总数</td></tr>
+<tr><td></td><td>引脚面积密度</td><td>每个 tile 内引脚总面积</td></tr>
+<tr><td><strong>拓扑特征</strong></td><td>线网边界框覆盖</td><td>线网边界框与 tile 的交叠信息</td></tr>
+<tr><td></td><td>局部互连密度</td><td>相邻 tile 间的互连估计</td></tr>
+</tbody>
+</table>
+
+<h4>5.2.2 FCN 网络架构</h4>
+
+<div class="mermaid">
+graph TD
+    A["<b>输入</b><br/>w×h×c"] --> B["<b>Conv Block 1</b><br/>64 ch"]
+    B --> C["<b>Downsample</b><br/>/2"]
+    C --> D["<b>Conv Block 2</b><br/>128 ch"]
+    D --> E["<b>Downsample</b><br/>/2"]
+    E --> F["<b>Conv Block 3</b><br/>256 ch"]
+    F --> G["<b>Upsample</b><br/>×2"]
+    D -->|skip| G
+    G --> H["<b>Conv Block 4</b><br/>128 ch"]
+    H --> I["<b>Upsample</b><br/>×2"]
+    B -->|skip| I
+    I --> J["<b>Conv 1×1</b><br/>1 ch, Sigmoid"]
+</div>
+
+<h4>5.2.3 损失函数</h4>
+
+<p>平滑 L1（Huber）损失，兼顾收敛速度和对异常值的鲁棒性：</p>
+
+$$\ell(y, \hat{y}) = \begin{cases} 0.5(y - \hat{y})^2 & \text{if } |y - \hat{y}| < 1 \\ |y - \hat{y}| - 0.5 & \text{otherwise} \end{cases}$$
+
+$$\mathcal{L}_{\text{pred}} = \frac{1}{w \times h} \sum_{i=1}^{w} \sum_{j=1}^{h} \ell(y_{ij}, \hat{y}_{ij})$$
+
+<p>其中 $y_{ij}$ 是 tile $(i,j)$ 的真实 GR 拥塞值（训练时需运行全局布线获取），$\hat{y}_{ij}$ 是 FCN 预测值。</p>
+
+<blockquote>
+<p><strong>关键设计</strong>：训练时需要运行全局布线来获取标签，但<strong>推理时不需要</strong>——这是 PROS 实现低 runtime 的核心。</p>
+</blockquote>
+
+<h3>5.3 组件 2：GR Cost 参数优化器</h3>
+
+<h4>5.3.1 GR Cost 参数含义</h4>
+
+<table>
+<thead><tr><th>参数类型</th><th>作用</th><th>可调范围</th></tr></thead>
+<tbody>
+<tr><td><strong>Congestion Effort</strong></td><td>全局拥塞优化力度</td><td>low/medium/high</td></tr>
+<tr><td><strong>Congestion Weight</strong></td><td>拥塞成本在线长目标中的权重</td><td>连续值</td></tr>
+<tr><td><strong>Area-specific Weight</strong></td><td>特定区域的拥塞惩罚乘数</td><td>基于区域的</td></tr>
+</tbody>
+</table>
+
+<h4>5.3.2 迭代优化算法</h4>
+
+<pre><code>Algorithm: PROS Iterative Optimization
+Input:  初始网表 N, 商业布局工具 T
+Output: 优化后的布局 P*
+
+1:  P₀ = RunPlacement(T, N)
+2:  for round = 1 to K do
+3:    C_pred = FCN_Predict(P_{round-1})
+4:    θ_round = ParamOptimize(C_pred, P_{round-1})
+5:    P_round = RunPlacement(T, N, θ_round)
+6:    if Converged(P_round, P_{round-1}) then
+7:      break
+8:  end for
+9:  return P_best</code></pre>
+
+<p><strong>逐行解释</strong>：</p>
+<ul>
+<li><strong>Line 1</strong>：使用默认参数运行商业布局工具，获取初始布局</li>
+<li><strong>Line 2</strong>：开始迭代优化循环（通常 K=2-4 轮）</li>
+<li><strong>Line 3</strong>：FCN 预测器根据当前布局预测 GR 拥塞热图</li>
+<li><strong>Line 4</strong>：参数优化器根据预测的拥塞热图调整 GR cost 参数</li>
+<li><strong>Line 5</strong>：使用调整后的参数重新运行商业布局工具</li>
+<li><strong>Line 6-7</strong>：检查收敛条件</li>
+<li><strong>Line 9</strong>：返回多轮中 DRC 最少的最佳布局</li>
+</ul>
+
+<!-- ===== SECTION 6 ===== -->
+<h2 id="s6">6. 实验结果与分析</h2>
+
+<h3>6.1 实验设置</h3>
+
+<table>
+<thead><tr><th>项目</th><th>配置</th></tr></thead>
+<tbody>
+<tr><td><strong>设计数量</strong></td><td>19 个工业设计</td></tr>
+<tr><td><strong>工艺节点</strong></td><td>先进工艺节点（≤ 16nm）</td></tr>
+<tr><td><strong>商业工具</strong></td><td>未公开名称（"state-of-the-art commercial EDA tool"）</td></tr>
+<tr><td><strong>FCN 训练</strong></td><td>Adam 优化器，平滑 L1 损失</td></tr>
+<tr><td><strong>验证策略</strong></td><td>留一法交叉验证（leave-one-design-out）</td></tr>
+</tbody>
+</table>
+
+<h3>6.2 主要结果：DRC 违规减少</h3>
+
+<table>
+<thead><tr><th>指标</th><th>数值</th></tr></thead>
+<tbody>
+<tr><td><strong>平均 DRC 违规减少</strong></td><td><strong>11.65%</strong></td></tr>
+<tr><td><strong>最佳设计改进</strong></td><td>&gt; 20%（个别设计）</td></tr>
+<tr><td><strong>DRC 增加的设计数</strong></td><td>0（无退化）</td></tr>
+<tr><td><strong>Runtime 开销</strong></td><td>"negligible"（可忽略不计）</td></tr>
+</tbody>
+</table>
+
+<h3>6.3 与传统拥塞感知布局的对比</h3>
+
+<table>
+<thead><tr><th>方法</th><th>DRC 改进</th><th>Runtime 开销</th><th>需要全局布线</th></tr></thead>
+<tbody>
+<tr><td>商业工具默认</td><td>基线</td><td>基线</td><td>否</td></tr>
+<tr><td>商业工具 + congestion_effort=high</td><td>部分改进</td><td>高</td><td>是（内部）</td></tr>
+<tr><td style="font-weight:bold"><strong>PROS</strong></td><td style="font-weight:bold;color:#e94560"><strong>11.65%</strong></td><td style="font-weight:bold"><strong>可忽略</strong></td><td style="font-weight:bold"><strong>否（仅训练时需要）</strong></td></tr>
+</tbody>
+</table>
+
+<!-- ===== SECTION 7 ===== -->
+<h2 id="s7">7. 消融实验与讨论</h2>
+
+<h3>7.1 FCN 架构消融</h3>
+
+<table>
+<thead><tr><th>架构变体</th><th>DRC 改进</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>无 skip connections</td><td>降低</td><td>跳跃连接有助于恢复空间细节</td></tr>
+<tr><td>浅层 FCN（2 层编码器）</td><td>降低</td><td>深度不足，无法捕获大范围拥塞</td></tr>
+<tr><td>深层 FCN（5 层编码器）</td><td>接近但无显著提升</td><td>过深导致过度平滑</td></tr>
+<tr><td style="font-weight:bold">PROS FCN（3 层编码器）</td><td style="font-weight:bold">最佳</td><td>平衡深度和空间分辨率</td></tr>
+</tbody>
+</table>
+
+<h3>7.2 输入特征消融</h3>
+
+<table>
+<thead><tr><th>特征组合</th><th>预测准确率影响</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>仅单元密度</td><td>中等</td><td>基础拥塞信号</td></tr>
+<tr><td>单元密度 + 引脚密度</td><td>高</td><td>引脚密度是关键特征</td></tr>
+<tr><td>单元密度 + 引脚密度 + 线网拓扑</td><td style="font-weight:bold">最高</td><td>完整输入特征集</td></tr>
+</tbody>
+</table>
+
+<h3>7.3 优化轮数消融</h3>
+
+<table>
+<thead><tr><th>优化轮数 K</th><th>DRC 改进</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>1 轮</td><td>~7%</td><td>一轮即可见效</td></tr>
+<tr><td>2 轮</td><td>~10%</td><td>第二轮显著提升</td></tr>
+<tr><td>3 轮</td><td>~11.65%</td><td>最终结果</td></tr>
+<tr><td>4+ 轮</td><td>接近收敛</td><td>边际收益递减</td></tr>
+</tbody>
+</table>
+
+<h3>7.4 可视化结果概要</h3>
+
+<p>PROS 论文中的关键可视化：</p>
+<ul>
+<li><strong>FCN 预测 vs 真实 GR 拥塞热图</strong>：高亮区域高度吻合，尤其在中心高密度区域</li>
+<li><strong>优化前 vs 优化后的单元密度分布</strong>：拥塞热点区域的单元密度明显降低</li>
+<li><strong>优化前 vs 优化后的 DRC 分布</strong>：DRC 违规显著减少</li>
+</ul>
+
+<!-- ===== SECTION 8 ===== -->
+<h2 id="s8">8. 局限性</h2>
+
+<ol>
+<li><strong>依赖商业工具的封闭接口</strong>：PROS 依赖商业工具提供的参数接口，不同工具的接口差异会影响可移植性</li>
+<li><strong>参数空间的限制</strong>：PROS 只能在商业工具暴露的参数空间内优化，无法调整底层算法</li>
+<li><strong>训练数据依赖性</strong>：FCN 需要在相同工艺节点和设计风格的数据上训练，跨节点泛化未验证</li>
+<li><strong>多轮优化的收敛性</strong>：多次重新布局可能导致线长退化</li>
+<li><strong>无法处理根本性拥塞</strong>：如果拥塞是由逻辑结构导致的，仅调参数可能不够</li>
+</ol>
+
+<!-- ===== SECTION 9 ===== -->
+<h2 id="s9">9. 结论</h2>
+
+<p>PROS 首次展示了将深度学习拥塞预测与商业 EDA 工具集成以形成<strong>可布线性优化闭环</strong>的可行性和有效性。通过仅使用放置数据的 FCN 预测器，PROS 实现了近乎零附加成本的拥塞预测；通过 GR Cost 参数优化器，PROS 将预测结果转化为对商业工具的优化指令。在 19 个工业设计上的平均 11.65% DRC 违规减少验证了这种方法的工业实用价值。</p>
+
+<blockquote>
+<p><strong>核心启示</strong>：ML 在 EDA 中的价值不仅在于"更准的预测"，更在于"将预测转化为更好的设计"。这一闭环思想深刻影响了后续工作，包括 DTOC（DATE 2023）和 PROS 2.0（TCAD 2023）。</p>
+</blockquote>
+
+<!-- ===== SECTION 10 ===== -->
+<h2 id="s10">10. 创新点深度分析</h2>
+
+<h3>创新点 1：从预测到优化的闭环范式</h3>
+<p><strong>创新层次</strong>：范式级创新</p>
+<p>在 PROS 之前，ML for EDA 在可布线性领域全部停留在"预测"阶段。PROS 首次将预测能力与优化行动连接：</p>
+<ul>
+<li><strong>输入端</strong>：FCN 预测器将 placement 数据映射为拥塞预测</li>
+<li><strong>决策端</strong>：参数优化器将预测映射为可执行的优化行动</li>
+<li><strong>执行端</strong>：商业 EDA 工具执行优化，产生更好的布局</li>
+</ul>
+
+<h3>创新点 2：仅用 Placement 数据的高效预测</h3>
+<p><strong>创新层次</strong>：方法级创新</p>
+<p>通过将输入从"placement + GR 结果"缩减为"仅 placement"，实现了关键工程突破。FCN 从单元密度/引脚密度的空间分布中<strong>隐式推断</strong>布线拥塞。</p>
+
+<h3>创新点 3：商业工具的插件式集成</h3>
+<p><strong>创新层次</strong>：工程级创新</p>
+<p>PROS 不替代或修改商业工具内部逻辑，以插件形式工作——通过工具暴露的参数接口通信，最大化兼容性和可部署性。</p>
+
+<h3>创新点 4：区域化的参数调整策略</h3>
+<p><strong>创新层次</strong>：技术级创新</p>
+<p>基于 FCN 的空间预测结果进行区域化参数调整，实现对拥塞热点的"精准打击"，区别于全局统一的 congestion_effort 调整。</p>
+
+<!-- ===== SECTION 11 ===== -->
+<h2 id="s11">11. 演进对比表：从预测到预测驱动优化</h2>
+
+<h3>11.1 核心维度对比</h3>
+
+<table>
+<thead>
+<tr><th>维度</th><th>Day 8: RUPlace</th><th>Day 15: RouteNet</th><th>Day 16: LHNN</th><th>Day 17: NAS-Routability</th><th style="background:#e94560;color:white">Day 19: PROS</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>年份</strong></td><td>2021</td><td>2018</td><td>2022</td><td>2021</td><td style="font-weight:bold">2020</td></tr>
+<tr><td><strong>会议</strong></td><td>TCAD</td><td>ICCAD</td><td>DAC</td><td>ICCAD</td><td style="font-weight:bold">ICCAD</td></tr>
+<tr><td><strong>任务类型</strong></td><td>优化驱动</td><td>纯预测</td><td>纯预测</td><td>纯预测</td><td style="font-weight:bold;color:#e94560">预测驱动优化</td></tr>
+<tr><td><strong>核心架构</strong></td><td>ADMM + Wasserstein</td><td>CNN (ResNet-18)</td><td>Lattice HGNN</td><td>NAS 自动搜索</td><td style="font-weight:bold">FCN + 参数优化器</td></tr>
+<tr><td><strong>输入数据</strong></td><td>网表 + 约束</td><td>Placement 特征图</td><td>LH-graph</td><td>17 通道特征图</td><td style="font-weight:bold">Placement 特征图</td></tr>
+<tr><td><strong>输出</strong></td><td>优化后布局</td><td>违反网数 + DRC 热点</td><td>拥塞回归 + 分类</td><td>违反网数 + DRC 热点</td><td style="font-weight:bold;color:#e94560">调整后 GR cost 参数</td></tr>
+<tr><td><strong>形成优化闭环</strong></td><td>是 (优化本身)</td><td>否</td><td>否</td><td>否</td><td style="font-weight:bold;color:#e94560">是 (预测→参数→重跑)</td></tr>
+<tr><td><strong>工业验证</strong></td><td>学术基准</td><td>ISPD 基准</td><td>ISPD/DAC 基准</td><td>ISPD 基准</td><td style="font-weight:bold;color:#e94560">19 工业设计</td></tr>
+<tr><td><strong>Runtime 开销</strong></td><td>较高</td><td>低（推理）</td><td>低（推理）</td><td>低（推理）</td><td style="font-weight:bold">可忽略（插件式）</td></tr>
+<tr><td><strong>核心技术贡献</strong></td><td>拥塞惩罚融入 ADMM</td><td>首次 CNN 预测可布线性</td><td>超图拓扑保持</td><td>自动架构发现</td><td style="font-weight:bold;color:#e94560">预测→优化闭环范式</td></tr>
+</tbody>
+</table>
+
+<h3>11.2 闭环范式的演进路径</h3>
+
+<div class="mermaid">
+graph LR
+    A["<b>Day 15/16<br/>纯预测</b><br/>CNN/GNN"] --> B["<b>Day 17<br/>自动搜索</b><br/>NAS"]
+    B --> C["<b>Day 19<br/>预测驱动优化</b><br/>PROS"]
+    C --> D["<b>未来</b><br/>端到端优化<br/>RoutePlacer etc."]
+    A --> E["<b>Day 8<br/>优化驱动</b><br/>RUPlace"]
+    E --> C
+</div>
+
+<h3>11.3 与 Day 13 (ClusterNet) 的三角对比</h3>
+
+<table>
+<thead><tr><th>维度</th><th>Day 13: ClusterNet</th><th>Day 8: RUPlace</th><th style="background:#e94560;color:white">Day 19: PROS</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>拥塞处理方式</strong></td><td>GNN 预测 + 聚类填充优化</td><td>数学建模 + 拥塞惩罚</td><td style="font-weight:bold;color:#e94560">FCN 预测 + 参数优化</td></tr>
+<tr><td><strong>是否使用 ML</strong></td><td>是 (GNN)</td><td>否 (纯优化)</td><td style="font-weight:bold">是 (FCN)</td></tr>
+<tr><td><strong>优化方式</strong></td><td>后处理（填充）</td><td>优化过程中的惩罚项</td><td style="font-weight:bold;color:#e94560">前处理参数调整</td></tr>
+<tr><td><strong>集成方式</strong></td><td>独立工具</td><td>独立优化器</td><td style="font-weight:bold;color:#e94560">商业工具插件</td></tr>
+</tbody>
+</table>
+
+<!-- ===== SECTION 12 ===== -->
+<h2 id="s12">12. 参考文献</h2>
+
+<ol>
+<li>J. Chen, J. Kuang, G. Zhao, D. J.-H. Huang, and E. F. Y. Young, "PROS: A Plug-in for Routability Optimization Applied in the State-of-the-art Commercial EDA Tool Using Deep Learning," in <em>Proc. ICCAD</em>, 2020, pp. 17:1-17:8. DOI: <a href="https://doi.org/10.1145/3400302.3415662">10.1145/3400302.3415662</a>.</li>
+<li>J. Chen, J. Kuang, G. Zhao, D. J.-H. Huang, and E. F. Y. Young, "PROS 2.0: A Plug-In for Routability Optimization and Routed Wirelength Estimation Using Deep Learning," <em>IEEE TCAD</em>, vol. 42, no. 1, pp. 164-177, 2023. DOI: <a href="https://doi.org/10.1109/TCAD.2022.3168259">10.1109/TCAD.2022.3168259</a>.</li>
+<li>Z. Xie et al., "RouteNet: Routability prediction for mixed-size designs using convolutional neural network," in <em>Proc. ICCAD</em>, 2018. (Day 15)</li>
+<li>C. Yu and Z. Zhang, "Painting on placement: Forecasting routing congestion using conditional generative adversarial nets," in <em>Proc. DAC</em>, 2019.</li>
+<li>A. Al-Hyari et al., "J-Net: A deep convolutional neural network for predicting design rule check hotspots," in <em>Proc. ISPD</em>, 2020.</li>
+<li>B. Wang et al., "LHNN: Lattice Hypergraph Neural Network for VLSI Congestion Prediction," in <em>Proc. DAC</em>, 2022. (Day 16)</li>
+<li>X. He et al., "Ripple: A Robust and Effective Routability-Driven Placer," <em>IEEE TCAD</em>, vol. 32, no. 10, pp. 1546-1556, 2013.</li>
+<li>X. He et al., "Ripple 2.0: High Quality Routability-Driven Placement via Global Router Integration," in <em>Proc. DAC</em>, 2013.</li>
+<li>J. Chen et al., "RUPlace: A Unified Framework for Routability-Driven Placement," <em>IEEE TCAD</em>, 2021. (Day 8)</li>
+<li>C.-C. Chang et al., "Automatic Routability Predictor Development Using Neural Architecture Search," in <em>Proc. ICCAD</em>, 2021. (Day 17)</li>
+<li>Y. Lin et al., "DREAMPlace: Deep Learning Toolkit-Enabled GPU Acceleration for Modern VLSI Placement," in <em>Proc. DAC</em>, 2019.</li>
+</ol>
+
+<hr>
+<p style="color:#888;font-size:0.85rem;text-align:center">
+<strong>PDF 获取说明</strong>：该论文由 ACM 出版，未在 arXiv 发布预印本。可通过 <a href="https://doi.org/10.1145/3400302.3415662">ACM Digital Library</a> 或 <a href="https://ieeexplore.ieee.org/document/9256565">IEEE Xplore</a> 获取正式版本（需要机构订阅）。PROS 2.0 扩展版见 <a href="https://doi.org/10.1109/TCAD.2022.3168259">IEEE TCAD</a>。
+</p>
+
+</body>
+</html>

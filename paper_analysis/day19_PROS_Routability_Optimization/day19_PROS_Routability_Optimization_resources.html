@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 19: PROS 资源索引</title>
+<style>
+:root {
+  --text: #1a1a2e;
+  --heading: #0f3460;
+  --bg: #fafbfc;
+  --card-bg: #ffffff;
+  --accent: #e94560;
+  --border: #e0e0e0;
+  --tag-bg: #0f3460;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+h1 { color: var(--heading); font-size: 2rem; border-bottom: 3px solid var(--heading); padding-bottom: 0.8rem; margin: 1.5rem 0; }
+h2 { color: var(--heading); font-size: 1.3rem; margin: 1.5rem 0 0.8rem; }
+h3 { font-size: 1.1rem; margin: 1.2rem 0 0.6rem; }
+a { color: var(--heading); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.2rem 1.5rem;
+  margin: 1rem 0;
+}
+.card h3 { margin-top: 0; }
+.tag {
+  display: inline-block;
+  background: var(--tag-bg);
+  color: white;
+  padding: 0.15em 0.6em;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  margin-right: 0.3rem;
+}
+.resource-list { list-style: none; }
+.resource-list li { margin: 0.8rem 0; padding: 0.6rem; background: #f8f9fa; border-radius: 4px; }
+.warning-box {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  margin: 1rem 0;
+}
+.info-box {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  margin: 1rem 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+thead th {
+  background: var(--heading);
+  color: white;
+  padding: 0.5rem 0.8rem;
+  text-align: left;
+}
+tbody td {
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--border);
+}
+tbody tr:nth-child(even) { background: #f8f9fa; }
+</style>
+</head>
+<body>
+
+<h1>Day 19: PROS —— 资源索引</h1>
+
+<div class="card">
+<h3>分析概述</h3>
+<p><strong>论文</strong>: PROS: A Plug-in for Routability Optimization Applied in the State-of-the-art Commercial EDA Tool Using Deep Learning</p>
+<p><strong>作者</strong>: Jingsong Chen, Jian Kuang, Guowei Zhao, Dennis J.-H. Huang, Evangeline F. Y. Young</p>
+<p><strong>会议</strong>: ICCAD 2020, pp. 17:1-17:8</p>
+<p><strong>主题</strong>: <span class="tag">预测驱动优化</span> <span class="tag">闭环范式</span> <span class="tag">商业工具插件</span></p>
+</div>
+
+<div class="warning-box">
+<strong>PDF 获取状态</strong>: 该论文由 ACM 出版，受版权保护，未在 arXiv 等开放获取平台发布预印本。以下提供多个访问途径。
+</div>
+
+<h2>正式出版物访问</h2>
+
+<ul class="resource-list">
+<li>
+<strong>ACM Digital Library</strong><br>
+DOI: <a href="https://doi.org/10.1145/3400302.3415662">10.1145/3400302.3415662</a><br>
+<a href="https://dl.acm.org/doi/10.1145/3400302.3415662">https://dl.acm.org/doi/10.1145/3400302.3415662</a><br>
+<span style="color:#856404">需要机构订阅或个人购买</span>
+</li>
+<li>
+<strong>IEEE Xplore</strong><br>
+IEEE ID: <a href="https://ieeexplore.ieee.org/document/9256565">9256565</a><br>
+<a href="https://ieeexplore.ieee.org/document/9256565">https://ieeexplore.ieee.org/document/9256565</a><br>
+<span style="color:#856404">需要机构订阅或个人购买</span>
+</li>
+<li>
+<strong>DBLP</strong><br>
+<a href="https://dblp.org/rec/conf/iccad/Chen0ZHY20">https://dblp.org/rec/conf/iccad/Chen0ZHY20</a><br>
+<span style="color:#28a745">免费访问元数据</span>
+</li>
+</ul>
+
+<h2>扩展版本（PROS 2.0）</h2>
+
+<div class="info-box">
+<strong>PROS 2.0: A Plug-In for Routability Optimization and Routed Wirelength Estimation Using Deep Learning</strong><br>
+IEEE TCAD, vol. 42, no. 1, pp. 164-177, 2023<br>
+DOI: <a href="https://doi.org/10.1109/TCAD.2022.3168259">10.1109/TCAD.2022.3168259</a><br>
+<a href="https://dblp.org/rec/journals/tcad/ChenKZHY23">DBLP 条目</a>
+</div>
+
+<h2>元数据摘要（来自 OpenAlex）</h2>
+
+<table>
+<thead><tr><th>属性</th><th>值</th></tr></thead>
+<tbody>
+<tr><td>被引次数</td><td>35+ (OpenAlex), 82+ (Google Scholar)</td></tr>
+<tr><td>开放获取</td><td>否 (closed access)</td></tr>
+<tr><td>作者机构</td><td>CUHK + Cadence Design Systems</td></tr>
+<tr><td>页码</td><td>17:1-17:8</td></tr>
+<tr><td>关键词</td><td>Routability Optimization, Deep Learning, Commercial EDA, FCN, GR Congestion, DRC</td></tr>
+</tbody>
+</table>
+
+<h2>相关论文</h2>
+
+<ul class="resource-list">
+<li>
+<strong>RoutePlacer (KDD 2024) —— 端到端可布线性感知布局</strong><br>
+arXiv: <a href="https://arxiv.org/abs/2406.02651">2406.02651</a> (开放获取)<br>
+使用 GNN 作为可布线性可微分代理，实现梯度驱动的端到端优化。可视为 PROS 闭环思想的进一步演进。<br>
+<span style="color:#28a745">PDF 已下载至本地目录</span>
+</li>
+<li>
+<strong>DTOC (DATE 2023) —— 时序优化插件</strong><br>
+将 PROS 的"预测→优化"闭环范式从可布线性扩展到时序优化领域。
+</li>
+<li>
+<strong>NAS-Routability (ICCAD 2021)</strong><br>
+📄 本地分析: <a href="../day17_NAS_Routability_Predictor/day17_NAS_Routability_Predictor.md">Day 17 MD</a> | <a href="../day17_NAS_Routability_Predictor/day17_NAS_Routability_Predictor.html">Day 17 HTML</a>
+</li>
+</ul>
+
+<h2>作者信息</h2>
+
+<ul class="resource-list">
+<li>
+<strong>Evangeline F. Y. Young</strong> (通讯作者)<br>
+Professor, CUHK Department of CSE<br>
+主页: <a href="https://www.cse.cuhk.edu.hk/~fyyoung/">https://www.cse.cuhk.edu.hk/~fyyoung/</a><br>
+IEEE Fellow, 多次 ICCAD/ISPD Contest 冠军<br>
+研究方向: VLSI CAD, 算法, 组合优化, AI
+</li>
+<li>
+<strong>Jian Kuang</strong><br>
+CUHK (出现在 Ripple、Ripple 2.0 等合作中)
+</li>
+<li>
+<strong>Dennis J.-H. Huang</strong><br>
+Cadence Design Systems (工业界合作者)
+</li>
+</ul>
+
+<h2>推荐阅读顺序（系列上下文）</h2>
+
+<table>
+<thead><tr><th>顺序</th><th>Day</th><th>论文</th><th>核心贡献</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Day 15</td><td>RouteNet (ICCAD 2018)</td><td>首次 CNN 预测可布线性</td></tr>
+<tr><td>2</td><td>Day 16</td><td>LHNN (DAC 2022)</td><td>图神经网络捕获格超图拓扑</td></tr>
+<tr><td>3</td><td>Day 17</td><td>NAS-Routability (ICCAD 2021)</td><td>自动搜索预测器架构</td></tr>
+<tr><td>4</td><td>Day 8</td><td>RUPlace (TCAD 2021)</td><td>优化驱动布局，拥塞惩罚建模</td></tr>
+<tr><td>5</td><td>Day 13</td><td>ClusterNet (ICCAD 2023)</td><td>GNN 预测 + 聚类填充优化</td></tr>
+<tr><td style="font-weight:bold">6</td><td style="font-weight:bold;background:#f0f4ff">Day 19</td><td style="font-weight:bold;background:#f0f4ff">PROS (ICCAD 2020)</td><td style="font-weight:bold;background:#f0f4ff">预测驱动优化闭环 + 商业插件</td></tr>
+</tbody>
+</table>
+
+<h2>本地文件</h2>
+
+<ul class="resource-list">
+<li>📄 <strong>MD 分析</strong>: <code>day19_PROS_Routability_Optimization.md</code></li>
+<li>🌐 <strong>HTML 分析</strong>: <code>day19_PROS_Routability_Optimization.html</code> (MathJax + Mermaid)</li>
+<li>📑 <strong>资源 HTML</strong>: 当前文件</li>
+<li>📄 <strong>RoutePlacer PDF</strong>: <code>RoutePlacer.pdf</code> (arXiv:2406.02651, 开放获取，作为参考)</li>
+</ul>
+
+<hr>
+<p style="color:#888;font-size:0.85rem;text-align:center">
+生成日期: 2026-06-11 | Day 19/365 EDA Paper Analysis Series
+</p>
+
+</body>
+</html>

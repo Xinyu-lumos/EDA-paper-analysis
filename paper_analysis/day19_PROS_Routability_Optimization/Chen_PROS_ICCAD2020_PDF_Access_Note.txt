@@ -1,0 +1,21 @@
+PROS: A Plug-in for Routability Optimization Applied in the State-of-the-art Commercial EDA Tool Using Deep Learning
+Jingsong Chen, Jian Kuang, Guowei Zhao, Dennis J.-H. Huang, Evangeline F. Y. Young
+ICCAD 2020, pp. 17:1-17:8
+
+PDF ACCESS NOTE
+===============
+This paper is published by ACM and is behind a paywall. It is not available on arXiv or any open-access repository.
+
+To access the full PDF:
+1. ACM Digital Library (requires institutional subscription): https://doi.org/10.1145/3400302.3415662
+2. IEEE Xplore (requires institutional subscription): https://ieeexplore.ieee.org/document/9256565
+
+A full analysis based on available metadata (abstract, methodology description from citations,
+OpenAlex metadata, and Google Scholar) is provided in the accompanying MD and HTML analysis files.
+
+The extended version (PROS 2.0) is available at IEEE TCAD:
+https://doi.org/10.1109/TCAD.2022.3168259
+
+A supplementary open-access paper (RoutePlacer, KDD 2024, arXiv:2406.02651) that represents
+the next step in the prediction-to-optimization closed-loop paradigm is also included in this directory.
+
