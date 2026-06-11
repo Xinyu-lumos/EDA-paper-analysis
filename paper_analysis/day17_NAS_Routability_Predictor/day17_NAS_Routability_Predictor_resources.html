@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 17: NAS-Routability 代码资源</title>
+<style>
+  :root {
+    --text: #1a1a2e;
+    --heading: #0f3460;
+    --bg: #fafbfc;
+    --quote-bg: #f0f4ff;
+    --quote-border: #0f3460;
+    --th-bg: #0f3460;
+    --th-fg: #ffffff;
+    --even-row: #f8f9fa;
+    --code-bg: #1e1e2e;
+    --code-fg: #cdd6f4;
+    --card-bg: #e8eaf6;
+    --accent: #5c6bc0;
+    --border: #e0e0e0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.8;
+    font-size: 15px;
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { color: var(--heading); font-size: 1.6rem; margin: 1.5rem 0 1rem; border-bottom: 3px solid var(--accent); padding-bottom: 0.5rem; }
+  h2 { color: var(--heading); font-size: 1.3rem; margin: 1.5rem 0 0.8rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { color: var(--accent); font-size: 1.1rem; margin: 1rem 0 0.5rem; }
+  p { margin: 0.5rem 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  blockquote {
+    background: var(--quote-bg);
+    border-left: 4px solid var(--quote-border);
+    padding: 0.8rem 1.2rem;
+    margin: 1rem 0;
+    border-radius: 0 6px 6px 0;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.92rem; }
+  th { background: var(--th-bg); color: var(--th-fg); padding: 0.6rem 0.8rem; text-align: left; }
+  td { padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border); }
+  tr:nth-child(even) td { background: var(--even-row); }
+  pre { background: var(--code-bg); color: var(--code-fg); padding: 1rem; border-radius: 8px; overflow-x: auto; margin: 1rem 0; font-size: 0.88rem; line-height: 1.6; }
+  code { font-family: 'Consolas', 'Fira Code', monospace; background: #e8eaf6; padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; }
+  .repo-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 1.2rem 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-left: 4px solid var(--accent);
+  }
+  .repo-card h3 { margin-top: 0; }
+  .key-dir {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1565c0;
+    padding: 0.1em 0.5em;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    font-size: 0.88rem;
+  }
+  .key-file {
+    display: inline-block;
+    background: #fff3e0;
+    color: #e65100;
+    padding: 0.1em 0.5em;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    font-size: 0.88rem;
+  }
+  .badge {
+    display: inline-block;
+    padding: 0.15em 0.6em;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .badge-stars { background: #fff9c4; color: #f57f17; }
+  .badge-lang { background: #e8f5e9; color: #2e7d32; }
+  .badge-no-repo { background: #ffebee; color: #c62828; }
+  @media (max-width: 768px) {
+    .container { padding: 1rem; }
+    table { font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Day 17: NAS-Routability 代码资源</h1>
+
+<h2>1. 官方代码仓库</h2>
+
+<div class="repo-card">
+  <h3>⚠️ 本文未发布官方代码</h3>
+  <p><span class="badge badge-no-repo">无开源仓库</span></p>
+  <p>论文 "Automatic Routability Predictor Development Using Neural Architecture Search" (ICCAD 2021) 未发布官方代码仓库。arXiv 页面 (2012.01737) 亦未附带代码链接。</p>
+  <p>如需复现，需基于论文描述自行实现，或参考下方相关项目。</p>
+</div>
+
+<h2>2. 基础框架：ProxylessNAS</h2>
+
+<div class="repo-card">
+  <h3>MIT-HAN-LAB/ProxylessNAS</h3>
+  <p><a href="https://github.com/MIT-HAN-LAB/ProxylessNAS" target="_blank">https://github.com/MIT-HAN-LAB/ProxylessNAS</a></p>
+  <p><span class="badge badge-stars">⭐ 2,400+</span> <span class="badge badge-lang">Python</span></p>
+  <p>本文 NAS 方法的理论基础。ProxylessNAS 提出"直接在目标数据集和硬件上搜索"的方法，本文在其基础上发展为图搜索空间 + 子图采样策略。</p>
+</div>
+
+<h3>关键目录/文件</h3>
+
+<table>
+<tr><th>路径</th><th>功能</th></tr>
+<tr><td><span class="key-dir">proxylessnas/</span></td><td>核心搜索框架代码</td></tr>
+<tr><td><span class="key-dir">proxylessnas/model_builder.py</span></td><td>模型构建器，定义搜索空间</td></tr>
+<tr><td><span class="key-dir">proxylessnas/search.py</span></td><td>NAS 搜索主循环</td></tr>
+<tr><td><span class="key-dir">proxylessnas/ops.py</span></td><td>候选操作定义（卷积、空洞卷积等）</td></tr>
+<tr><td><span class="key-file">train.py</span></td><td>训练脚本</td></tr>
+</table>
+
+<h2>3. 相关基准：CircuitNet</h2>
+
+<div class="repo-card">
+  <h3>CircuitNet — EDA 预测数据集与基准</h3>
+  <p><a href="https://github.com/circuitnet/CircuitNet" target="_blank">https://github.com/circuitnet/CircuitNet</a></p>
+  <p><span class="badge badge-lang">Python</span></p>
+  <p>通用 EDA 预测数据集与基准框架，涵盖可布线性预测、拥塞预测、DRC 热点检测等任务。提供标准数据格式和评估脚本。</p>
+</div>
+
+<h2>4. 相关 EDA 拥塞预测项目</h2>
+
+<div class="repo-card">
+  <h3>LHNN — Lattice Hypergraph Neural Network</h3>
+  <p><a href="https://github.com/TorchTNTeam/LHNN" target="_blank">GitHub (LHNN)</a></p>
+  <p><span class="badge badge-lang">Python / PyTorch</span></p>
+  <p>Day 16 分析的 LHNN 论文代码。格超图神经网络用于拥塞预测，与本文形成 GNN vs NAS-CNN 的对比。</p>
+</div>
+
+<h2>5. 复现指南</h2>
+
+<h3>5.1 核心模块复现步骤</h3>
+
+<pre><code># 1. 克隆 ProxylessNAS 作为基础框架
+git clone https://github.com/MIT-HAN-LAB/ProxylessNAS.git
+cd ProxylessNAS
+
+# 2. 安装依赖
+pip install torch torchvision
+pip install -r requirements.txt
+
+# 3. 自定义搜索空间（需自行实现）
+# - 修改 proxylessnas/ops.py 添加：
+#   · 空洞卷积 (atrous conv, dilation=2)
+#   · 混合卷积 (MixConv, kernel [7,9,11,13])
+# - 修改 model_builder.py 定义 Guide-DAG 结构
+# - 实现子图采样算法 (Algorithm 2)
+# - 实现边权更新算法 (Algorithm 1)
+
+# 4. 特征提取（需自行实现）
+# - 17 通道特征: 5 单元密度 + 12 线密度
+# - 需 Cadence Innovus 或 OpenROAD 生成布局数据
+
+# 5. 搜索
+python search.py --task violated_net_count  # 或 drc_hotspot
+
+# 6. 训练最终模型
+python train.py --arch &lt;nas_output_arch&gt;</code></pre>
+
+<h3>5.2 关键实现注意事项</h3>
+
+<table>
+<tr><th>模块</th><th>实现要点</th></tr>
+<tr><td>Guide-DAG</td><td>7 顶点全连接 DAG，每个顶点对应一个候选操作</td></tr>
+<tr><td>伪顶点</td><td>添加 v_0 代表下采样层，连接到所有其他顶点</td></tr>
+<tr><td>子图采样</td><td>Softmax 归一化边权 → 概率采样 → 构建 sampled-DAG</td></tr>
+<tr><td>边权更新</td><td>w_e = w_e · exp(α(μ - β))，β = top-5 平均</td></tr>
+<tr><td>特征提取</td><td>224×224 分辨率，17 通道，含 4 种飞行线</td></tr>
+<tr><td>训练超参</td><td>Adam, lr=0.0005, batch=48, 45 epochs, L2=1e-5</td></tr>
+</table>
+
+<h2>6. 论文 PDF 链接</h2>
+
+<table>
+<tr><th>来源</th><th>链接</th></tr>
+<tr><td>本地 PDF</td><td><a href="Chang_NAS_Routability_ICCAD2021.pdf">Chang_NAS_Routability_ICCAD2021.pdf</a></td></tr>
+<tr><td>arXiv</td><td><a href="https://arxiv.org/abs/2012.01737" target="_blank">arXiv:2012.01737</a></td></tr>
+<tr><td>IEEE DL</td><td><a href="https://doi.org/10.1109/ICCAD51958.2021.9643483" target="_blank">DOI: 10.1109/ICCAD51958.2021.9643483</a></td></tr>
+</table>
+
+</div>
+</body>
+</html>
