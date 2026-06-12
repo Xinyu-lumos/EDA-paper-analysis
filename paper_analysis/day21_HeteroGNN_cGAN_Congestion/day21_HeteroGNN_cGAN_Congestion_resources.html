@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 21 Resources: HeteroGNN-embedded cGAN</title>
+<style>
+:root {
+  --bg: #fafbfc;
+  --text: #1a1a2e;
+  --title-color: #0f3460;
+  --card-bg: #e8eaf6;
+  --code-bg: #1e1e2e;
+  --code-text: #cdd6f4;
+  --table-header: #0f3460;
+  --table-header-text: #ffffff;
+  --table-even: #f8f9fa;
+  --border-color: #dee2e6;
+  --link-color: #0f3460;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+h1 { font-size: 1.8rem; color: var(--title-color); margin: 2rem 0 1rem; border-bottom: 3px solid var(--title-color); padding-bottom: 0.5rem; }
+h2 { font-size: 1.4rem; color: var(--title-color); margin: 1.8rem 0 0.8rem; border-bottom: 2px solid var(--title-color); padding-bottom: 0.3rem; }
+h3 { font-size: 1.15rem; color: var(--title-color); margin: 1.2rem 0 0.5rem; }
+a { color: var(--link-color); text-decoration: none; }
+a:hover { text-decoration: underline; }
+p { margin: 0.8rem 0; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.92rem; }
+th { background: var(--table-header); color: var(--table-header-text); padding: 0.6rem 0.8rem; text-align: left; }
+td { padding: 0.5rem 0.8rem; border: 1px solid var(--border-color); }
+tr:nth-child(even) { background: var(--table-even); }
+code {
+  background: var(--code-bg); color: var(--code-text);
+  padding: 0.15em 0.4em; border-radius: 3px;
+  font-family: 'Fira Code', 'Consolas', monospace; font-size: 0.9em;
+}
+pre {
+  background: var(--code-bg); color: var(--code-text);
+  padding: 1rem 1.2rem; border-radius: 6px; overflow-x: auto;
+  margin: 1rem 0; font-size: 0.85rem; line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+.resource-card {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 1.2rem 1.5rem;
+  margin: 1rem 0;
+}
+.resource-card h3 { margin-top: 0; }
+.warning-box {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin: 1rem 0;
+}
+.warning-box strong { color: #856404; }
+.info-box {
+  background: #d1ecf1;
+  border: 1px solid #0c5460;
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin: 1rem 0;
+}
+.info-box strong { color: #0c5460; }
+ul { padding-left: 2rem; margin: 0.5rem 0; }
+li { margin: 0.3rem 0; }
+@media (max-width: 600px) {
+  body { padding: 1rem 0.8rem; }
+  h1 { font-size: 1.4rem; }
+}
+</style>
+</head>
+<body>
+
+<h1>Day 21 Resources: HeteroGNN-embedded cGAN</h1>
+
+<div class="info-box">
+<strong>分析文件:</strong> <a href="day21_HeteroGNN_cGAN_Congestion.md">day21_HeteroGNN_cGAN_Congestion.md</a> | <a href="day21_HeteroGNN_cGAN_Congestion.html">day21_HeteroGNN_cGAN_Congestion.html</a>
+</div>
+
+<h2>1. 论文获取状态</h2>
+
+<div class="warning-box">
+<strong>PDF 不可获取：</strong>论文发表在 ACM TODAES 上，DOI 为 <a href="https://doi.org/10.1145/3773770" target="_blank">10.1145/3773770</a>。由于 ACM 付费墙限制且无 arXiv 预印本，PDF 无法下载。以下提供替代资源。
+</div>
+
+<h3>在线阅读链接</h3>
+<ul>
+<li><strong>ACM Digital Library:</strong> <a href="https://dl.acm.org/doi/10.1145/3773770" target="_blank">https://dl.acm.org/doi/10.1145/3773770</a></li>
+<li><strong>ACM Abstract Page:</strong> <a href="https://dl.acm.org/doi/abs/10.1145/3773770" target="_blank">https://dl.acm.org/doi/abs/10.1145/3773770</a></li>
+<li><strong>ACM PDF (需订阅):</strong> <a href="https://dl.acm.org/doi/pdf/10.1145/3773770" target="_blank">https://dl.acm.org/doi/pdf/10.1145/3773770</a></li>
+</ul>
+
+<div class="resource-card">
+<h3>论文元信息</h3>
+<table>
+<tr><td><strong>标题</strong></td><td>FPGA Routing Congestion Prediction via Graph Learning-Aided Conditional GAN</td></tr>
+<tr><td><strong>作者</strong></td><td>Qingyu Yang, Jingjin Li, Rui Li, Yuting He, Yajun Ha, Linlin Shen, Ruibin Bai, Heng Yu</td></tr>
+<tr><td><strong>期刊</strong></td><td>ACM Transactions on Design Automation of Electronic Systems (TODAES)</td></tr>
+<tr><td><strong>年份</strong></td><td>2025</td></tr>
+<tr><td><strong>DOI</strong></td><td><a href="https://doi.org/10.1145/3773770" target="_blank">10.1145/3773770</a></td></tr>
+<tr><td><strong>引用次数</strong></td><td>3 (Google Scholar)</td></tr>
+</table>
+</div>
+
+<h2>2. GitHub 代码仓库</h2>
+
+<div class="resource-card">
+<h3>AIPnR/FPGA_Hetero_Congestion_Prediction</h3>
+<p><strong>URL:</strong> <a href="https://github.com/AIPnR/FPGA_Hetero_Congestion_Prediction" target="_blank">https://github.com/AIPnR/FPGA_Hetero_Congestion_Prediction</a></p>
+<p><strong>Stars:</strong> 2 | <strong>Forks:</strong> 1 | <strong>License:</strong> GPL-3.0</p>
+<p><strong>语言:</strong> Jupyter Notebook 87.6%, Python 12.4%</p>
+<p><strong>提交:</strong> 6 commits on main branch</p>
+</div>
+
+<h3>仓库目录结构</h3>
+
+<pre><code>FPGA_Hetero_Congestion_Prediction/
+├── arch_blif_source/          # VTR7 基准电路 BLIF 文件子集
+├── script/                    # VTR 自动化/分析脚本
+│   ├── __init__.py
+│   ├── data_collect_wcpnet.py # WCPNet 图像数据收集
+│   ├── dataloader_norm_tune.py # 异构图数据集加载器
+│   ├── dataloader_norm_tune_wcpnet.py # WCPNet 数据加载器
+│   ├── datamaker.py           # 异构图构建器（核心）
+│   ├── npr_reader.py          # VPR 输出解析器
+│   └── vpr_run.py             # VPR 自动化执行器
+├── source/                    # 模型训练脚本
+│   ├── model/
+│   │   ├── FHGNN.py           # 异构 GNN 模型（核心）
+│   │   ├── UNET_adaptive.py   # 自适应 U-Net 生成器
+│   │   ├── Discriminator.py   # PatchGAN 鉴别器
+│   │   └── wcpnet.py          # WCPNet 模型
+│   ├── zheck_points/          # 检查点和评估数据
+│   ├── train_1hg2cgan.py      # 单FHGNN cGAN 训练
+│   ├── train_2hg2cgan.py      # 双FHGNN cGAN 训练（主配置）
+│   ├── train_fhgnnhomo.py     # 纯FHGNN 训练（无cGAN）
+│   ├── train_pix2pix.py       # 标准 pix2pix 训练
+│   ├── train_unet.py          # 纯U-Net 训练
+│   ├── train_wcpnet.py        # WCPNet 训练
+│   └── utils.py               # 工具函数
+├── LICENSE
+└── README.md</code></pre>
+
+<h2>3. 技术分析摘要</h2>
+
+<div class="resource-card">
+<h3>基于源代码提取的关键技术细节</h3>
+
+<h4>HeteroGraph 异构图结构</h4>
+<table>
+<tr><th>组件</th><th>详情</th></tr>
+<tr><td>节点类型</td><td>Block (4维特征), Net (4维特征), Grid (5维特征)</td></tr>
+<tr><td>边类型</td><td>topo_in, topo_out (网表), grid_edge (布局), geom_loc, geom_bb (空间映射)</td></tr>
+<tr><td>Block 特征</td><td>type_embed(1) + height(1) + num_in_pin(1) + num_out_pin(1)</td></tr>
+<tr><td>Net 特征</td><td>bb_high(1) + bb_length(1) + bb_area(1) + bb_block_density(1)</td></tr>
+<tr><td>Grid 特征</td><td>type_embed(1) + h_density(1) + v_density(1) + rudy(1) + pin_density(1)</td></tr>
+<tr><td>Grid 标签</td><td>chanx_l4, chany_l4, chanx_l16, chany_l16 (4维)</td></tr>
+</table>
+
+<h4>FHGNN 架构</h4>
+<table>
+<tr><th>参数</th><th>默认值</th></tr>
+<tr><td>层数</td><td>2 层 HeteroGraphConv</td></tr>
+<tr><td>隐藏维度</td><td>64</td></tr>
+<tr><td>网表消息传递</td><td>GraphSAGE (pool aggregator)</td></tr>
+<tr><td>布局消息传递</td><td>GraphSAGE (pool aggregator)</td></tr>
+<tr><td>空间映射消息传递</td><td>GCN</td></tr>
+<tr><td>聚合方式</td><td>mean (sum 和 stack 可选)</td></tr>
+<tr><td>注意力头数 (GAT)</td><td>4</td></tr>
+<tr><td>激活函数</td><td>LeakyReLU (投影), ReLU (层间)</td></tr>
+</table>
+
+<h4>cGAN 配置</h4>
+<table>
+<tr><th>组件</th><th>详情</th></tr>
+<tr><td>生成器</td><td>U-Net (自适应层数, 512→4通道, 128×128)</td></tr>
+<tr><td>鉴别器</td><td>PatchGAN (3层CNN, 4×4卷积)</td></tr>
+<tr><td>cGAN 损失</td><td>BCEWithLogitsLoss (对抗)</td></tr>
+<tr><td>特征损失</td><td>MSE × 100 (逐像素)</td></tr>
+<tr><td>优化器</td><td>Adam, lr=2e-4, β=(0.5, 0.999)</td></tr>
+<tr><td>学习率衰减</td><td>StepLR, γ=0.98 per epoch</td></tr>
+<tr><td>梯度裁剪</td><td>max_norm=1.0</td></tr>
+<tr><td>混合精度</td><td>Torch AMP GradScaler</td></tr>
+</table>
+
+<h4>数据流水线</h4>
+<table>
+<tr><th>步骤</th><th>详情</th></tr>
+<tr><td>1. VTR 执行</td><td>vpr_run.py 并行运行 200 次 VPR per circuit</td></tr>
+<tr><td>2. 输出解析</td><td>npr_reader.py 解析 placement/route/net/arch 文件</td></tr>
+<tr><td>3. 图构建</td><td>datamaker.py 构建 DGL 异构图并序列化保存</td></tr>
+<tr><td>4. 数据加载</td><td>dataloader_norm_tune.py 加载+归一化+划分</td></tr>
+<tr><td>5. 模型训练</td><td>train_2hg2cgan.py 启动训练（200 epochs）</td></tr>
+</table>
+</div>
+
+<h2>4. 关键代码片段</h2>
+
+<h3>4.1 FHGNN 前向传播（source/model/FHGNN.py）</h3>
+
+<pre><code>def forward(self, graph):
+    # 两阶段特征投影
+    b_h = F.leaky_relu(self.lin_block(graph.nodes['block'].data['feature']))
+    n_h = F.leaky_relu(self.lin_net(graph.nodes['net'].data['feature']))
+    g_h = F.leaky_relu(self.lin_grid(graph.nodes['grid'].data['feature']))
+
+    graph.nodes['block'].data['h'] = F.leaky_relu(self.lin_block_2(b_h))
+    graph.nodes['net'].data['h'] = F.leaky_relu(self.lin_net_2(n_h))
+    graph.nodes['grid'].data['h'] = F.leaky_relu(self.lin_grid_2(g_h))
+
+    # 多层异构图卷积
+    for i in range(self.layer_num):
+        h = self.gnn_layers[i](graph, graph.ndata['h'])
+        h = {k: F.relu(v) for k, v in h.items()}
+
+    grid_embed = h['grid']
+    pred_out = self.out_lin(h['grid'])
+    return pred_out, grid_embed</code></pre>
+
+<h3>4.2 g_emb2image 格式转换（source/utils.py）</h3>
+
+<pre><code>def g_emb2image(grid_embedded):
+    # grid_embedded: [16384, 64] → [1, 64, 128, 128]
+    image = grid_embedded.view(-1, 128, grid_embedded.shape[1])\
+                        .permute(2, 0, 1).unsqueeze(0)
+    return image</code></pre>
+
+<h3>4.3 GAN 训练循环（source/train_2hg2cgan.py）</h3>
+
+<pre><code># Discriminator step
+D_real = disc(train_data, real_chanusage_image)
+D_real_loss = bce(D_real, torch.ones_like(D_real))
+D_fake = disc(train_data, pred_chanusage_cut_image.detach())
+D_fake_loss = bce(D_fake, torch.zeros_like(D_fake))
+D_loss = (D_real_loss + D_fake_loss) / 2
+
+# Generator step
+D_fake = disc(train_data, pred_chanusage_cut_image)
+G_fake_loss = bce(D_fake, torch.ones_like(D_fake))
+f_loss = fn_loss(pred_chanusage_cut_image, real_chanusage_image) * 100
+G_loss = G_fake_loss + f_loss</code></pre>
+
+<h2>5. 评估指标</h2>
+
+<table>
+<tr><th>指标</th><th>缩写</th><th>说明</th></tr>
+<tr><td>Normalized RMSE</td><td>NRMS</td><td>$\sqrt{\text{MSE}}$ — 预测与真实偏差</td></tr>
+<tr><td>SSIM</td><td>SSIM</td><td>结构相似性指数</td></tr>
+<tr><td>Pearson Correlation</td><td>Pearson</td><td>线性相关性</td></tr>
+<tr><td>Spearman Correlation</td><td>Spearman</td><td>排序相关性</td></tr>
+<tr><td>Kendall's Tau</td><td>Kendall</td><td>排序一致性</td></tr>
+</table>
+
+<h2>6. 与相关论文的交叉引用</h2>
+
+<table>
+<tr><th>Day</th><th>论文</th><th>关系</th></tr>
+<tr><td>Day 13</td><td>ClusterNet</td><td>首次 GNN + 聚类用于拥塞预测</td></tr>
+<tr><td>Day 15</td><td>RouteNet</td><td>首次 CNN 用于可布线性预测</td></tr>
+<tr><td>Day 16</td><td>LHNN</td><td>异构图 GNN 融合几何和拓扑（最相关前文）</td></tr>
+<tr><td>Day 17</td><td>NAS-Routability</td><td>自动架构搜索</td></tr>
+<tr><td>Day 18</td><td>cGAN Congestion</td><td>首次 cGAN 用于拥塞预测（cGAN 线）</td></tr>
+<tr><td>Day 19</td><td>PROS</td><td>预测驱动优化</td></tr>
+<tr><td>Day 20</td><td>CircuitGNN</td><td>通用电路表示</td></tr>
+<tr><td><strong>Day 21</strong></td><td><strong>本文</strong></td><td><strong>HeteroGNN + cGAN 深度融合</strong></td></tr>
+</table>
+
+<h2>7. 引用格式</h2>
+
+<h3>BibTeX</h3>
+<pre><code>@article{yang2025fpga,
+  title={FPGA Routing Congestion Prediction via Graph Learning-Aided Conditional GAN},
+  author={Yang, Qingyu and Li, Jingjin and Li, Rui and He, Yuting and Ha, Yajun and Shen, Linlin and Bai, Ruibin and Yu, Heng},
+  journal={ACM Transactions on Design Automation of Electronic Systems (TODAES)},
+  year={2025},
+  doi={10.1145/3773770}
+}</code></pre>
+
+<h3>APA</h3>
+<p>Yang, Q., Li, J., Li, R., He, Y., Ha, Y., Shen, L., Bai, R., & Yu, H. (2025). FPGA Routing Congestion Prediction via Graph Learning-Aided Conditional GAN. <em>ACM Transactions on Design Automation of Electronic Systems</em>. <a href="https://doi.org/10.1145/3773770">https://doi.org/10.1145/3773770</a></p>
+
+<hr>
+<p style="text-align:center; color:#888; font-size:0.9rem; margin-top:3rem;">
+Day 21 Resources | Generated 2026-06-12 | Analysis by Claude Code
+</p>
+
+</body>
+</html>

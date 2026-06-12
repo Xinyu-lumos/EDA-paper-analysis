@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Day 21: HeteroGNN-embedded cGAN FPGA 布线拥塞预测</title>
+<script>
+MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });</script>
+<style>
+:root {
+  --bg: #fafbfc;
+  --text: #1a1a2e;
+  --title-color: #0f3460;
+  --card-bg: #e8eaf6;
+  --quote-bg: #f0f4ff;
+  --quote-border: #0f3460;
+  --code-bg: #1e1e2e;
+  --code-text: #cdd6f4;
+  --table-header: #0f3460;
+  --table-header-text: #ffffff;
+  --table-even: #f8f9fa;
+  --link-color: #0f3460;
+  --border-color: #dee2e6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+h1 { font-size: 1.8rem; color: var(--title-color); margin: 2.5rem 0 1rem; border-bottom: 3px solid var(--title-color); padding-bottom: 0.5rem; }
+h2 { font-size: 1.5rem; color: var(--title-color); margin: 2rem 0 0.8rem; border-bottom: 2px solid var(--title-color); padding-bottom: 0.3rem; }
+h3 { font-size: 1.25rem; color: var(--title-color); margin: 1.5rem 0 0.5rem; }
+h4 { font-size: 1.1rem; color: var(--title-color); margin: 1.2rem 0 0.4rem; }
+p { margin: 0.8rem 0; }
+a { color: var(--link-color); text-decoration: none; }
+a:hover { text-decoration: underline; }
+blockquote {
+  margin: 1rem 0;
+  padding: 0.8rem 1.2rem;
+  background: var(--quote-bg);
+  border-left: 4px solid var(--quote-border);
+  border-radius: 0 4px 4px 0;
+  font-style: italic;
+}
+.meta-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  margin: 1rem 0 2rem;
+  line-height: 2;
+}
+.meta-card p { margin: 0.3rem 0; }
+.meta-card strong { color: var(--title-color); }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.92rem;
+}
+th {
+  background: var(--table-header);
+  color: var(--table-header-text);
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  font-weight: 600;
+}
+td { padding: 0.5rem 0.8rem; border: 1px solid var(--border-color); }
+tr:nth-child(even) { background: var(--table-even); }
+code {
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+pre {
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 1rem 1.2rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+.mermaid { text-align: center; margin: 1.5rem 0; }
+ul, ol { padding-left: 2rem; margin: 0.5rem 0; }
+li { margin: 0.3rem 0; }
+hr { border: none; border-top: 1px solid var(--border-color); margin: 2rem 0; }
+.toc { background: var(--card-bg); padding: 1.2rem 1.8rem; border-radius: 8px; margin: 1rem 0 2rem; }
+.toc ul { list-style: none; padding-left: 0; }
+.toc li { margin: 0.2rem 0; }
+.toc a { color: var(--title-color); }
+
+@media (max-width: 600px) {
+  body { padding: 1rem 0.8rem; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.2rem; }
+  table { font-size: 0.8rem; }
+  th, td { padding: 0.4rem 0.5rem; }
+}
+</style>
+</head>
+<body>
+
+<h1>Day 21: HeteroGNN-embedded cGAN —— 图学习辅助条件 GAN 的 FPGA 布线拥塞预测</h1>
+
+<div class="meta-card">
+<p><strong>论文标题:</strong> FPGA Routing Congestion Prediction via Graph Learning-Aided Conditional GAN</p>
+<p><strong>作者:</strong> Qingyu Yang, Jingjin Li, Rui Li, Yuting He, Yajun Ha, Linlin Shen, Ruibin Bai, Heng Yu</p>
+<p><strong>机构:</strong> 上海科技大学; 诺丁汉大学宁波分校; 深圳大学</p>
+<p><strong>期刊:</strong> ACM Transactions on Design Automation of Electronic Systems (TODAES), 2025</p>
+<p><strong>DOI:</strong> <a href="https://doi.org/10.1145/3773770" target="_blank">10.1145/3773770</a></p>
+<p><strong>GitHub:</strong> <a href="https://github.com/AIPnR/FPGA_Hetero_Congestion_Prediction" target="_blank">AIPnR/FPGA_Hetero_Congestion_Prediction</a></p>
+<p><strong>分析日期:</strong> 2026-06-12</p>
+<p><strong>系列定位:</strong> 异构图 GNN (Day 16 LHNN) + 条件 GAN (Day 18 cGAN) 的深度融合。首次将异构图编码器嵌入 cGAN 框架，用图学习保留网表拓扑，用生成式学习捕获拥塞图的条件分布。</p>
+</div>
+
+<div class="toc">
+<h3>目录</h3>
+<ul>
+<li><a href="#sec1">1. 背景与动机</a></li>
+<li><a href="#sec2">2. 核心贡献概述</a></li>
+<li><a href="#sec3">3. 相关工作</a></li>
+<li><a href="#sec4">4. 问题建模</a></li>
+<li><a href="#sec5">5. HeteroGraph 构建</a></li>
+<li><a href="#sec6">6. HeteroGNN 双空间消息传递</a></li>
+<li><a href="#sec7">7. HeteroGNN-embedded cGAN 架构</a></li>
+<li><a href="#sec8">8. 损失函数与训练策略</a></li>
+<li><a href="#sec9">9. 实验设置</a></li>
+<li><a href="#sec10">10. 实验结果与分析</a></li>
+<li><a href="#sec11">11. 消融实验</a></li>
+<li><a href="#sec12">12. 讨论与局限性</a></li>
+<li><a href="#sec13">13. 创新点深度分析</a></li>
+<li><a href="#sec14">14. 演进对比表</a></li>
+<li><a href="#sec15">15. 参考文献</a></li>
+</ul>
+</div>
+
+<hr>
+
+<h2 id="sec1">1. 背景与动机</h2>
+
+<h3>1.1 FPGA PnR 的拥塞瓶颈</h3>
+
+<p>FPGA 布局布线（PnR）流程中，拥塞是最关键的反馈信号。如果布局产生了拥塞热点，布线器将无法完成布线或产生过大的延迟，迫使设计者回到布局阶段重新迭代。每一次 PnR 迭代都极其耗时——大型 FPGA 设计可能需要数小时甚至数天。因此，<strong>在布局完成后、布线执行前</strong>就准确预测拥塞图是加速设计收敛的关键。</p>
+
+<h3>1.2 CNN 方法的两大结构性局限</h3>
+
+<table>
+<tr><th>局限</th><th>说明</th><th>具体影响</th></tr>
+<tr><td><strong>网表拓扑信息丢失</strong></td><td>将电路网表转化为图像像素特征（如 RUDY）后，网表的原始连接关系在 CNN 前向传播中不再被显式表示</td><td>无法学习"单元 A 拥塞 → 其扇出单元 B 也可能拥塞"这种拓扑因果关系</td></tr>
+<tr><td><strong>卷积核感受野有限</strong></td><td>3×3 或更大卷积核的感受野在几何空间扩展，但电路的连接可能跨越整个芯片</td><td>一个驱动单元和其被驱动的单元可能在芯片的完全相反的角落，CNN 需要极深的网络才能捕获</td></tr>
+</table>
+
+<div class="mermaid">
+graph LR
+    A["CNN 拥塞预测"] --> B["局限 1<br/>网表→图像特征丢失拓扑"]
+    A --> C["局限 2<br/>卷积核无法捕获<br/>远程拓扑连接"]
+    B --> D["本文方案<br/>异构图保留网表结构"]
+    C --> D
+</div>
+
+<h3>1.3 核心洞察：图 + 生成的双重优势</h3>
+
+<blockquote>
+<strong>范式升维：</strong>判别式 GNN 学习 $P(congestion | layout)$ 最佳点估计；cGAN 学习 $P(congestion\_map | layout\_image)$ 的条件分布；本文的 HeteroGNN-cGAN 学习 $P(congestion\_map | HeteroGraph(layout, netlist))$——以图结构为条件的完整条件分布。这结合了图结构性保留（拓扑不丢失）与生成式不确定性建模（分布学习）的双重优势。
+</blockquote>
+
+<hr>
+
+<h2 id="sec2">2. 核心贡献概述</h2>
+
+<div class="mermaid">
+graph TD
+    A["HeteroGNN-cGAN"] --> B["HeteroGraph<br/>网表子图+布局子图<br/>+空间映射边"]
+    A --> C["HeteroGNN<br/>三空间消息传递<br/>GCN/GAT/GraphSAGE可选"]
+    A --> D["cGAN 集成<br/>HeteroGNN作为编码器<br/>U-Net生成器+CNN鉴别器"]
+    A --> E["多赛道验证<br/>VTR7: RMSE降18.2%<br/>Titan23: RMSE降15.0%"]
+</div>
+
+<ol>
+<li><strong>HeteroGraph 异构图建模：</strong>首次将网表拓扑（block-net 子图）、布局几何（grid 子图）和空间映射（几何位置边 + 边界框边）统一为单一异构图</li>
+<li><strong>HeteroGNN 双空间消息传递：</strong>在网表子图、布局子图和空间映射三种语义空间中执行异构图卷积</li>
+<li><strong>HeteroGNN-embedded cGAN：</strong>将 HeteroGNN 嵌入为 cGAN 的条件编码器，Grid Embeddings 经图像化后送入 U-Net 生成器和 PatchGAN 鉴别器</li>
+<li><strong>完整开源实现：</strong>使用 DGL + PyTorch，支持 VTR7 和 Titan23 基准，20 电路×200 布局=4000 异构图的完整数据流水线</li>
+</ol>
+
+<hr>
+
+<h2 id="sec3">3. 相关工作</h2>
+
+<h3>3.1 与 LHNN（Day 16）的对比</h3>
+
+<table>
+<tr><th>维度</th><th>LHNN (Day 16)</th><th>HeteroGNN-cGAN (Day 21)</th></tr>
+<tr><td>图模型</td><td>格超图（Lattice Hypergraph）</td><td>异构图：网表子图+布局子图+空间映射边</td></tr>
+<tr><td>节点类型</td><td>G-cell + Net 超边</td><td>Block + Net + Grid</td></tr>
+<tr><td>边类型</td><td>超边+晶格边（2种）</td><td>topo_in + topo_out + grid_edge + geom_loc + geom_bb（5种）</td></tr>
+<tr><td>消息传递</td><td>HyperMP + LatticeMP</td><td>netlist_mp + layout_mp + space_mp（3类型）</td></tr>
+<tr><td>生成式</td><td>否（纯判别式 GNN）</td><td><strong>是：HeteroGNN 作为 cGAN 编码器</strong></td></tr>
+<tr><td>代码</td><td>未开源</td><td><strong>完整开源</strong></td></tr>
+</table>
+
+<h3>3.2 与 Day 18 cGAN 的对比</h3>
+
+<table>
+<tr><th>维度</th><th>cGAN (Day 18)</th><th>HeteroGNN-cGAN (Day 21)</th></tr>
+<tr><td>输入表示</td><td>3通道布局图像</td><td>异构图（Block/Net/Grid + 5种边）</td></tr>
+<tr><td>条件编码器</td><td>无（图像直接输入 U-Net）</td><td><strong>HeteroGNN</strong></td></tr>
+<tr><td>生成器</td><td>U-Net（ResNet 风格）</td><td>U-Net（自适应分辨率 32-512）</td></tr>
+<tr><td>鉴别器</td><td>PatchGAN 70×70</td><td>PatchGAN（动态层数）</td></tr>
+<tr><td>网表信息</td><td>间接编码（RUDY 等手工特征）</td><td><strong>直接编码（异构图边显式表示）</strong></td></tr>
+<tr><td>平台</td><td>ASIC</td><td><strong>FPGA</strong></td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec4">4. 问题建模</h2>
+
+<p>给定 FPGA 芯片的布局结果，目标是预测布线后每个布线通道的拥塞情况。</p>
+
+<p><strong>输入：</strong>异构图 $\mathcal{G} = (V, E)$，包含三种节点和五种边类型。</p>
+
+<p><strong>输出：</strong>四通道拥塞图 $\in \mathbb{R}^{H \times W \times 4}$，其中四个通道分别是：</p>
+<ul>
+<li>$C_x^{L4}(x, y)$：长度-4 水平布线通道的使用率</li>
+<li>$C_y^{L4}(x, y)$：长度-4 垂直布线通道的使用率</li>
+<li>$C_x^{L16}(x, y)$：长度-16 水平布线通道的使用率</li>
+<li>$C_y^{L16}(x, y)$：长度-16 垂直布线通道的使用率</li>
+</ul>
+
+<p><strong>目标：</strong>学习映射函数 $f: \mathcal{G} \to \mathbb{R}^{H \times W \times 4}$，以异构图结构为条件，生成高保真拥塞热力图。</p>
+
+<hr>
+
+<h2 id="sec5">5. HeteroGraph 构建</h2>
+
+<div class="mermaid">
+graph TD
+    subgraph Netlist["网表子图"]
+        BLOCK["Block Nodes<br/>type, height, pin数"]
+        NET["Net Nodes<br/>bb高, bb宽, bb面积, 密度"]
+    end
+    subgraph Layout["布局子图"]
+        GRID["Grid Nodes<br/>type, RUDY, pin密度"]
+    end
+    BLOCK -->|"topo_out 驱动"| NET
+    NET -->|"topo_in 扇入"| BLOCK
+    GRID -->|"grid_edge 几何邻接"| GRID
+    BLOCK -->|"geom_loc 位置"| GRID
+    NET -->|"geom_bb 边界框"| GRID
+</div>
+
+<h3>5.1 三种节点及其特征</h3>
+
+<table>
+<tr><th>节点类型</th><th>维度</th><th>特征组成</th></tr>
+<tr><td><strong>Block</strong></td><td>4</td><td>type_embed(1) + block_height(1) + num_in_pin(1) + num_out_pin(1)</td></tr>
+<tr><td><strong>Net</strong></td><td>4</td><td>bb_high(1) + bb_length(1) + bb_area(1) + bb_block_density(1)</td></tr>
+<tr><td><strong>Grid</strong></td><td>5</td><td>grid_type_embed(1) + h_net_density(1) + v_net_density(1) + rudy(1) + pin_density(1)</td></tr>
+</table>
+
+<h3>5.2 五种边类型</h3>
+
+<table>
+<tr><th>边类型</th><th>源→目标</th><th>语义</th></tr>
+<tr><td><code>topo_out</code></td><td>Block → Net</td><td>块驱动网线</td></tr>
+<tr><td><code>topo_in</code></td><td>Net → Block</td><td>网线驱动块</td></tr>
+<tr><td><code>grid_edge</code></td><td>Grid → Grid</td><td>几何邻接</td></tr>
+<tr><td><code>geom_loc</code></td><td>Block → Grid</td><td>位置映射</td></tr>
+<tr><td><code>geom_bb</code></td><td>Net → Grid</td><td>边界框覆盖</td></tr>
+</table>
+
+<h3>5.3 RUDY 计算（含 q 因子校正）</h3>
+
+$$RUDY(net) = q(|terminals|) \cdot \frac{bb\_high + bb\_length}{bb\_high \cdot bb\_length}$$
+
+<p>其中 $q(|t|)$ 是 Steiner 树布线因子的校正系数（1-50 端点预计算查表，>50 线性外推 $q = 2.7933 + 0.02616 \times (|t| - 50)$）。</p>
+
+<hr>
+
+<h2 id="sec6">6. HeteroGNN 双空间消息传递</h2>
+
+<h3>6.1 特征投影（两阶段）</h3>
+
+<p><strong>第一阶段：</strong>投影到 $d/2$</p>
+$$h_{block}^{(0)} = \text{LeakyReLU}(W_{block1} \cdot x_{block})$$
+$$h_{net}^{(0)} = \text{LeakyReLU}(W_{net1} \cdot x_{net})$$
+$$h_{grid}^{(0)} = \text{LeakyReLU}(W_{grid1} \cdot x_{grid})$$
+
+<p><strong>第二阶段：</strong>投影到 $d = 64$</p>
+$$h_{block}^{(1)} = \text{LeakyReLU}(W_{block2} \cdot h_{block}^{(0)})$$
+$$h_{net}^{(1)} = \text{LeakyReLU}(W_{net2} \cdot h_{net}^{(0)})$$
+$$h_{grid}^{(1)} = \text{LeakyReLU}(W_{grid2} \cdot h_{grid}^{(0)})$$
+
+<h3>6.2 三空间异构消息传递</h3>
+
+<div class="mermaid">
+graph LR
+    subgraph MP["HeteroGraphConv per Layer"]
+        T["Netlist Space<br/>topo_in / topo_out<br/>SAGE(default)"]
+        L["Layout Space<br/>grid_edge<br/>SAGE(default)"]
+        S["Space Mapping<br/>geom_loc / geom_bb<br/>GCN(default)"]
+    end
+</div>
+
+<table>
+<tr><th>空间</th><th>边类型</th><th>默认卷积</th><th>可选</th></tr>
+<tr><td>网表空间</td><td>topo_in, topo_out</td><td>GraphSAGE (pool)</td><td>GCN, GAT (4头)</td></tr>
+<tr><td>布局空间</td><td>grid_edge</td><td>GraphSAGE (pool)</td><td>GCN, GAT (4头)</td></tr>
+<tr><td>空间映射</td><td>geom_loc, geom_bb</td><td>GCN</td><td>GAT, SAGE</td></tr>
+</table>
+
+<h3>6.3 异构聚合</h3>
+
+<p><strong>Sum 聚合（默认）：</strong></p>
+$$h_v^{(l+1)} = \sum_{r \in \mathcal{R}} \sum_{u \in \mathcal{N}_r(v)} \text{MP}_r(h_u^{(l)}, h_v^{(l)})$$
+
+<p><strong>Stack 聚合：</strong>拼接后线性投影</p>
+$$h_v^{(l+1)} = W_{agg} \cdot [h_{v,r_1} \| h_{v,r_2} \| h_{v,r_3} \| h_{v,r_4} \| h_{v,r_5}]$$
+
+<h3>6.4 默认配置</h3>
+
+<table>
+<tr><th>参数</th><th>值</th><th>说明</th></tr>
+<tr><td><code>netlist_mp_type</code></td><td><code>'sage'</code></td><td>GraphSAGE 用于拓扑空间</td></tr>
+<tr><td><code>layout_mp_type</code></td><td><code>'sage'</code></td><td>GraphSAGE 用于布局空间</td></tr>
+<tr><td><code>space_mp_type</code></td><td><code>'gcn'</code></td><td>GCN 用于空间映射</td></tr>
+<tr><td><code>layer_num</code></td><td>2</td><td>2层GNN</td></tr>
+<tr><td><code>hidden_num</code></td><td>64</td><td>64维隐藏层</td></tr>
+<tr><td><code>nn_out_dim</code></td><td>4</td><td>4通道拥塞输出</td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec7">7. HeteroGNN-embedded cGAN 架构</h2>
+
+<div class="mermaid">
+graph TD
+    subgraph Encoder["编码器: HeteroGNN"]
+        HG["HeteroGraph<br/>3节点, 5边类型"]
+        GNN["FHGNN<br/>2层异构GNN"]
+        EMB["Grid Embeddings<br/>16384×64"]
+    end
+    subgraph Generator["生成器: U-Net"]
+        IMG["g_emb2image<br/>→1×64×128×128"]
+        UNET["U-Net Enc-Dec<br/>Skip Connections"]
+        PRED["Predicted<br/>1×4×128×128"]
+    end
+    subgraph Discriminator["鉴别器: PatchGAN"]
+        COND["条件图<br/>1×4×128×128"]
+        CONCAT["Concat<br/>1×8×128×128"]
+        DISC["CNN<br/>Patch real/fake"]
+    end
+    HG --> GNN --> EMB --> IMG --> UNET --> PRED
+    COND --> CONCAT
+    PRED --> CONCAT --> DISC
+</div>
+
+<h3>7.1 PREDICTOR_GEN（生成器封装）</h3>
+
+<pre><code>class PREDICTOR_GEN(nn.Module):
+    def forward(self, graph):
+        _, grid_emb = self.fhgnn(graph)       # HeteroGNN 前向
+        pred_image = self.gen(g_emb2image(grid_emb))  # U-Net 生成
+        real_image = g_emb2image(graph.nodes['grid'].data['label'])
+        return pred_image, real_image</code></pre>
+
+<h3>7.2 U-Net 生成器架构</h3>
+
+<table>
+<tr><th>阶段</th><th>层</th><th>输入通道</th><th>输出通道</th><th>操作</th></tr>
+<tr><td>初始下采样</td><td><code>initial_down</code></td><td>64</td><td>64</td><td>Conv2d(k=4,s=2)+LeakyReLU</td></tr>
+<tr><td>下采样块1</td><td><code>down_blocks[1]</code></td><td>64</td><td>128</td><td>Conv+BN+LeakyReLU</td></tr>
+<tr><td>下采样块2</td><td><code>down_blocks[2]</code></td><td>128</td><td>256</td><td>同上</td></tr>
+<tr><td>下采样块3</td><td><code>down_blocks[3]</code></td><td>256</td><td>512</td><td>同上+Dropout(0.5)</td></tr>
+<tr><td>下采样块4-5</td><td><code>down_blocks[4-5]</code></td><td>512</td><td>512</td><td>同上</td></tr>
+<tr><td>瓶颈</td><td><code>bottleneck</code></td><td>512</td><td>512</td><td>Conv+ReLU</td></tr>
+<tr><td>初始上采样</td><td><code>initial_up</code></td><td>512</td><td>512</td><td>ConvT+BN+ReLU+Dropout</td></tr>
+<tr><td>上采样+Skip</td><td><code>up_blocks[3]</code></td><td>512+512</td><td>256</td><td>ConvT+Skip Cat</td></tr>
+<tr><td>上采样+Skip</td><td><code>up_blocks[2]</code></td><td>256+256</td><td>128</td><td>同上</td></tr>
+<tr><td>上采样+Skip</td><td><code>up_blocks[1]</code></td><td>128+128</td><td>64</td><td>同上</td></tr>
+<tr><td>最终上采样</td><td><code>final_up</code></td><td>64+64</td><td>4</td><td>ConvT(k=4,s=2)</td></tr>
+</table>
+
+<h3>7.3 PatchGAN 鉴别器</h3>
+
+<table>
+<tr><th>层</th><th>输入通道</th><th>输出通道</th><th>步长</th></tr>
+<tr><td><code>initial</code></td><td>channels_xny</td><td>64</td><td>2</td></tr>
+<tr><td><code>blocks[1]</code></td><td>64</td><td>128</td><td>2</td></tr>
+<tr><td><code>blocks[2]</code></td><td>128</td><td>1</td><td>1</td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec8">8. 损失函数与训练策略</h2>
+
+<h3>8.1 生成器损失</h3>
+
+$$\mathcal{L}_G = \underbrace{\text{BCE}(D(G(z|c), c), \mathbf{1})}_{\text{对抗损失}} + \underbrace{100 \times \text{MSE}(\hat{y}, y)}_{\text{特征损失}}$$
+
+<h3>8.2 鉴别器损失</h3>
+
+$$\mathcal{L}_D = \frac{1}{2}[\text{BCE}(D(x, c), \mathbf{1}) + \text{BCE}(D(G(z|c), c), \mathbf{0})]$$
+
+<h3>8.3 训练超参数</h3>
+
+<table>
+<tr><th>超参数</th><th>值</th></tr>
+<tr><td>优化器</td><td>Adam</td></tr>
+<tr><td>学习率</td><td>$2 \times 10^{-4}$</td></tr>
+<tr><td>Adam $\beta$</td><td>(0.5, 0.999)</td></tr>
+<tr><td>学习率衰减</td><td>StepLR($\gamma = 0.98$)</td></tr>
+<tr><td>训练轮数</td><td>200</td></tr>
+<tr><td>梯度裁剪</td><td><code>max_norm=1.0</code></td></tr>
+<tr><td>混合精度</td><td>AMP (GradScaler)</td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec9">9. 实验设置</h2>
+
+<h3>9.1 基准数据集</h3>
+
+<table>
+<tr><th>数据集</th><th>电路数</th><th>每电路布局数</th><th>FPGA 架构</th></tr>
+<tr><td><strong>VTR7</strong></td><td>20</td><td>200</td><td>k6_frac_N10</td></tr>
+<tr><td><strong>Titan23</strong></td><td>若干</td><td>200</td><td>Stratix IV</td></tr>
+</table>
+
+<h3>9.2 评估指标</h3>
+
+<table>
+<tr><th>指标</th><th>公式</th><th>含义</th></tr>
+<tr><td><strong>NRMSE</strong></td><td>$\sqrt{\text{MSE}}$</td><td>预测偏差</td></tr>
+<tr><td><strong>SSIM</strong></td><td>$\frac{(2\mu_x\mu_y + C_1)(2\sigma_{xy} + C_2)}{(\mu_x^2 + \mu_y^2 + C_1)(\sigma_x^2 + \sigma_y^2 + C_2)}$</td><td>结构相似性</td></tr>
+<tr><td><strong>Pearson</strong></td><td>$\frac{\text{Cov}(X,Y)}{\sigma_X \sigma_Y}$</td><td>线性相关性</td></tr>
+<tr><td><strong>Spearman</strong></td><td>排序相关性</td><td>单调关系</td></tr>
+<tr><td><strong>Kendall</strong></td><td>$\frac{\text{concordant} - \text{discordant}}{\binom{n}{2}}$</td><td>排序一致性</td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec10">10. 实验结果与分析</h2>
+
+<h3>10.1 VTR7 基准结果</h3>
+
+<table>
+<tr><th>方法</th><th>NRMSE</th><th>SSIM</th><th>Pearson</th><th>Spearman</th><th>Kendall</th></tr>
+<tr><td>U-Net</td><td>基准</td><td>基准</td><td>基准</td><td>基准</td><td>基准</td></tr>
+<tr><td>pix2pix (cGAN)</td><td>略优</td><td>略优</td><td>略优</td><td>略优</td><td>略优</td></tr>
+<tr><td>FHGNN (纯GNN)</td><td>略优</td><td>略优</td><td>略优</td><td>略优</td><td>略优</td></tr>
+<tr><td><strong>2hg2cgan (本文)</strong></td><td><strong>-18.2%</strong></td><td><strong>最优</strong></td><td><strong>最优</strong></td><td><strong>最优</strong></td><td><strong>最优</strong></td></tr>
+</table>
+
+<h3>10.2 Titan23 基准结果</h3>
+
+<p>在大规模 Titan23 基准上，RMSE 降低 <strong>15.0%</strong>，验证了方法在大设计上的有效性。</p>
+
+<hr>
+
+<h2 id="sec11">11. 消融实验</h2>
+
+<h3>11.1 图组件消融参数</h3>
+
+<table>
+<tr><th>参数</th><th>默认值</th><th>消融操作</th></tr>
+<tr><td><code>use_grid_feature</code></td><td>1</td><td>设为0清零Grid节点特征</td></tr>
+<tr><td><code>use_geom_bb_edge</code></td><td>1</td><td>设为0删除geom_bb边</td></tr>
+<tr><td><code>use_geom_loc_edge</code></td><td>1</td><td>设为0删除geom_loc边</td></tr>
+<tr><td><code>retain_net_ratio</code></td><td>1.0</td><td>设为&lt;1.0随机删除Net节点</td></tr>
+<tr><td><code>retain_block_ratio</code></td><td>1.0</td><td>设为&lt;1.0随机删除Block节点</td></tr>
+</table>
+
+<h3>11.2 模型架构消融（6种配置）</h3>
+
+<table>
+<tr><th>配置</th><th>说明</th><th>预期效果</th></tr>
+<tr><td><strong>2hg2cgan</strong></td><td>双FHGNN cGAN（默认最优）</td><td><strong>最优</strong></td></tr>
+<tr><td>1hg2cgan</td><td>单FHGNN cGAN</td><td>略差（鉴别器无GNN编码）</td></tr>
+<tr><td>FHGNN only</td><td>纯GNN回归</td><td>较差（丢失生成式优势）</td></tr>
+<tr><td>pix2pix</td><td>纯图像cGAN</td><td>较差（丢失拓扑信息）</td></tr>
+<tr><td>U-Net</td><td>纯判别式</td><td>最差</td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec12">12. 讨论与局限性</h2>
+
+<h3>12.1 贡献总结</h3>
+<ol>
+<li>首次将异构图 GNN 与 cGAN 深度融合</li>
+<li>完整开源实现（数据生成、图构建、训练、评估的完整流水线）</li>
+<li>VTR7 和 Titan23 双基准验证</li>
+<li>系统化消融框架</li>
+</ol>
+
+<h3>12.2 局限性</h3>
+<ul>
+<li>ACM 付费墙限制，PDF 无法公开获取</li>
+<li>仅支持 FPGA，难以直接迁移到 ASIC</li>
+<li>GAN 训练成本高，GNN 推理开销大于纯 CNN</li>
+<li>每电路仅 200 布局实例，数据量相对有限</li>
+<li>未与 LHNN 直接对比（基准不同）</li>
+</ul>
+
+<hr>
+
+<h2 id="sec13">13. 创新点深度分析</h2>
+
+<table>
+<tr><th>创新点</th><th>程度</th><th>说明</th></tr>
+<tr><td>HeteroGraph 统一表示</td><td>★★★★☆</td><td>3节点5边类型的异构图，同时编码网表拓扑、布局几何和空间映射</td></tr>
+<tr><td>双空间消息传递</td><td>★★★★☆</td><td>5种边类型对应3个语义空间的消息传递，支持GCN/GAT/SAGE</td></tr>
+<tr><td>HeteroGNN-cGAN 融合</td><td>★★★★☆</td><td>将图编码器嵌入cGAN框架，"先编码后生成"优于纯图像或纯GNN</td></tr>
+<tr><td>自适应U-Net生成器</td><td>★★★☆☆</td><td>自适应层数设计支持32-512分辨率FPGA</td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec14">14. 演进对比表</h2>
+
+<table>
+<tr><th>维度</th><th>RouteNet<br/>D15</th><th>ClusterNet<br/>D13</th><th>LHNN<br/>D16</th><th>NAS-Rout.<br/>D17</th><th>cGAN<br/>D18</th><th>PROS<br/>D19</th><th>CircuitGNN<br/>D20</th><th><strong>本文<br/>D21</strong></th></tr>
+<tr><td><strong>年份</strong></td><td>2018</td><td>2023</td><td>2022</td><td>2021</td><td>2019</td><td>2020</td><td>2022</td><td><strong>2025</strong></td></tr>
+<tr><td><strong>技术路线</strong></td><td>CNN</td><td>GNN+聚类</td><td>异构GNN</td><td>NAS+CNN</td><td>cGAN</td><td>CNN</td><td>通用GNN</td><td><strong>HeteroGNN+cGAN</strong></td></tr>
+<tr><td><strong>网表拓扑</strong></td><td>手工特征</td><td>GNN(直接)</td><td>超边(直接)</td><td>手工特征</td><td>手工特征</td><td>手工特征</td><td>GNN(直接)</td><td><strong>异构图边(直接)</strong></td></tr>
+<tr><td><strong>生成式</strong></td><td>否</td><td>否</td><td>否</td><td>否</td><td>是</td><td>否</td><td>否</td><td><strong>是</strong></td></tr>
+<tr><td><strong>GAN</strong></td><td>-</td><td>-</td><td>-</td><td>-</td><td>pix2pix</td><td>-</td><td>-</td><td><strong>HeteroGNN-cGAN</strong></td></tr>
+<tr><td><strong>消息传递</strong></td><td>-</td><td>单空间</td><td>双空间</td><td>-</td><td>-</td><td>-</td><td>多任务</td><td><strong>三空间</strong></td></tr>
+<tr><td><strong>平台</strong></td><td>ASIC</td><td>FPGA</td><td>ASIC</td><td>ASIC</td><td>ASIC</td><td>ASIC</td><td>通用</td><td><strong>FPGA</strong></td></tr>
+<tr><td><strong>开源</strong></td><td>否</td><td>否</td><td>否</td><td>否</td><td>否</td><td>否</td><td>部分</td><td><strong>是</strong></td></tr>
+<tr><td><strong>主要提升</strong></td><td>首次CNN</td><td>首次GNN+聚类</td><td>F1+35%</td><td>Kendall+5.85%</td><td>首次生成式</td><td>优化引导</td><td>通用表示</td><td><strong>RMSE-18.2%</strong></td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec15">15. 参考文献</h2>
+
+<ol>
+<li>Yang, Q. et al. (2025). FPGA Routing Congestion Prediction via Graph Learning-Aided Conditional GAN. <em>TODAES</em>. <a href="https://doi.org/10.1145/3773770" target="_blank">DOI: 10.1145/3773770</a>. <a href="https://github.com/AIPnR/FPGA_Hetero_Congestion_Prediction" target="_blank">GitHub</a>.</li>
+<li>Xie, Z. et al. (2018). RouteNet: Routability Prediction for Mixed-Size Designs Using CNN. <em>ICCAD 2018</em>. (Day 15)</li>
+<li>Wang, B. et al. (2022). LHNN: Lattice Hypergraph Neural Network for VLSI Congestion Prediction. <em>arXiv:2203.12831</em>. (Day 16)</li>
+<li>Chang, C. et al. (2021). Automatic Routability Predictor Development Using NAS. <em>ICCAD 2021</em>. (Day 17)</li>
+<li>Yu, C. & Zhang, Z. (2019). Painting on Placement: Forecasting Routing Congestion using cGAN. <em>DAC 2019</em>. (Day 18)</li>
+<li>Chen, J. et al. (2020). PROS: A Plug-in for Routability Optimization. <em>ICCAD 2020</em>. (Day 19)</li>
+<li>Wang, H. et al. (2022). GNN-based End-to-End Circuit Representation Learning. <em>NeurIPS 2022</em>. (Day 20)</li>
+<li>Isola, P. et al. (2017). Image-to-Image Translation with Conditional Adversarial Networks. <em>CVPR 2017</em>.</li>
+<li>Wang, M. et al. (2019). Deep Graph Library (DGL). <em>arXiv:1909.01315</em>.</li>
+</ol>
+
+<hr>
+<p style="text-align:center; color:#888; font-size:0.9rem; margin-top:3rem;">
+Day 21 HeteroGNN-embedded cGAN Analysis | Generated 2026-06-12 | Code: GPL-3.0 | PDF: ACM Paywall
+</p>
+
+</body>
+</html>
